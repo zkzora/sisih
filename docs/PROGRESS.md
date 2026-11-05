@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 2 done (gate passed 2026-11-05). Next: Phase 3 (agent, demo merchants, x402, demo controls), see docs/BUILD_PLAN.md.
+Phase 3 done (gate passed 2026-11-05). Next: Phase 4 (wire the dashboard, host it), see docs/BUILD_PLAN.md.
 
 ## Done
 
@@ -81,6 +81,72 @@ Walrus Memory fields (what the UI can show):
   shortened blob_id, namespace, created_at, recall distance in the Last recall tab.
   owner is the MemWal account owner wallet; no need to show it.
 - Writes take ~20 s, so the "Writing" chip state is real and must be designed for.
+
+### Phase 3: agent, demo merchants, x402, demo controls (2026-11-05)
+
+Gate:
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| `demo-run.ts` passes end to end on testnet, no intervention | pass | scripts/demo-run.ts from reset: every SPEC check ok (balances 20.00/16.50/3.50 -> 18.30/16.50/1.80 -> 18.00/16.00/2.00 -> 16.30/16.00/0.30; requests table identical to SPEC; manual reviews 2 of 3, then 1 of 3); "PASS: demo flow reproduced the SPEC tables end to end" |
+| Every x402 settlement has a Tatum-verified digest; 4 steps on SSE | pass | 4 settlements, all `verified`: S1 DataMart HfQMtZ2bnaJUe7Gr9jMxETRxHKdrTmhSwJP1zu839DTV, S1 SearchBox DgPafFFZjfX7unng6R9wSLD4Ga8Xdms5ooihTJyaUK2a, S2 SearchBox CcTeQoP9KkCgnW8YtARbTNpzUM6pUwGeqSjhkM6HjxSu, S2 DataMart 4QzBWqs31wNQFATcByh5SUSXBh1i6SMuS1FQeMHiV3Xk. SSE per paid request: invoice_received -> funds_released (release digest + coin id) -> payment_sent (same coin id) -> settle_verified |
+| Advance cycle: Inference API 0.80 short, 7.00 suggestion | pass | pay Inference API 6.80 ELksDfZ4EFEehBS4S7XCWChzZcu9JLxfBLEmCWsSZM5 -> suggestion "Inference API: raise 6.00 to 7.00 USDC. Last cycle was 0.80 short."; owner accepted with set_obligation_target A5Qbw4r3g9LbHn6uoez4jqEPPwzpEzmYr6DPLAq5VEQw (verified; reserve_change memory written) |
+| Session 2: SearchBox 1.20 auto-approved by the rule from Walrus | pass | new session rebuilt 2 rules from Walrus (SearchBox allow, ReportLab deny); S2 SearchBox auto_allowed, code allow_rule, paid via release 7a7cxMssER6oiFvo24XDXrVHCVHv5fDoRW4942xAABkv + settle CcTeQoP9... |
+| Demo reset: clean vault and new memory namespace | pass | POST /api/demo/reset: emergency withdraw 8TtNicmKRKWVSZnQMhJNnMVwXKeRthEzEaybTZyVBeWn; 6 recycles (payees 6.80 / 5.00 / 4.00 / 1.50, DataMart 0.50, SearchBox 1.20, all verified); owner top-up HEJfQ4GGcASzJsftKw93SU83ePPAmz3iNRzNUaJAr5UR; seed DZuc4Kn48evGF1h1EmY7x76DHFJzwrCNCgLFsaQk5oYT -> vault 20.00/16.50/3.50, agent 0 USDC, namespace sisih-demo-4 with 0 memories, session 1, cycle 1 |
+
+Full demo-run digests (testnet): reset seed DpFFmGGX3eZ6QEYucE8syb2ez3njDTFdzTZQDjqoMFBo;
+S1 DataMart release FPvDjmfp6p8sFyoPhvBUfXKU2biVbwDGk6wCPtRDJHnS; S1 SearchBox release
+Fn8DHVu8BVLv4GW1gxjVYqkihdJNe8ruu9Lgx9yfMWqr; recycle DataMart ge4dSe7D4XG5SzhVaRpwM5KKRw9x1SV2wePqyM4fQh6,
+SearchBox Acf9DfShx9W4a5oaQQSstVSYdguX6ZQ49bcj3cnvc25N; income 17.00 Cx2KhcvhH9kg7zznhrjmnj4jCjYijLRQFeKPnjU6g2iW;
+pay Hosting 4JrbunUjpruqWumzzVxy2uVPtyv3FypCDy7KaABLMrwA, Savings GvaPf4gifpCtc1haP46jAkYdCk1QRhDwqBXD7PZMUXW8,
+Domain 3mKVS8cA3zjfaFqyBwEsCf5wVkPvVFqJ4tNQXT4UgBM5; fund reserves 43k5spckYd4fLTbmgYrvydDG6TANbsvvZKkMuAGXFnPb;
+S2 DataMart release 94K9rwxiNyh7YyoYnzSDjTAm7V9JsaEXYbEMmbGfFqw3. That run wrote 13 memories to namespace
+sisih-demo-3 (all stored).
+
+Rule rebuild at scale (scripts/scale-rules.ts, namespace sisih-scale-1793872370015, its own SQLite file):
+
+- Wrote 30 mixed memories to Walrus mainnet in bulk (decision 14, obligation_outcome 6,
+  session_summary 3, reserve_change 2, merchant_note 1, rule 3, rule_disabled 1): 30/30 stored in 125.8 s.
+- Wiped the cache, ran start_session: exactly the expected rules came back (SearchBox allow active,
+  ReportLab deny active, DataMart allow disabled), origin walrus; broad recall 30 of 30; 4076 ms.
+- With an explicit limit of 10: broad recall returned **0 of the 4** rule memories, while each tag
+  query (`[sisih:v1:rule]`, `[sisih:v1:rule_disabled]`) returned all 4 in its top 10. Plain recall
+  cannot guarantee rules once a namespace outgrows the limit, so loadRules always runs the two tag
+  queries (limit 100, set explicitly) next to the broad recall and merges results by blob id.
+
+Built:
+
+- src/x402/: facilitator (Tatum clientRegistry, gas owner), merchants (demo routes answer 402, then
+  verify + settle, and record the settle digest through Tatum), agentPay (fetchInvoice, payInvoice;
+  refuses any payload that does not spend exactly the released coin, or that draws from the agent
+  address balance).
+- services/payments.ts: x402PaymentExecutor (now the default) = invoice check against the merchant
+  registry -> releaseToAgent -> coin id from effects -> payInvoice -> settlement verified; digests on
+  the request (payment_status paid | failed). SSE x402.* steps.
+- src/agent/runner.ts: scenarios cheap_data, new_merchant_search, expensive_report.
+- src/demo/: owner.ts (seed, emergency withdraw, set target; owner key = demo plumbing), recycle.ts
+  (sponsored gasless USDC sweeps, operator top-ups, waitForBalance), controls.ts (clock,
+  advanceCycle, resetDemo), bills.json (cycle 1 Inference API 6.80).
+- API: POST /api/demo/run-task | advance-cycle | new-session | reset, GET /api/demo/clock; merchant
+  routes /merchants/datamart/token-history, /merchants/searchbox/premium-search,
+  /merchants/reportlab/onchain-report.
+- Scripts: recycle.ts, demo-run.ts, scale-rules.ts; seed-vault.ts now uses src/demo/owner.ts.
+
+Findings:
+
+- Gasless sponsored transfers sweep holders that have no SUI: sender = holder, gas owner = operator,
+  `setGasPayment([])`, built with the client, signed by both. Same shape as the x402 facilitator.
+  Used for every recycle.
+- Read-after-write lag also hits balances. Right after a transfer, getBalance (served by a lagging
+  node) can still show the old total while listCoins already sees the new coin, and coinWithBalance
+  throws "Insufficient balance ... Required 20000000, Available 20000000". waitForBalance() polls
+  before seeding and before depositing income.
+- seedVault revokes an existing agent policy before setting it, so every reset starts a fresh 24 h
+  window (set_agent_policy keeps the window for the same agent by design).
+- Demo reset uses OWNER_PRIVATE_KEY inside the server (testnet only, assertTestnet). On mainnet the
+  reset path is refused; owner actions there come from the browser wallet or scripts.
+- Obligation ids keep increasing across resets (next_obligation_id). The UI must use ids from the
+  API and never hardcode them. After the latest reset they are 12..15.
 
 ### Phase 2: server core (2026-11-05)
 
@@ -186,6 +252,19 @@ Findings for Phase 2+:
   Testnet sample 13836185948054749199 = code 4 (EExceedsFree), line 464. Unit tested.
 - Vault JSON from gRPC getObject: `free` and `reserve` are Balance JSON, obligations are
   `obligations.contents[{ key, value }]`, agent_policy is an Option. See show-vault.ts.
+
+## Notes for Phase 4 (recorded in Phase 3)
+
+- Accepting a reserve suggestion: the browser wallet signs set_obligation_target(id, suggestedTarget)
+  and posts the digest to POST /api/suggestions/:id/accept (demo-run.ts does exactly this with the
+  owner key). Any other owner-signed transaction goes to POST /api/tx.
+- Demo dock -> POST /api/demo/run-task { scenario }, /advance-cycle (returns secondsToNextDue when
+  nothing is due), /new-session (blocks while pending memories finish, about 25 s), /reset (2-3 min),
+  GET /api/demo/clock. Show progress from SSE demo.* events.
+- x402 stepper: SSE x402.invoice_received, x402.funds_released, x402.payment_sent,
+  x402.settle_verified, x402.failed (all carry the request id).
+- Only one server process per DATABASE_URL. Scripts that need the DB use their own file
+  (scale-rules.ts uses server/data/scale-test.db).
 
 ## Notes for Phase 3 (recorded in Phase 2)
 
@@ -327,6 +406,7 @@ New in Phase 1: OPERATOR_CAP_ID, UPGRADE_CAP_ID (written by publish.ts);
 PAYEE_INFERENCE_PRIVATE_KEY, PAYEE_HOSTING_PRIVATE_KEY, PAYEE_SAVINGS_PRIVATE_KEY,
 PAYEE_DOMAIN_PRIVATE_KEY (written by seed-vault.ts).
 New in Phase 2 (optional): PORT (default 8787), HOST (default 127.0.0.1).
+New in Phase 3 (optional): PUBLIC_BASE_URL (merchant URLs the agent calls; default http://127.0.0.1:PORT).
 
 ## Later
 

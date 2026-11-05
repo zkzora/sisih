@@ -13,7 +13,8 @@ import { recall, recallQueryFor, remember } from "../memory/memwal.js";
 import { findMerchant, CATEGORY_LABEL } from "../merchants/registry.js";
 import { draftRule, ruleSentence, type RuleFields } from "../policy/composer.js";
 import { decide, hardLimit, type EngineResult } from "../policy/engine.js";
-import { paymentExecutor } from "./payments.js";
+import { attachInvoice, paymentExecutor } from "./payments.js";
+import type { Invoice } from "../x402/agentPay.js";
 import { addLocalRule, cachedRules, currentSession, defaultThreshold, knownMerchants, kvSet, markRulesUsed } from "./state.js";
 
 export class ApiError extends Error {
@@ -107,12 +108,14 @@ export interface SubmitInput {
   amount?: string; // base units; defaults to the merchant's listed price
   item?: string;
   taskContext?: string;
+  /** The merchant's 402 invoice (agent runner). Required for a real x402 payment. */
+  invoice?: Invoice;
 }
 
 export async function submitRequest(input: SubmitInput) {
   const m = findMerchant(input.merchant);
   if (!m) throw new ApiError(400, `Unknown merchant ${input.merchant}. Demo merchants: DataMart, SearchBox, ReportLab.`);
-  const amount = input.amount !== undefined ? BigInt(input.amount) : m.price;
+  const amount = input.invoice ? input.invoice.amount : input.amount !== undefined ? BigInt(input.amount) : m.price;
   if (amount <= 0n) throw new ApiError(400, "Amount must be positive");
   const req: PaymentRequestInput = { merchant: m.name, item: input.item ?? m.item, category: m.category, amount, taskContext: input.taskContext };
 
@@ -145,6 +148,7 @@ export async function submitRequest(input: SubmitInput) {
       createdAt: nowMs,
     })
     .run();
+  if (input.invoice) attachInvoice(id, input.invoice);
   attachRecall(id, req); // parallel, never awaited
 
   const row = getRequest(id);

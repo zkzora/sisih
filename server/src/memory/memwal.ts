@@ -26,6 +26,11 @@ function memwal(): MemWal {
   return client;
 }
 
+/** Raw client, for bulk writes in scripts (tests at scale). */
+export function memwalClient(): MemWal {
+  return memwal();
+}
+
 export async function delegatePublicKey(): Promise<string> {
   return memwal().getPublicKeyHex();
 }
@@ -131,15 +136,19 @@ export function recallQueryFor(req: { merchant: string; category: Category; amou
 
 export interface LoadedRules {
   rules: Rule[];
-  /** rule + rule_disabled memories seen in recall */
+  /** rule + rule_disabled memories found (union of all strategies) */
   ruleMemories: number;
-  /** all memories recall returned */
+  /** all memories the broad recall returned */
   recalled: number;
   /** memories in this namespace per listMemories (metadata inventory) */
   inventory: number;
   ms: number;
   warning: string | null;
+  /** What each strategy found, so plain recall vs tag queries can be compared. */
+  strategies: { name: string; limit: number; returned: number; ruleMemories: number }[];
 }
+
+export const RULE_RECALL_LIMIT = 100; // relayer cap
 
 async function namespaceInventory(ns: string): Promise<number> {
   let cursor: string | undefined;
@@ -153,22 +162,39 @@ async function namespaceInventory(ns: string): Promise<number> {
   return count;
 }
 
+const isRuleText = (t: string) => t.startsWith("[sisih:v1:rule]") || t.startsWith("[sisih:v1:rule_disabled]");
+
 /**
- * Source of truth for rules at session start. One recall (relayer cap 100) returns every
- * memory of a demo namespace; rule memories are parsed and disables applied. The count is
- * cross-checked against listMemories so a truncated recall is visible.
+ * Source of truth for rules at session start. Three recalls with explicit limits, merged by
+ * blob id: a broad one (returns everything when the namespace holds <= 100 memories) and two
+ * tag queries ("[sisih:v1:rule]", "[sisih:v1:rule_disabled]") that rank rule memories first
+ * even in a larger namespace. Disables are applied by rule id. listMemories gives the count
+ * so a truncated result is visible.
  */
-export async function loadRules(): Promise<LoadedRules> {
-  const ns = namespace();
+export async function loadRules(opts: { namespace?: string; limit?: number } = {}): Promise<LoadedRules> {
+  const ns = opts.namespace ?? namespace();
+  const limit = opts.limit ?? RULE_RECALL_LIMIT;
   const t0 = Date.now();
-  const [r, inventory] = await Promise.all([
-    memwal().recall({ query: "[sisih:v1:rule] always allow or deny merchant category up to USDC until", limit: 100, namespace: ns }),
+  const queries = [
+    { name: "broad", query: "Sisih memory: decision, rule, obligation outcome, reserve change, session summary" },
+    { name: "tag:rule", query: "[sisih:v1:rule] Always allow or deny merchant category up to USDC until" },
+    { name: "tag:rule_disabled", query: "[sisih:v1:rule_disabled] Rule disabled: Always allow or deny" },
+  ];
+  const [inventory, ...results] = await Promise.all([
     namespaceInventory(ns),
+    ...queries.map((q) => memwal().recall({ query: q.query, limit, namespace: ns })),
   ]);
+  const byBlob = new Map<string, { blob_id: string; text: string }>();
+  const strategies = queries.map((q, i) => {
+    const r = results[i]!;
+    for (const hit of r.results) byBlob.set(hit.blob_id, hit);
+    return { name: q.name, limit, returned: r.results.length, ruleMemories: r.results.filter((h) => isRuleText(h.text)).length };
+  });
+
   const rules = new Map<string, Rule>();
   const disabled = new Set<string>();
   let ruleMemories = 0;
-  for (const hit of r.results) {
+  for (const hit of byBlob.values()) {
     const m = parseMemory(hit.text);
     if (!m) continue;
     if (m.type === "rule_disabled") {
@@ -196,13 +222,14 @@ export async function loadRules(): Promise<LoadedRules> {
     if (rule) rule.active = false;
   }
   const ordered = [...rules.values()].sort((a, b) => a.expiresMs - b.expiresMs);
+  const broad = strategies[0]!.returned;
   const warning =
-    inventory > 100
-      ? `Namespace holds ${inventory} memories; recall returns at most 100, so older rules may be missed.`
-      : r.results.length < inventory
-        ? `Recall returned ${r.results.length} of ${inventory} memories in the namespace.`
+    inventory > limit
+      ? `Namespace holds ${inventory} memories, above the recall limit ${limit}; rules rely on the tag queries.`
+      : broad < inventory
+        ? `Broad recall returned ${broad} of ${inventory} memories in the namespace.`
         : null;
-  return { rules: ordered, ruleMemories, recalled: r.results.length, inventory, ms: Date.now() - t0, warning };
+  return { rules: ordered, ruleMemories, recalled: broad, inventory, ms: Date.now() - t0, warning, strategies };
 }
 
 // --- health ---------------------------------------------------------------------------

@@ -12,7 +12,8 @@ import { db, schema } from "../db/index.js";
 import type { AgentPolicyState, ObligationState, VaultState } from "../domain/types.js";
 import { publish, jsonSafe } from "../lib/bus.js";
 import { hardLimit } from "../policy/engine.js";
-import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction, type TxEvent } from "../lib/tatum.js";
+import type { Keypair } from "@mysten/sui/cryptography";
+import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction, type CreatedObject, type TxEvent } from "../lib/tatum.js";
 import { keypair } from "../lib/wallets.js";
 import { CLOCK_ID, operatorCapId, target, usdcType, vaultAbortName, vaultId } from "./sisih.js";
 
@@ -159,7 +160,7 @@ export async function recordTx(
 }
 
 export type WriteResult =
-  | { ok: true; digest: string; tx: RecordedTx }
+  | { ok: true; digest: string; tx: RecordedTx; created: CreatedObject[] }
   | { ok: false; stage: "precheck" | "dry_run" | "execute"; code: string; reason: string; digest?: string };
 
 const REASONS: Record<string, string> = {
@@ -183,15 +184,19 @@ export function readableAbort(error: string): { code: string; reason: string } {
 }
 
 /** Build, dry-run (SDK resolution simulate), execute, then recordTx. Aborts spend no gas. */
-async function operatorWrite(label: string, build: (tx: Transaction) => void, meta: { requestId?: string } = {}): Promise<WriteResult> {
-  const operator = keypair("operator");
+export async function signedWrite(
+  signer: Keypair,
+  label: string,
+  build: (tx: Transaction) => void,
+  meta: { requestId?: string; source?: "our" | "owner"; budget?: bigint } = {},
+): Promise<WriteResult> {
   const tx = new Transaction();
-  tx.setSender(operator.toSuiAddress());
-  await setGas(tx, { budget: 50_000_000n });
+  tx.setSender(signer.toSuiAddress());
+  await setGas(tx, { budget: meta.budget ?? 50_000_000n });
   build(tx);
   let res;
   try {
-    res = await signAndExecuteDetailed(tx, operator);
+    res = await signAndExecuteDetailed(tx, signer);
   } catch (err) {
     if (err instanceof SimulationError || (err as Error)?.name === "SimulationError") {
       const { code, reason } = readableAbort(String((err as Error).message));
@@ -199,13 +204,18 @@ async function operatorWrite(label: string, build: (tx: Transaction) => void, me
     }
     throw err;
   }
+  const source = meta.source ?? "our";
   if (!res.success) {
     const { code, reason } = readableAbort(res.error ?? "");
-    await recordTx(res.digest, { source: "our", label, ...meta });
+    await recordTx(res.digest, { source, label, requestId: meta.requestId });
     return { ok: false, stage: "execute", code, reason, digest: res.digest };
   }
-  const recorded = await recordTx(res.digest, { source: "our", label, ...meta });
-  return { ok: true, digest: res.digest, tx: recorded };
+  const recorded = await recordTx(res.digest, { source, label, requestId: meta.requestId });
+  return { ok: true, digest: res.digest, tx: recorded, created: res.created };
+}
+
+function operatorWrite(label: string, build: (tx: Transaction) => void, meta: { requestId?: string } = {}): Promise<WriteResult> {
+  return signedWrite(keypair("operator"), label, build, meta);
 }
 
 const T = () => [usdcType()];

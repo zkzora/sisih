@@ -1,0 +1,162 @@
+/**
+ * Demo controls (dock + headless run). Everything here is demo plumbing on testnet:
+ * simulated income, scripted usage bills, recycled funds, 2-minute demo cycles.
+ */
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { eq } from "drizzle-orm";
+import { depositIncome, fundReserves, payObligation, readVault, vaultState } from "../chain/vault.js";
+import { db, schema } from "../db/index.js";
+import { publish } from "../lib/bus.js";
+import { env, formatUsdc } from "../lib/env.js";
+import { address } from "../lib/wallets.js";
+import { namespace, waitForPendingMemories } from "../memory/memwal.js";
+import { usdc } from "../chain/sisih.js";
+import { onVaultEvents } from "../services/chainEvents.js";
+import { currentSession, kvRead, kvSet } from "../services/state.js";
+import { emergencyWithdrawAll, SEED_DEPOSIT, seedVault } from "./owner.js";
+import { assertTestnet, operatorSendUsdc, recycle, usdcBalance, waitForBalance, type SweepRecord } from "./recycle.js";
+
+export const SIMULATED_INCOME = usdc("17.00");
+/** The chain clock can trail ours; treat an obligation as due only this long after next_due_ms. */
+export const DUE_MARGIN_MS = 5_000;
+
+const BILLS = JSON.parse(readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "bills.json"), "utf8")) as Record<string, Record<string, string>>;
+
+export function demoCycle(): number {
+  return Number(kvRead("demo_cycle") ?? "1");
+}
+
+export async function clock() {
+  const v = await vaultState();
+  const next = v.obligations.length ? Math.min(...v.obligations.map((o) => o.nextDueMs)) : null;
+  return {
+    cycle: demoCycle(),
+    session: currentSession(),
+    namespace: namespace(),
+    cycleMs: Number(env("DEMO_CYCLE_MS") ?? "120000"),
+    nextDueMs: next,
+    secondsToNextDue: next === null ? null : Math.max(0, Math.ceil((next + DUE_MARGIN_MS - Date.now()) / 1000)),
+  };
+}
+
+export interface CycleResult {
+  advanced: boolean;
+  cycle: number;
+  secondsToNextDue?: number;
+  recycled?: SweepRecord[];
+  income?: { digest: string; amount: string };
+  payments?: { name: string; bill: string; digest: string | null; ok: boolean; reason?: string }[];
+  funded?: { digest: string | null; ok: boolean; reason?: string };
+  suggestions?: unknown[];
+}
+
+/**
+ * Advance one demo cycle: recycle demo funds, deposit simulated income (17.00), pay every due
+ * obligation (usage bills from bills.json), then fund reserves. If nothing is due yet, return
+ * the seconds until the next due time.
+ */
+export async function advanceCycle(): Promise<CycleResult> {
+  const cycle = demoCycle();
+  const v = await vaultState();
+  const now = Date.now();
+  const due = v.obligations.filter((o) => now >= o.nextDueMs + DUE_MARGIN_MS);
+  if (due.length === 0) {
+    const c = await clock();
+    return { advanced: false, cycle, secondsToNextDue: c.secondsToNextDue ?? undefined };
+  }
+  publish("demo.cycle_started", { cycle, due: due.map((o) => o.name) });
+  const recycled = await recycle({ includeAgent: true, log: (l) => publish("demo.recycle", { line: l }) });
+
+  await waitForBalance(address("operator"), SIMULATED_INCOME); // read-after-write lag after the sweeps
+  const income = await depositIncome(SIMULATED_INCOME);
+  if (!income.ok) throw new Error(`simulated income deposit failed: ${income.reason}`);
+
+  const before = db().select().from(schema.suggestions).all().length;
+  const payments: NonNullable<CycleResult["payments"]> = [];
+  for (const o of due) {
+    const bill = o.kind === "usage" && BILLS[String(cycle)]?.[o.name] ? usdc(BILLS[String(cycle)]![o.name]!) : o.target;
+    const res = await payObligation(o.id, bill);
+    if (res.ok) onVaultEvents(res.tx); // obligation outcome memory + reserve suggestion
+    payments.push({ name: o.name, bill: bill.toString(), digest: res.ok ? res.digest : (res.digest ?? null), ok: res.ok, reason: res.ok ? undefined : res.reason });
+  }
+  const fund = await fundReserves();
+  kvSet("demo_cycle", String(cycle + 1));
+  const suggestions = db().select().from(schema.suggestions).all().slice(before);
+  const result: CycleResult = {
+    advanced: true,
+    cycle,
+    recycled,
+    income: { digest: income.digest, amount: SIMULATED_INCOME.toString() },
+    payments,
+    funded: { digest: fund.ok ? fund.digest : null, ok: fund.ok, reason: fund.ok ? undefined : fund.reason },
+    suggestions,
+  };
+  publish("demo.cycle_done", result);
+  return result;
+}
+
+function nextNamespace(): string {
+  const n = Number(kvRead("memwal_namespace_n") ?? (namespace().match(/-(\d+)$/)?.[1] ?? "1")) + 1;
+  kvSet("memwal_namespace_n", String(n));
+  return `sisih-demo-${n}`;
+}
+
+/**
+ * Reset (testnet only): emergency-withdraw the vault, recycle every demo holder (agent swept
+ * to 0 USDC), top the owner up to 20.00, clear SQLite, switch to a fresh memory namespace so a
+ * recording starts with zero memories, and seed the SPEC starting state.
+ */
+export async function resetDemo() {
+  assertTestnet("Demo reset");
+  publish("demo.reset_started", {});
+  const waited = await waitForPendingMemories(); // finish writes into the old namespace first
+  const log: string[] = [];
+  const say = (l: string) => {
+    log.push(l);
+    publish("demo.reset_progress", { line: l });
+  };
+
+  const withdraw = await emergencyWithdrawAll();
+  if (!withdraw.ok) throw new Error(`emergency withdraw failed: ${withdraw.reason}`);
+  say(`emergency_withdraw_all ${withdraw.digest}`);
+
+  const recycled = await recycle({ includeAgent: true, log: say });
+  const agentLeft = await usdcBalance(address("agent"));
+  if (agentLeft !== 0n) throw new Error(`agent still holds ${formatUsdc(agentLeft)} USDC after recycle`);
+
+  const ownerHas = await usdcBalance(address("owner"));
+  let topUp: string | null = null;
+  if (ownerHas < SEED_DEPOSIT) {
+    topUp = await operatorSendUsdc(address("owner"), SEED_DEPOSIT - ownerHas);
+    say(`owner top-up ${formatUsdc(SEED_DEPOSIT - ownerHas)} USDC from operator ${topUp}`);
+  }
+
+  // Fresh app state and a fresh namespace; keep only the namespace counter.
+  const d = db();
+  for (const t of [schema.requests, schema.decisions, schema.rulesCache, schema.memories, schema.suggestions, schema.txLog, schema.sessions]) d.delete(t).run();
+  for (const k of ["last_recall", "demo_cycle"]) d.delete(schema.kv).where(eq(schema.kv.key, k)).run();
+  const ns = nextNamespace();
+  kvSet("memwal_namespace", ns);
+  currentSession(); // session 1
+
+  await waitForBalance(address("owner"), SEED_DEPOSIT); // read-after-write lag after withdraw/top-up
+  const seed = await seedVault();
+  if (!seed.ok) throw new Error(`seed failed: ${seed.reason}`);
+  say(`seed ${seed.digest}`);
+  const v = await readVault();
+  const result = {
+    namespace: ns,
+    waitedForMemories: waited,
+    emergencyWithdraw: withdraw.digest,
+    recycled,
+    ownerTopUp: topUp,
+    seed: seed.digest,
+    vault: { total: v.total.toString(), reserved: v.reserved.toString(), free: v.free.toString() },
+    agentUsdc: agentLeft.toString(),
+    log,
+  };
+  publish("demo.reset_done", result);
+  return result;
+}

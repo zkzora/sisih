@@ -22,6 +22,9 @@ import { paymentExecutor } from "../services/payments.js";
 import { ApiError, getRequest, listRequests, ownerDecision, requestView, ruleDraft, submitRequest, type OwnerDecision } from "../services/requests.js";
 import { sessionStats, startSession } from "../services/sessions.js";
 import { addLocalRule, cachedRule, cachedRules, currentSession, kvRead, setRuleActive } from "../services/state.js";
+import { isScenario, runTask, SCENARIOS } from "../agent/runner.js";
+import { advanceCycle, clock, resetDemo } from "../demo/controls.js";
+import { merchantRoutes } from "../x402/merchants.js";
 
 export const walrusBlobUrl = (blobId: string) => `https://walruscan.com/mainnet/blob/${blobId}`;
 
@@ -256,6 +259,17 @@ export function createApp() {
   );
   app.post("/api/sessions", async (c) => ok(c, await startSession(), 201));
 
+  // --- demo controls (demo plumbing: demo merchants, simulated income, 2-minute cycles) -
+  app.post("/api/demo/run-task", async (c) => {
+    const { scenario } = await c.req.json<{ scenario: string }>();
+    if (!isScenario(scenario)) throw new ApiError(400, `scenario must be one of ${Object.keys(SCENARIOS).join(", ")}`);
+    return ok(c, await runTask(scenario), 201);
+  });
+  app.post("/api/demo/advance-cycle", async (c) => ok(c, await advanceCycle()));
+  app.post("/api/demo/new-session", async (c) => ok(c, await startSession(), 201));
+  app.post("/api/demo/reset", async (c) => ok(c, await resetDemo()));
+  app.get("/api/demo/clock", async (c) => ok(c, await clock()));
+
   // --- SSE ----------------------------------------------------------------------------
   app.get("/api/events", (c) =>
     streamSSE(c, async (stream) => {
@@ -273,6 +287,10 @@ export function createApp() {
       unsubscribe();
     }),
   );
+
+  // Demo merchants (x402): /merchants/datamart/token-history, /merchants/searchbox/premium-search,
+  // /merchants/reportlab/onchain-report
+  app.route("/", merchantRoutes());
 
   return app;
 }
