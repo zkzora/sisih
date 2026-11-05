@@ -56,6 +56,9 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
 - Rate limit is real: coinWithBalance + execute hits 429 without throttling. A wrapper
   on the transport's unary() (one call in flight, >= 400 ms apart, retry 429/UNAVAILABLE
   with backoff) made all three sweep transactions pass. Build lib/tatum.ts the same way.
+- Read-after-write lag: GetTransaction right after ExecuteTransaction returned NOT_FOUND
+  (Tatum routes to nodes that may lag); a retry 2 s later succeeded. Verification in
+  lib/tatum.ts must retry NOT_FOUND a few times before marking a digest failed.
 - Consequence: no event-query RPC. Activity is built from digests we record in tx_log,
   each read back with GetTransaction (which returns its events).
 
@@ -84,13 +87,17 @@ Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 
 | Role | SUI | USDC |
 | --- | --- | --- |
 | owner | 1.0000 | 20.00 |
-| operator | 0.9977 | 0.00 |
-| agent | 0.4977 | 0.00 |
+| operator | 0.9954 | 19.99 |
+| agent | 0.4977 | 0.01 (Coin object) |
 | facilitator | 0.9977 | 0.00 |
 
 USDC sweep to owner (testnet, through Tatum): operator 4f2M4VGZnbHwLBAbA4cPUrZEe5AjqJw1GPPf7d9RbEtE,
 agent FnrQ4bRp7F7bRRJMkhQXFcuahzFDKKiSd6rGZzRowGpe, facilitator 6g8tr7bErvyGdZb3bMDGMWHkeDSSDzjtB9rkcHqj1Mud.
-The agent has no USDC now; Spike C needs 0.01 (faucet once, or send from owner after seeding).
+Operator funded from the Circle faucet (20.00), then sent the agent 0.01 USDC as a Coin
+object (coinWithBalance + transferObjects): tx aHKicFhFqP6r88fkgALZreqfR7Pj8XRyTPY2hCJ58io,
+verified through Tatum. Agent coin 0xeb20712f2afc79dd7093ad883b949aea2147108c4dbe3075c236ad5b9a1ba922
+(coinBalance 10000, addressBalance 0). Balances now: owner 20.00, operator 19.99, agent 0.01,
+facilitator 0.00 USDC.
 
 | Role | Address |
 | --- | --- |
@@ -101,10 +108,6 @@ The agent has no USDC now; Spike C needs 0.01 (faucet once, or send from owner a
 
 ## Open issues
 
-- Owner stays at exactly 20.00 USDC for seeding. The user is funding the operator from the
-  Circle faucet; then send the agent 0.01 USDC from the operator as a Coin object
-  (coinWithBalance + transferObjects) for Spike C. Script ready in the session scratchpad
-  (fund-agent.mjs); rebuild it as a Phase 0 script if the scratchpad is gone.
 - The repo has no root README yet (the dashboard README is web/README.md). Phase 6 writes it.
 - Hosting provider for the public demo is not chosen yet (needs a long-running Node
   server for SSE + SQLite, plus the Next.js app).
