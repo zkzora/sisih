@@ -99,6 +99,10 @@ Progress log: docs/PROGRESS.md
 - End of phase: run all tests, update docs/PROGRESS.md (done, decisions,
   open issues, new env vars), propose a commit message.
 - Boring code wins: small typed modules, no premature abstractions.
+- Testnet funds: rebalance testnet USDC and SUI between the 4 project wallets whenever
+  one runs short, without asking (the user approved this on 2026-11-05). The operator holds
+  the spare USDC. Keep the owner at 20.00 USDC before seed-vault.ts. Log every transfer
+  digest in PROGRESS.md. Mainnet transfers always need the user's go-ahead.
 - Package manager: pnpm workspace (root pnpm-workspace.yaml). Pin exact dependency
   versions; never "latest".
 
