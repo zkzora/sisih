@@ -143,11 +143,13 @@ public struct ObligationTargetChanged has copy, drop {
     reserve_after: u64,
     free_after: u64,
 }
-public struct ObligationRemoved has copy, drop { vault_id: ID, id: u64, released: u64, free_after: u64 }
+public struct ObligationRemoved has copy, drop { vault_id: ID, id: u64, name: String, released: u64, free_after: u64 }
 public struct ReservesFunded has copy, drop { vault_id: ID, moved: u64, free_after: u64, reserved_total: u64 }
 public struct ObligationPaid has copy, drop {
     vault_id: ID,
     id: u64,
+    /// Kept so the feed can label payments of one-time obligations that are now removed.
+    name: String,
     payee: address,
     bill: u64,
     from_reserve: u64,
@@ -331,10 +333,10 @@ public fun remove_obligation<T>(vault: &mut Vault<T>, id: u64, ctx: &TxContext) 
     assert_owner(vault, ctx);
     assert!(vault.obligations.contains(&id), EUnknownObligation);
     let (_, obligation) = vault.obligations.remove(&id);
-    let Obligation { reserve, .. } = obligation;
+    let Obligation { name, reserve, .. } = obligation;
     let released = reserve.value();
     vault.free.join(reserve);
-    event::emit(ObligationRemoved { vault_id: object::id(vault), id, released, free_after: vault.free.value() });
+    event::emit(ObligationRemoved { vault_id: object::id(vault), id, name, released, free_after: vault.free.value() });
 }
 
 /// Owner tops up underfunded reserves from free: priority must first, then by id.
@@ -600,6 +602,7 @@ fun pay_obligation_internal<T>(vault: &mut Vault<T>, id: u64, bill: u64, clock: 
     payment.join(free.split(from_free));
     let uncovered = bill - from_reserve - from_free;
     let payee = obligation.payee;
+    let name = obligation.name;
 
     let one_time = obligation.cycle_ms == 0;
     let next_due_ms = if (one_time) {
@@ -626,6 +629,7 @@ fun pay_obligation_internal<T>(vault: &mut Vault<T>, id: u64, bill: u64, clock: 
     event::emit(ObligationPaid {
         vault_id,
         id,
+        name,
         payee,
         bill,
         from_reserve,
@@ -649,6 +653,15 @@ public fun paid_event_values(e: &ObligationPaid): (u64, u64, u64, u64, u64, u64,
 /// (agent, amount, free_after, spent_in_window)
 public fun released_event_values(e: &ReleasedToAgent): (address, u64, u64, u64) {
     (e.agent, e.amount, e.free_after, e.spent_in_window)
+}
+
+#[test_only]
+public fun paid_event_name(e: &ObligationPaid): String { e.name }
+
+#[test_only]
+/// (id, name, released, free_after)
+public fun removed_event_values(e: &ObligationRemoved): (u64, String, u64, u64) {
+    (e.id, e.name, e.released, e.free_after)
 }
 
 #[test_only]

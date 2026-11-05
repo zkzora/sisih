@@ -1,7 +1,7 @@
 #[test_only]
 module sisih::vault_tests;
 
-use sisih::vault::{Self, Vault, OperatorCap, ObligationPaid, ReleasedToAgent};
+use sisih::vault::{Self, Vault, OperatorCap, ObligationPaid, ObligationRemoved, ReleasedToAgent};
 use std::string;
 use sui::clock::{Self, Clock};
 use sui::coin::{Self, Coin};
@@ -426,6 +426,7 @@ fun usage_bill_over_reserve_takes_shortfall_from_free() {
     assert!(paid.length() == 1);
     let (id, bill, from_reserve, from_free, uncovered, next_due, removed) = vault::paid_event_values(&paid[0]);
     assert!(id == INFERENCE && bill == 6_800_000);
+    assert!(vault::paid_event_name(&paid[0]) == string::utf8(b"Inference API"));
     assert!(from_reserve == 6 * U && from_free == 800_000 && uncovered == 0);
     assert!(next_due == START + 2 * CYCLE && !removed);
     sc.next_tx(OWNER);
@@ -537,6 +538,8 @@ fun one_time_obligation_is_removed_after_payment() {
     let paid = event::events_by_type<ObligationPaid>();
     let (_, _, from_reserve, _, _, next_due, removed) = vault::paid_event_values(&paid[0]);
     assert!(from_reserve == 1_500_000 && next_due == 0 && removed);
+    // The obligation is gone from the vault, but the event still names it.
+    assert!(vault::paid_event_name(&paid[0]) == string::utf8(b"Domain renewal"));
     sc.next_tx(OWNER);
     assert!(take_received(&sc, PAYEE_DOMAIN) == 1_500_000);
     let v = sc.take_shared<Vault<TEST_USDC>>();
@@ -652,6 +655,10 @@ fun remove_obligation_returns_reserve_to_free() {
     sc.next_tx(OWNER);
     let mut v = sc.take_shared<Vault<TEST_USDC>>();
     v.remove_obligation(SAVINGS, sc.ctx());
+    let removed = event::events_by_type<ObligationRemoved>();
+    assert!(removed.length() == 1);
+    let (rid, rname, released, rfree) = vault::removed_event_values(&removed[0]);
+    assert!(rid == SAVINGS && rname == string::utf8(b"Weekly savings") && released == 4 * U && rfree == 7_500_000);
     assert!(v.free_value() == 7_500_000);
     assert!(v.reserved_total() == 12_500_000);
     assert!(!v.has_obligation(SAVINGS));
