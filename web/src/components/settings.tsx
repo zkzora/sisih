@@ -1,104 +1,73 @@
 "use client";
-import { useState } from "react";
-import {
-  Ban,
-  Bot,
-  Check,
-  Download,
-  FlaskConical,
-  Globe2,
-  LockKeyhole,
-  Moon,
-  Pause,
-  Play,
-  ShieldCheck,
-  Sun,
-  Wallet,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { ConnectButton } from "@mysten/dapp-kit";
+import { Ban, Bot, Check, Download, ExternalLink, Globe2, LockKeyhole, Moon, Pause, Play, ShieldCheck, Sun, Wallet } from "lucide-react";
 import { useSisih } from "./context";
-import {
-  Badge,
-  Button,
-  Confirm,
-  CopyButton,
-  Field,
-  PageHeading,
-  Panel,
-} from "./ui";
-import {
-  address,
-  amountInput,
-  demoDay,
-  freeFunds,
-  money,
-  parseMoney,
-} from "@/lib/engine";
+import { Badge, Button, Confirm, CopyButton, Field, PageHeading, Panel, Spinner } from "./ui";
+import { amountInput, freeFunds, money, parseMoney, short } from "@/lib/engine";
+import { TatumDot, useNow } from "./live-bits";
+
 export function SettingsView() {
-  const { state, act, setMoneyModal, notify } = useSisih();
-  const [perRequest, setPerRequest] = useState(
-    amountInput(state.preferences.perRequest),
-  );
+  const { state, act, setMoneyModal, notify, isOwner, walletAddress, refreshVault } = useSisih();
+  const now = useNow(5000);
+  const live = state.live;
+  const [perRequest, setPerRequest] = useState(amountInput(state.preferences.perRequest));
   const [perDay, setPerDay] = useState(amountInput(state.preferences.perDay));
-  const [threshold, setThreshold] = useState(
-    amountInput(state.preferences.defaultThreshold),
-  );
+  const [threshold, setThreshold] = useState(amountInput(state.preferences.defaultThreshold));
   const [expiry, setExpiry] = useState(state.preferences.expires);
-  const [action, setAction] = useState(state.preferences.defaultAction);
-  const [network, setNetwork] = useState(state.preferences.network);
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [confirm, setConfirm] = useState<"revoke" | "emergency" | null>(null);
   const [ack, setAck] = useState(false);
+  // Follow the chain when it changes (another tab, a reset).
+  useEffect(() => {
+    setPerRequest(amountInput(state.preferences.perRequest));
+    setPerDay(amountInput(state.preferences.perDay));
+    setThreshold(amountInput(state.preferences.defaultThreshold));
+    setExpiry(state.preferences.expires);
+  }, [state.preferences.perRequest, state.preferences.perDay, state.preferences.defaultThreshold, state.preferences.expires]);
+
   const exportData = () => {
-    const url = URL.createObjectURL(
-      new Blob(
-        [JSON.stringify({ ...state, exportMode: "local-demo" }, null, 2)],
-        { type: "application/json" },
-      ),
-    );
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), network: live?.network, vaultId: live?.vaultId, obligations: state.obligations, requests: state.requests.map(({ live: _l, ...r }) => r), rules: state.rules, memories: state.memories, activity: state.activities }, null, 2)], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
     a.download = "sisih-workspace.json";
     a.click();
     URL.revokeObjectURL(url);
-    notify("Local demo workspace exported.");
+    notify("Workspace exported.");
   };
+  const vaultUrl = live ? `https://suiscan.xyz/${live.network}/object/${live.vaultId}` : undefined;
+  const ownerUrl = live ? `https://suiscan.xyz/${live.network}/account/${live.owner}` : undefined;
   return (
     <>
-      <PageHeading
-        title="Your vault. Your boundaries."
-        description="Manage spending permissions and the preferences your agent follows."
-      />
+      <PageHeading title="Your vault. Your boundaries." description="Manage spending permissions and the preferences your agent follows." />
       <div className="settings-layout">
         <div className="settings-main">
-          <Panel
-            title="Wallet & funds"
-            action={
-              <Badge>
-                {state.walletConnected ? "Demo connected" : "Demo mode"}
-              </Badge>
-            }
-          >
+          <Panel title="Wallet & funds" action={<Badge tone={isOwner ? "success" : "neutral"}>{isOwner ? "Owner connected" : walletAddress ? "Not the owner" : "Read-only"}</Badge>}>
             <div className="settings-wallet">
               <span className="wallet-icon">
                 <Wallet size={21} />
               </span>
               <div>
                 <strong>Personal vault</strong>
-                <span className="mono">
-                  {address.slice(0, 18)}…{address.slice(-6)}
-                  <CopyButton value={address} />
-                </span>
+                {live && (
+                  <span className="mono">
+                    <a href={vaultUrl} target="_blank" rel="noreferrer">
+                      {short(live.vaultId)} <ExternalLink size={11} />
+                    </a>
+                    <CopyButton value={live.vaultId} label="Copy vault id" />
+                  </span>
+                )}
+                {live && (
+                  <small className="mono">
+                    owner{" "}
+                    <a href={ownerUrl} target="_blank" rel="noreferrer">
+                      {short(live.owner)}
+                    </a>
+                  </small>
+                )}
               </div>
-              <Button
-                variant="secondary"
-                onClick={() =>
-                  act({ type: "wallet", connected: !state.walletConnected })
-                }
-              >
-                {state.walletConnected
-                  ? "Disconnect demo"
-                  : "Connect demo wallet"}
-              </Button>
+              <ConnectButton connectText="Connect owner wallet" />
             </div>
             <div className="settings-balance">
               <span>
@@ -106,133 +75,56 @@ export function SettingsView() {
                 <strong>{money(freeFunds(state))} USDC</strong>
               </span>
               <div>
-                <Button
-                  variant="secondary"
-                  onClick={() => setMoneyModal("deposit")}
-                >
+                <Button variant="secondary" onClick={() => setMoneyModal("deposit")} disabled={!isOwner}>
                   Deposit
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={() => setMoneyModal("withdraw")}
-                >
-                  Withdraw available
+                <Button variant="secondary" onClick={() => setMoneyModal("withdraw")} disabled={!isOwner}>
+                  Withdraw free funds
                 </Button>
               </div>
             </div>
+            {!isOwner && <p className="detail-note">Owner actions are signed by the owner wallet. Anyone can view this workspace read-only.</p>}
           </Panel>
-          <Panel
-            title="Spending policy"
-            action={
-              <Badge>
-                <LockKeyhole size={11} />
-                Demo limits
-              </Badge>
-            }
-          >
+          <Panel title="Spending policy" action={<Badge><LockKeyhole size={11} /> Hard limits on chain</Badge>}>
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
                 const a = parseMoney(perRequest),
                   b = parseMoney(perDay),
                   c = parseMoney(threshold);
                 if (a === null || b === null || c === null) {
-                  setError(
-                    "Enter positive USDC amounts with up to 6 decimal places.",
-                  );
+                  setError("Enter positive USDC amounts with up to 6 decimal places.");
                   return;
                 }
-                const result = act({
-                  type: "settings",
-                  preferences: {
-                    ...state.preferences,
-                    perRequest: a,
-                    perDay: b,
-                    defaultThreshold: c,
-                    expires: expiry,
-                    defaultAction: action,
-                    network,
-                  },
-                });
+                if (a > b) {
+                  setError("The per-request limit cannot exceed the daily limit.");
+                  return;
+                }
+                setSaving(true);
+                const result = await act({ type: "settings", preferences: { ...state.preferences, perRequest: a, perDay: b, defaultThreshold: c, expires: expiry } });
+                setSaving(false);
                 setError(result.error ? result.message : "");
               }}
             >
               <div className="form-grid">
-                <Field id="settings-request" label="Maximum per request (USDC)">
-                  <input
-                    id="settings-request"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={perRequest}
-                    onChange={(e) => setPerRequest(e.target.value)}
-                  />
+                <Field id="settings-request" label="Maximum per request (USDC)" hint="Enforced by the Move vault.">
+                  <input id="settings-request" inputMode="decimal" autoComplete="off" value={perRequest} onChange={(e) => setPerRequest(e.target.value)} />
                 </Field>
-                <Field id="settings-day" label="Maximum per day (USDC)">
-                  <input
-                    id="settings-day"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={perDay}
-                    onChange={(e) => setPerDay(e.target.value)}
-                  />
+                <Field id="settings-day" label="Maximum per day (USDC)" hint={live?.policy ? `${money(Number(live.policy.spentInWindow))} used in the current 24 h window.` : undefined}>
+                  <input id="settings-day" inputMode="decimal" autoComplete="off" value={perDay} onChange={(e) => setPerDay(e.target.value)} />
                 </Field>
               </div>
               <div className="form-grid">
-                <Field
-                  id="settings-threshold"
-                  label="Automatic small-payment threshold"
-                  hint="Payments at or below this threshold may proceed if every vault limit passes."
-                >
-                  <input
-                    id="settings-threshold"
-                    inputMode="decimal"
-                    autoComplete="off"
-                    value={threshold}
-                    onChange={(e) => setThreshold(e.target.value)}
-                  />
+                <Field id="settings-threshold" label="Automatic small-payment threshold" hint="Requests without a rule at or below this amount proceed if every vault limit passes.">
+                  <input id="settings-threshold" inputMode="decimal" autoComplete="off" value={threshold} onChange={(e) => setThreshold(e.target.value)} />
                 </Field>
-                <Field
-                  id="settings-expiry"
-                  label="Agent permission valid through"
-                >
-                  <input
-                    id="settings-expiry"
-                    type="date"
-                    min={demoDay(state)}
-                    value={expiry}
-                    onChange={(e) => setExpiry(e.target.value)}
-                  />
+                <Field id="settings-expiry" label="Agent permission valid through" hint="Enforced by the Move vault.">
+                  <input id="settings-expiry" type="date" min={new Date().toISOString().slice(0, 10)} value={expiry} onChange={(e) => setExpiry(e.target.value)} />
                 </Field>
               </div>
-              <Field
-                id="settings-action"
-                label="Other requests from new merchants"
-              >
-                <select
-                  id="settings-action"
-                  value={action}
-                  onChange={(e) =>
-                    setAction(e.target.value as "hold" | "allow")
-                  }
-                >
-                  <option value="hold">Hold for review</option>
-                  <option value="allow">Allow within all hard limits</option>
-                </select>
-              </Field>
-              <Field
-                id="settings-network"
-                label="Demo network label"
-                hint="Changes the demo label only. It does not connect to either network."
-              >
-                <select
-                  id="settings-network"
-                  value={network}
-                  onChange={(e) =>
-                    setNetwork(e.target.value as "Testnet" | "Mainnet")
-                  }
-                >
-                  <option>Testnet</option>
-                  <option>Mainnet</option>
+              <Field id="settings-action" label="New merchants and new categories">
+                <select id="settings-action" value="hold" disabled>
+                  <option value="hold">Hold for review until you remember a rule</option>
                 </select>
               </Field>
               {error && (
@@ -241,68 +133,44 @@ export function SettingsView() {
                 </p>
               )}
               <div className="form-actions">
-                <Button type="submit">
-                  <Check size={15} />
+                <Button type="submit" disabled={saving}>
+                  {saving ? <Spinner label="Saving" /> : <Check size={15} />}
                   Save policy
                 </Button>
               </div>
+              <p className="detail-note">Changing a hard limit signs set_agent_policy with the owner wallet. The threshold is stored by the Sisih server.</p>
             </form>
           </Panel>
           <Panel title="Agent permission">
-            <div className="permission-row">
+            <div className={`permission-row ${state.agentStatus === "revoked" ? "permission-revoked" : ""}`}>
               <span className="merchant-avatar">
                 <Bot size={19} />
               </span>
               <div>
                 <strong>Research Agent</strong>
+                <p className="mono">{live?.policy ? short(live.policy.agent) : "no permission"}</p>
                 <p>
                   {state.agentStatus === "active"
                     ? "Requests can proceed within your policy."
                     : state.agentStatus === "paused"
-                      ? "All new spending is paused."
-                      : "Permission revoked. Grant access to resume the demo."}
+                      ? "Agent paused. All requests are denied."
+                      : "Permission revoked. Grant permission again to resume."}
                 </p>
               </div>
-              <Badge
-                tone={state.agentStatus === "active" ? "success" : "warning"}
-              >
-                {state.agentStatus}
-              </Badge>
+              <Badge tone={state.agentStatus === "active" ? "success" : state.agentStatus === "paused" ? "warning" : "neutral"}>{state.agentStatus}</Badge>
             </div>
             <div className="settings-actions">
               {state.agentStatus === "revoked" ? (
-                <Button
-                  onClick={() =>
-                    act({ type: "agent-status", status: "active" })
-                  }
-                >
+                <Button onClick={() => void act({ type: "agent-status", status: "active" })} disabled={!isOwner}>
                   <ShieldCheck size={15} />
-                  Grant demo permission
+                  Grant permission again
                 </Button>
               ) : (
                 <>
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      act({
-                        type: "agent-status",
-                        status:
-                          state.agentStatus === "active" ? "paused" : "active",
-                      })
-                    }
-                  >
-                    {state.agentStatus === "active" ? (
-                      <Pause size={14} />
-                    ) : (
-                      <Play size={14} />
-                    )}{" "}
-                    {state.agentStatus === "active" ? "Pause" : "Resume"}
+                  <Button variant="secondary" disabled={!isOwner} onClick={() => void act({ type: "agent-status", status: state.agentStatus === "active" ? "paused" : "active" })}>
+                    {state.agentStatus === "active" ? <Pause size={14} /> : <Play size={14} />} {state.agentStatus === "active" ? "Pause" : "Resume"}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    className="danger-text"
-                    onClick={() => setConfirm("revoke")}
-                  >
+                  <Button variant="ghost" className="danger-text" disabled={!isOwner} onClick={() => setConfirm("revoke")}>
                     <Ban size={14} />
                     Revoke permission
                   </Button>
@@ -311,65 +179,30 @@ export function SettingsView() {
             </div>
           </Panel>
           <Panel title="Workspace data">
-            <p className="muted">
-              Your demo data is stored in this browser. Export a copy of
-              balances, rules, memories, and receipts.
-            </p>
+            <p className="muted">Export the current balances, commitments, requests, rules, memories and receipts as JSON.</p>
             <Button variant="secondary" onClick={exportData}>
               <Download size={15} />
               Export workspace
             </Button>
           </Panel>
           <Panel title="Emergency withdrawal" className="danger-panel">
-            <p>
-              Release every demo reserve, withdraw the full demo balance, and
-              pause the agent. Commitments will become underfunded.
-            </p>
+            <p>Withdraw every reserve and all free funds to the owner wallet and remove every commitment. The agent keeps its permission but has nothing to spend.</p>
             <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={ack}
-                onChange={(e) => setAck(e.target.checked)}
-              />
-              I understand this releases all reserved demo funds.
+              <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />I understand this releases all reserved funds.
             </label>
-            <Button
-              variant="danger"
-              disabled={!ack}
-              onClick={() => setConfirm("emergency")}
-            >
-              Withdraw all demo funds
+            <Button variant="danger" disabled={!ack || !isOwner} onClick={() => setConfirm("emergency")}>
+              Withdraw everything
             </Button>
           </Panel>
         </div>
         <div className="settings-aside">
           <Panel title="Appearance">
             <div className="theme-options">
-              <button
-                className={
-                  state.preferences.theme === "light" ? "selected" : ""
-                }
-                aria-pressed={state.preferences.theme === "light"}
-                onClick={() =>
-                  act({
-                    type: "settings",
-                    preferences: { ...state.preferences, theme: "light" },
-                  })
-                }
-              >
+              <button className={state.preferences.theme === "light" ? "selected" : ""} aria-pressed={state.preferences.theme === "light"} onClick={() => void act({ type: "settings", preferences: { ...state.preferences, theme: "light" } })}>
                 <Sun size={19} />
                 Light
               </button>
-              <button
-                className={state.preferences.theme === "dark" ? "selected" : ""}
-                aria-pressed={state.preferences.theme === "dark"}
-                onClick={() =>
-                  act({
-                    type: "settings",
-                    preferences: { ...state.preferences, theme: "dark" },
-                  })
-                }
-              >
+              <button className={state.preferences.theme === "dark" ? "selected" : ""} aria-pressed={state.preferences.theme === "dark"} onClick={() => void act({ type: "settings", preferences: { ...state.preferences, theme: "dark" } })}>
                 <Moon size={19} />
                 Dark
               </button>
@@ -377,81 +210,69 @@ export function SettingsView() {
           </Panel>
           <Panel title="Integration status">
             <div className="integration-list">
-              {[
-                { name: "Sui vault", detail: "Move contract not deployed" },
-                { name: "Tatum RPC", detail: "No gateway connected" },
-                { name: "Walrus Memory", detail: "Local memory only" },
-                { name: "x402 payments", detail: "Simulated merchant flows" },
-              ].map((i) => (
-                <div key={i.name}>
-                  <span>
-                    <Globe2 size={15} />
-                    <strong>{i.name}</strong>
-                  </span>
-                  <Badge>Not connected</Badge>
-                  <small>{i.detail}</small>
-                </div>
-              ))}
+              <div>
+                <span>
+                  <Globe2 size={15} />
+                  <strong>Tatum Sui RPC</strong>
+                </span>
+                <TatumDot tatum={live?.tatum} now={now} onRetry={() => void refreshVault()} />
+                <small className="mono">{live?.tatum.host ?? "—"} · API key held server-side</small>
+              </div>
+              <div>
+                <span>
+                  <Globe2 size={15} />
+                  <strong>Walrus Memory</strong>
+                </span>
+                <Badge tone={live?.health?.memwal.ok ? "success" : "warning"}>{live?.health?.memwal.ok ? "Mainnet · healthy" : "Checking"}</Badge>
+                <small className="mono">
+                  namespace {live?.memory.namespace ?? "—"} · agent {live?.health?.memwal.agentId ? short(live.health.memwal.agentId) : "—"}
+                </small>
+              </div>
+              <div>
+                <span>
+                  <Globe2 size={15} />
+                  <strong>x402 facilitator</strong>
+                </span>
+                <Badge tone="success">{live?.health?.payments.executor === "x402" ? "Settling on Sui" : "Stub"}</Badge>
+                <small>Exact scheme on Sui {live?.network}; gas sponsored by the Sisih facilitator</small>
+              </div>
+              <div>
+                <span>
+                  <Globe2 size={15} />
+                  <strong>Sui vault</strong>
+                </span>
+                <Badge tone="success">Live on {live?.network}</Badge>
+                <small className="mono">{live ? short(live.vaultId) : "—"}</small>
+              </div>
             </div>
           </Panel>
           <Panel title="Demo disclosure">
             <label className="settings-toggle">
               <span>
                 Show demo banner
-                <small>
-                  The mode label in the header always remains visible.
-                </small>
+                <small>DataMart, SearchBox and ReportLab are demo merchants run by the Sisih team.</small>
               </span>
-              <button
-                className={`switch ${state.preferences.demoBanner ? "on" : ""}`}
-                role="switch"
-                aria-checked={state.preferences.demoBanner}
-                aria-label="Show demo disclosure banner"
-                onClick={() =>
-                  act({
-                    type: "settings",
-                    preferences: {
-                      ...state.preferences,
-                      demoBanner: !state.preferences.demoBanner,
-                    },
-                  })
-                }
-              >
+              <button className={`switch ${state.preferences.demoBanner ? "on" : ""}`} role="switch" aria-checked={state.preferences.demoBanner} aria-label="Show demo disclosure banner" onClick={() => void act({ type: "settings", preferences: { ...state.preferences, demoBanner: !state.preferences.demoBanner } })}>
                 <span />
               </button>
             </label>
           </Panel>
-          <div className="info-box">
-            <FlaskConical size={18} />
-            <p>
-              This build is a functional frontend demo. A browser policy cannot
-              protect real funds; production enforcement requires the Sui vault
-              contract and connected adapters.
-            </p>
-          </div>
         </div>
       </div>
       <Confirm
         open={Boolean(confirm)}
         onClose={() => setConfirm(null)}
-        title={
-          confirm === "revoke"
-            ? "Revoke agent permission?"
-            : "Release all demo reserves?"
-        }
+        title={confirm === "revoke" ? "Revoke agent permission?" : "Withdraw everything?"}
         description={
           confirm === "revoke"
-            ? "New payments will be blocked. Your commitments and memories remain saved."
-            : "All reserved demo money becomes withdrawable, the vault balance becomes zero, and the agent is paused. This affects demo funds only."
+            ? "The vault will refuse every release to the agent. Commitments and memories stay. This signs revoke_agent."
+            : "Every reserve and all free funds go to the owner wallet, and every commitment is removed. This signs emergency_withdraw_all."
         }
-        label={
-          confirm === "revoke" ? "Revoke permission" : "Withdraw all & pause"
-        }
+        label={confirm === "revoke" ? "Revoke permission" : "Withdraw everything"}
         onConfirm={() => {
-          if (confirm === "revoke")
-            act({ type: "agent-status", status: "revoked" });
+          if (confirm === "revoke") void act({ type: "agent-status", status: "revoked" });
           else {
-            act({ type: "emergency-withdraw" });
+            void act({ type: "emergency-withdraw" });
             setAck(false);
           }
         }}

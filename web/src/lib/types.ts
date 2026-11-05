@@ -6,6 +6,7 @@ export type View =
   | "learning"
   | "activity"
   | "settings";
+import type { LiveClock, LiveHealth, LiveInsights, LivePolicy, LiveRecall, LiveRequest, LiveSession, LiveSuggestion, TatumStatus } from "./live";
 export type Category = "Data" | "Search" | "Inference" | "Research";
 export type RequestStatus = "held" | "approved" | "rejected" | "paying";
 export type Obligation = {
@@ -20,6 +21,12 @@ export type Obligation = {
   due: string;
   paid: boolean;
   suggestion?: number;
+  /** Live fields (server). Ids come only from the API. */
+  nextDueMs?: number;
+  cycleMs?: number;
+  kind?: "fixed" | "usage";
+  suggestionId?: string;
+  suggestionReason?: string;
 };
 export type SpendRequest = {
   id: string;
@@ -36,6 +43,8 @@ export type SpendRequest = {
   memoryId?: string;
   transactionId?: string;
   blockedAmount: number;
+  /** The full server record (reasons, recall, x402 digests). */
+  live?: LiveRequest;
 };
 export type MemoryKind =
   | "Decision"
@@ -43,7 +52,8 @@ export type MemoryKind =
   | "Obligation outcome"
   | "Reserve updated"
   | "Rule revoked"
-  | "Session summary";
+  | "Session summary"
+  | "Merchant note";
 export type Memory = {
   id: string;
   kind: MemoryKind;
@@ -52,6 +62,13 @@ export type Memory = {
   session: number;
   merchant?: string;
   usedBy: string[];
+  /** Live fields: Walrus write status and identifiers. */
+  status?: "writing" | "stored" | "failed";
+  blobId?: string | null;
+  walrusUrl?: string | null;
+  createdAtMs?: number;
+  namespace?: string;
+  error?: string | null;
 };
 export type Rule = {
   id: string;
@@ -62,6 +79,11 @@ export type Rule = {
   action: "allow" | "deny";
   active: boolean;
   expires: string;
+  /** Live fields */
+  sentence?: string;
+  origin?: "local" | "walrus";
+  timesUsed?: number;
+  walrusUrl?: string | null;
 };
 export type Activity = {
   id: string;
@@ -71,7 +93,12 @@ export type Activity = {
     | "Agent payment"
     | "Pay obligation"
     | "Update reserve"
-    | "Withdraw";
+    | "Withdraw"
+    | "Release to agent"
+    | "x402 settle"
+    | "Agent permission"
+    | "Vault created"
+    | "Other";
   amount: number;
   description: string;
   timestamp: string;
@@ -79,6 +106,14 @@ export type Activity = {
   requestId?: string;
   obligationId?: string;
   memoryId?: string;
+  /** Live fields: proof through Tatum */
+  digest?: string;
+  verification?: "verified" | "pending" | "failed" | "error";
+  failureReason?: string | null;
+  explorerUrl?: string;
+  checkpoint?: string | null;
+  from?: string;
+  to?: string;
 };
 export type SessionStats = {
   session: number;
@@ -123,6 +158,25 @@ export type DemoState = {
     shortfall: number;
     session: number;
   };
+  /** Live server context (absent in fixtures). */
+  live?: LiveContext;
+};
+export type LiveContext = {
+  network: "testnet" | "mainnet";
+  vaultId: string;
+  owner: string;
+  explorerUrl: string;
+  readAtMs: number;
+  tatum: TatumStatus;
+  memory: { namespace: string; stored: number; writing: number; failed: number };
+  policy: LivePolicy | null;
+  clock: LiveClock | null;
+  health: LiveHealth | null;
+  recall: LiveRecall | null;
+  insights: LiveInsights | null;
+  sessions: LiveSession[];
+  suggestions: LiveSuggestion[];
+  sseConnected: boolean;
 };
 export type Action =
   | { type: "deposit"; amount: number }

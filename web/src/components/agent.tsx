@@ -17,10 +17,13 @@ import {
 } from "lucide-react";
 import { useSisih } from "./context";
 import { Badge, Button, Confirm, Empty, PageHeading, Panel } from "./ui";
-import { freeFunds, money, spentToday } from "@/lib/engine";
+import { freeFunds, money, short } from "@/lib/engine";
 import { RequestDrawer } from "./request-drawer";
+import { ExplorerLink } from "./live-bits";
 export function AgentView() {
-  const { state, act } = useSisih();
+  const { state, act, unlocked, isOwner, newRequestIds, x402Steps } = useSisih();
+  const policy = state.live?.policy;
+  const spent = policy ? (Date.now() >= policy.windowStartMs + 86_400_000 ? 0 : Number(policy.spentInWindow)) : 0;
   const query = useSearchParams();
   const [selected, setSelected] = useState<string | null>(query.get("request"));
   const [filter, setFilter] = useState("All requests");
@@ -33,7 +36,7 @@ export function AgentView() {
       (filter === "All requests" ||
         (filter === "On hold" && r.status === "held") ||
         (filter === "Automatic" && r.automatic) ||
-        (filter === "Rejected" && r.status === "rejected")) &&
+        (filter === "Denied" && r.status === "rejected")) &&
       (category === "All categories" || r.category === category) &&
       `${r.merchant} ${r.item}`.toLowerCase().includes(search.toLowerCase()),
   );
@@ -44,14 +47,16 @@ export function AgentView() {
         description="Every request stays within your uncommitted funds and your rules."
         action={
           <Button
-            onClick={() => act({ type: "request", merchant: "SearchBox" })}
+            disabled={!unlocked}
+            title={unlocked ? undefined : "Unlock demo controls first"}
+            onClick={() => void act({ type: "request", merchant: "SearchBox" })}
           >
             <Plus size={15} />
             Run demo request
           </Button>
         }
       />
-      <section className="agent-card">
+      <section className={`agent-card ${state.agentStatus === "revoked" ? "agent-card-revoked" : ""}`}>
         <div className="agent-identity">
           <div className="agent-avatar">
             <Bot size={27} strokeWidth={1.5} />
@@ -70,14 +75,24 @@ export function AgentView() {
                     : "Revoked"}
               </Badge>
             </h2>
-            <p>Search, data, and research · Demo agent</p>
+            <p>
+              Search, data, and research · pays demo merchants over x402 ·{" "}
+              <span className="mono">{policy ? short(policy.agent) : "no permission"}</span>
+            </p>
           </div>
           <div className="agent-actions">
+            {state.agentStatus === "revoked" && (
+              <Button disabled={!isOwner} onClick={() => void act({ type: "agent-status", status: "active" })}>
+                <ShieldCheck size={15} />
+                Grant permission again
+              </Button>
+            )}
             <Button
               variant="secondary"
-              disabled={state.agentStatus === "revoked"}
+              disabled={state.agentStatus === "revoked" || !isOwner}
+              title={isOwner ? undefined : "Connect the owner wallet to sign"}
               onClick={() =>
-                act({
+                void act({
                   type: "agent-status",
                   status: state.agentStatus === "active" ? "paused" : "active",
                 })
@@ -93,7 +108,7 @@ export function AgentView() {
             <Button
               variant="ghost"
               onClick={() => setRevoke(true)}
-              disabled={state.agentStatus === "revoked"}
+              disabled={state.agentStatus === "revoked" || !isOwner}
             >
               <Ban size={15} />
               Revoke
@@ -104,7 +119,7 @@ export function AgentView() {
           <div>
             <span>
               <ShieldCheck size={14} />
-              Per-request limit
+              Per-request limit (on chain)
             </span>
             <strong>
               {money(state.preferences.perRequest)} <small>USDC</small>
@@ -113,10 +128,10 @@ export function AgentView() {
           <div>
             <span>
               <CalendarClock size={14} />
-              Daily spending
+              Spent in the 24 h window
             </span>
             <strong>
-              {money(spentToday(state))}
+              {money(spent)}
               <small> / {money(state.preferences.perDay)} USDC</small>
             </strong>
           </div>
@@ -144,7 +159,7 @@ export function AgentView() {
       <Panel>
         <div className="request-toolbar">
           <div className="tab-list" aria-label="Request filters">
-            {["All requests", "On hold", "Automatic", "Rejected"].map((f) => (
+            {["All requests", "On hold", "Automatic", "Denied"].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -183,11 +198,14 @@ export function AgentView() {
             <table className="data-table requests-table">
               <thead>
                 <tr>
+                  <th>Time</th>
                   <th>Request</th>
+                  <th>Category</th>
                   <th>Amount</th>
+                  <th>Task</th>
                   <th>Decision</th>
-                  <th>Decision context</th>
-                  <th>Session</th>
+                  <th>Reason · basis</th>
+                  <th>x402 settle</th>
                   <th>
                     <span className="sr-only">Details</span>
                   </th>
@@ -197,8 +215,12 @@ export function AgentView() {
                 {items.map((r) => (
                   <tr
                     key={r.id}
-                    className={r.status === "held" ? "held-table-row" : ""}
+                    className={`${r.status === "held" ? "held-table-row" : ""} ${newRequestIds.has(r.id) ? "row-new" : ""}`}
                   >
+                    <td className="mono">
+                      {new Date(r.timestamp).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+                      <small> · S{r.session}</small>
+                    </td>
                     <td>
                       <button
                         className="table-name-button"
@@ -218,10 +240,12 @@ export function AgentView() {
                         </span>
                       </button>
                     </td>
+                    <td>{r.category}</td>
                     <td className="numeric">
                       {money(r.amount)}
                       <small> USDC</small>
                     </td>
+                    <td className="request-task">{r.live?.taskContext?.replace(/^Research SUI token price: /, "") ?? "—"}</td>
                     <td>
                       <Badge
                         tone={
@@ -239,25 +263,41 @@ export function AgentView() {
                         ) : (
                           <Clock3 size={11} />
                         )}{" "}
-                        {r.status === "approved"
+                        {r.status === "approved" || r.status === "paying"
                           ? r.automatic
-                            ? "Automatic"
-                            : "Approved"
+                            ? "Auto-approved"
+                            : "Approved manually"
                           : r.status === "rejected"
-                            ? "Rejected"
+                            ? r.automatic
+                              ? "Auto-denied"
+                              : "Denied"
                             : "On hold"}
                       </Badge>
                     </td>
                     <td className="request-reason">
-                      <span>{r.reason}</span>
-                      {r.memoryId && (
+                      <span>{r.live?.reasons[0] ?? r.reason}</span>
+                      {r.live?.matchedRuleIds.length ? (
                         <Badge tone="memory">
                           <Brain size={10} />
-                          Remembered rule
+                          Rule from memory
                         </Badge>
+                      ) : r.live?.code === "default_threshold" ? (
+                        <Badge>Default threshold</Badge>
+                      ) : r.live?.code === "would_cut_reserve" ? (
+                        <Badge tone="danger">Reserve lock</Badge>
+                      ) : null}
+                    </td>
+                    <td>
+                      {r.transactionId ? (
+                        <ExplorerLink digest={r.transactionId} network={state.live?.network} />
+                      ) : r.status === "paying" || (x402Steps[r.id]?.length && r.live?.paymentStatus !== "paid") ? (
+                        <Badge tone="warning">Paying…</Badge>
+                      ) : r.live?.paymentStatus === "failed" ? (
+                        <Badge tone="danger">Failed</Badge>
+                      ) : (
+                        <span className="muted">—</span>
                       )}
                     </td>
-                    <td>{r.session}</td>
                     <td>
                       <button
                         className="icon-button"
@@ -279,7 +319,8 @@ export function AgentView() {
             action={
               <Button
                 variant="secondary"
-                onClick={() => act({ type: "request", merchant: "DataMart" })}
+                disabled={!unlocked}
+                onClick={() => void act({ type: "request", merchant: "DataMart" })}
               >
                 <Play size={14} />
                 Run a small data request
@@ -292,7 +333,7 @@ export function AgentView() {
             {items.length} requests · {money(freeFunds(state))} USDC currently
             available
           </span>
-          <span>Demo payments only</span>
+          <span>Real x402 settlements on Sui {state.preferences.network} · demo merchants</span>
         </div>
       </Panel>
       <RequestDrawer id={selected} onClose={() => setSelected(null)} />
@@ -300,9 +341,9 @@ export function AgentView() {
         open={revoke}
         onClose={() => setRevoke(false)}
         title="Revoke agent permission?"
-        description="New spending requests will be rejected. Existing commitments and remembered preferences remain unchanged."
+        description="The vault will refuse every release to the agent. Commitments and remembered rules stay. This signs revoke_agent with the owner wallet."
         label="Revoke permission"
-        onConfirm={() => act({ type: "agent-status", status: "revoked" })}
+        onConfirm={() => void act({ type: "agent-status", status: "revoked" })}
       />
     </>
   );

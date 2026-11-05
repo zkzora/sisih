@@ -8,6 +8,13 @@ import { cachedRules, currentSession } from "./services/state.js";
 
 const port = Number(process.env.PORT ?? 8787);
 
+// The hosted server must never hold a mainnet owner key; owner actions there are signed in the browser.
+if (suiNetwork() === "mainnet" && process.env.OWNER_PRIVATE_KEY) {
+  console.error("Refusing to start: OWNER_PRIVATE_KEY is set while SUI_NETWORK=mainnet. Remove it from this environment.");
+  process.exit(1);
+}
+if (!process.env.DEMO_TOKEN) console.warn("DEMO_TOKEN is not set: mutating endpoints are open (local development only).");
+
 const session = currentSession();
 const rules = cachedRules();
 try {

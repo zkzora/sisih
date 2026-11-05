@@ -18,10 +18,13 @@ import { Badge, Button, Empty, PageHeading, Panel, TextButton } from "./ui";
 import { freeFunds, money, reserved, sessionStats } from "@/lib/engine";
 import { RequestDrawer } from "./request-drawer";
 import { ActivityTable } from "./activity";
+import { VerifiedBadge, Countdown } from "./live-bits";
+import { WhatChanged } from "./memory";
 export function Overview() {
-  const { state, setMoneyModal, act } = useSisih();
+  const { state, setMoneyModal, act, isOwner, refreshVault } = useSisih();
   const [requestId, setRequestId] = useState<string | null>(null);
   const held = state.requests.filter((r) => r.status === "held");
+  const live = state.live;
   const stats = sessionStats(state);
   const commitments = state.obligations
     .filter((o) => !o.paid)
@@ -34,7 +37,7 @@ export function Overview() {
         title="Your money, already spoken for."
         description="Commitments protected. Your agent spends only what’s left."
         action={
-          <Button onClick={() => setMoneyModal("deposit")}>
+          <Button onClick={() => setMoneyModal("deposit")} disabled={!isOwner} title={isOwner ? undefined : "Connect the owner wallet to sign"}>
             <Plus size={16} />
             Deposit
           </Button>
@@ -46,10 +49,14 @@ export function Overview() {
             <span className="vault-dot" />
             Personal vault
           </span>
-          <Badge>
-            <FlaskLabel />
-            Local demo
-          </Badge>
+          {live ? (
+            <VerifiedBadge readAtMs={live.readAtMs} explorerUrl={live.explorerUrl} objectId={live.vaultId} onRefresh={() => void refreshVault()} error={live.tatum.level === "red"} />
+          ) : (
+            <Badge>
+              <FlaskLabel />
+              Loading
+            </Badge>
+          )}
         </div>
         <div className="balance-grid">
           <div className="balance-section">
@@ -58,7 +65,7 @@ export function Overview() {
               {money(state.balance)}
               <small>USDC</small>
             </strong>
-            <span className="balance-help">All funds in your workspace</span>
+            <span className="balance-help">All funds in the Sui vault</span>
           </div>
           <div className="balance-section">
             <span className="balance-label">Committed</span>
@@ -126,13 +133,13 @@ export function Overview() {
         </div>
       </section>
       {state.obligations.some((o) => !o.paid && o.reserved < o.amount) && (
-        <div className="banner banner-warning">
+        <div className="banner banner-danger">
           <ShieldCheck size={18} />
           <span>
-            Some commitments are underfunded. Add funds to cover the difference.
+            {money(state.obligations.reduce((v, o) => v + Math.max(0, o.amount - o.reserved), 0))} USDC short of funding every commitment.
           </span>
-          <Button variant="ghost" onClick={() => setMoneyModal("deposit")}>
-            Add funds
+          <Button variant="ghost" onClick={() => setMoneyModal("deposit")} disabled={!isOwner}>
+            Deposit
           </Button>
         </div>
       )}
@@ -159,7 +166,7 @@ export function Overview() {
                 <span className="row-description">
                   <strong>{o.name}</strong>
                   <small>
-                    {o.cycle} · {o.type.toLowerCase()}
+                    {o.cycle} · {o.type.toLowerCase()} · {o.nextDueMs ? <Countdown toMs={o.nextDueMs} /> : o.due}
                   </small>
                 </span>
                 <span className="row-amount">
@@ -197,29 +204,28 @@ export function Overview() {
           }
         >
           {held.length ? (
-            <div className="held-preview">
-              <div className="held-preview-top">
-                <strong>
-                  {held[0].merchant}
-                  <span>DEMO</span>
-                </strong>
-                <b>{money(held[0].amount)} USDC</b>
+            held.slice(0, 2).map((h) => (
+              <div className="held-preview" key={h.id}>
+                <div className="held-preview-top">
+                  <strong>
+                    {h.merchant}
+                    <span>DEMO</span>
+                  </strong>
+                  <b>{money(h.amount)} USDC</b>
+                </div>
+                <p>{h.live?.reasons[0] ?? h.reason}</p>
+                <div className="held-preview-footer">
+                  <span>
+                    <LockKeyhole size={12} />
+                    Reserves stay protected
+                  </span>
+                  <Button variant="primary" onClick={() => setRequestId(h.id)}>
+                    Review request
+                    <ArrowUpRight size={13} />
+                  </Button>
+                </div>
               </div>
-              <p>{held[0].reason}</p>
-              <div className="held-preview-footer">
-                <span>
-                  <LockKeyhole size={12} />
-                  Reserves stay protected
-                </span>
-                <Button
-                  variant="primary"
-                  onClick={() => setRequestId(held[0].id)}
-                >
-                  Review request
-                  <ArrowUpRight size={13} />
-                </Button>
-              </div>
-            </div>
+            ))
           ) : (
             <div className="all-clear">
               <CheckCircle2 size={26} />
@@ -252,15 +258,26 @@ export function Overview() {
           </div>
         </Panel>
       </div>
+      <Panel
+        title="What changed since last session"
+        action={
+          <Link className="text-button" href="/memory">
+            View in Memory
+            <ArrowUpRight size={13} />
+          </Link>
+        }
+      >
+        <WhatChanged compact />
+      </Panel>
       <div className="mini-stats">
         <div>
           <span>
             <ShieldCheck size={15} />
-            Attempted overspend blocked
+            Money protected
           </span>
           <strong>
             {money(state.requests.reduce((v, r) => v + r.blockedAmount, 0))}
-            <small>USDC · demo</small>
+            <small>USDC kept reserved</small>
           </strong>
         </div>
         <div>
@@ -293,20 +310,21 @@ export function Overview() {
           </Link>
         }
       >
-        <ActivityTable items={state.activities.slice(0, 4)} compact />
+        <ActivityTable items={state.activities.slice(0, 5)} compact />
       </Panel>
       <div className="quick-actions">
         <Link href="/obligations">
           <Plus size={14} />
           Add a commitment
         </Link>
-        <button onClick={() => setMoneyModal("deposit")}>
+        <button onClick={() => setMoneyModal("deposit")} disabled={!isOwner}>
           <ArrowDownLeft size={14} />
-          Add demo funds
+          Deposit
         </button>
         <button
+          disabled={!isOwner || state.agentStatus === "revoked"}
           onClick={() =>
-            act({
+            void act({
               type: "agent-status",
               status: state.agentStatus === "active" ? "paused" : "active",
             })

@@ -84,10 +84,23 @@ export function vaultReadError() {
   return lastReadError;
 }
 
-/** One Vault getObject through Tatum; updates the cache and emits state.changed. */
-export async function readVault(): Promise<VaultState> {
+const sameId = (a: string, b: string) => a.toLowerCase().replace(/^0x0*/, "") === b.toLowerCase().replace(/^0x0*/, "");
+
+/**
+ * One Vault getObject through Tatum; updates the cache and emits state.changed.
+ * With minVersion (from a transaction's effects) it re-reads with backoff until the gateway
+ * serves at least that version, so a lagging node never shows a pre-transaction balance.
+ */
+export async function readVault(minVersion?: string): Promise<VaultState> {
   try {
-    const { object } = await suiClient().getObject({ objectId: vaultId(), include: { json: true } });
+    let { object } = await suiClient().getObject({ objectId: vaultId(), include: { json: true } });
+    for (let i = 0; minVersion && BigInt(object.version) < BigInt(minVersion) && i < 6; i++) {
+      await new Promise((r) => setTimeout(r, 700 * (i + 1)));
+      ({ object } = await suiClient().getObject({ objectId: vaultId(), include: { json: true } }));
+    }
+    if (minVersion && BigInt(object.version) < BigInt(minVersion)) {
+      publish("state.lagging", { have: object.version, want: minVersion });
+    }
     const next = parseVault(object.objectId, object.json as Json);
     const changed = !cached || JSON.stringify(jsonSafe({ ...cached, readAtMs: 0 })) !== JSON.stringify(jsonSafe({ ...next, readAtMs: 0 }));
     cached = next;
@@ -131,8 +144,10 @@ export async function recordTx(
     .run();
   publish("tx.pending", { digest, label: meta.label });
   let rec: RecordedTx;
+  let vaultVersion: string | undefined;
   try {
     const v = await verifyTransaction(digest);
+    vaultVersion = Object.entries(v.objectVersions).find(([id]) => sameId(id, vaultId()))?.[1];
     rec = { digest, status: v.success ? "verified" : "failed", success: v.success, checkpoint: v.checkpoint, timestampMs: v.timestampMs, events: v.events, error: v.error };
     d.update(schema.txLog)
       .set({
@@ -155,7 +170,7 @@ export async function recordTx(
     d.update(schema.txLog).set({ status: "error", error: rec.error }).where(eq(schema.txLog.digest, digest)).run();
     publish("tx.failed", { digest, label: meta.label, error: rec.error });
   }
-  if (meta.refreshVault !== false) await readVault().catch(() => {});
+  if (meta.refreshVault !== false) await readVault(vaultVersion).catch(() => {});
   return rec;
 }
 

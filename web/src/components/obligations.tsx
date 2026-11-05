@@ -13,6 +13,7 @@ import {
   Search,
   Trash2,
   Wallet,
+  ExternalLink,
 } from "lucide-react";
 import { useSisih } from "./context";
 import {
@@ -36,18 +37,20 @@ import {
   short,
 } from "@/lib/engine";
 import type { Obligation } from "@/lib/types";
+import { Countdown } from "./live-bits";
 const defaultObligation = (): Obligation => ({
   id: "new",
   name: "",
-  recipient: "0x" + "e".repeat(64),
+  recipient: "",
   amount: 1_000_000,
   reserved: 0,
   cycle: "Monthly",
   type: "Fixed",
   priority: "Essential",
-  due: "2026-11-20",
+  due: new Date().toISOString().slice(0, 10),
   paid: false,
 });
+const isDue = (o: Obligation) => (o.nextDueMs ?? Infinity) + 5_000 <= Date.now();
 function CommitmentForm({
   value,
   onClose,
@@ -59,6 +62,7 @@ function CommitmentForm({
   const [draft, setDraft] = useState<Obligation>(defaultObligation);
   const [amount, setAmount] = useState("1");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (value) {
       setDraft(value);
@@ -73,11 +77,11 @@ function CommitmentForm({
       open={Boolean(value)}
       onClose={onClose}
       title={value?.id === "new" ? "Set money aside" : "Edit commitment"}
-      description="Reserve demo funds for an onchain obligation. Your agent cannot spend the reserved amount."
+      description={value?.id === "new" ? "Saving signs a Sui transaction that locks the reserve in your vault. Your agent cannot spend it." : "On chain only the amount can change. Saving signs a Sui transaction that moves the difference between free funds and the reserve."}
       kind="modal"
     >
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           const parsed = parseMoney(amount);
           const next: Record<string, string> = {};
@@ -88,7 +92,7 @@ function CommitmentForm({
             next.recipient =
               "Use a 0x address followed by 64 hexadecimal characters.";
           if (draft.due < demoDay(state))
-            next.due = "Choose the demo date or a later date.";
+            next.due = "Choose today or a later date.";
           setErrors(next);
           if (Object.keys(next).length) {
             document
@@ -96,10 +100,12 @@ function CommitmentForm({
               ?.focus();
             return;
           }
-          const result = act({
+          setSaving(true);
+          const result = await act({
             type: "save-obligation",
             obligation: { ...draft, amount: parsed! },
           });
+          setSaving(false);
           if (result.error) setErrors({ form: result.message });
           else onClose();
         }}
@@ -121,7 +127,7 @@ function CommitmentForm({
           id="commitment-recipient"
           label="Recipient Sui address"
           error={errors.recipient}
-          hint="A demo address is prefilled. No real payment will be sent."
+          hint="The vault pays only this address, and only when the commitment is due."
         >
           <input
             className="mono"
@@ -193,7 +199,7 @@ function CommitmentForm({
         <Field
           id="commitment-priority"
           label="Priority"
-          hint="Essential commitments are funded first when a demo deposit arrives."
+          hint="Essential commitments are funded first when money arrives."
         >
           <select
             id="commitment-priority"
@@ -219,9 +225,9 @@ function CommitmentForm({
           <Button type="button" variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit">
+          <Button type="submit" disabled={saving}>
             <LockKeyhole size={15} />
-            {value?.id === "new" ? "Create commitment" : "Save changes"}
+            {saving ? "Signing…" : value?.id === "new" ? "Create commitment" : "Save changes"}
           </Button>
         </div>
       </form>
@@ -243,7 +249,8 @@ export function ObligationsView() {
       (filter === "All commitments" ||
         (filter === "Unpaid" && !o.paid) ||
         (filter === "Paid" && o.paid) ||
-        (filter === "Underfunded" && !o.paid && o.reserved < o.amount)),
+        (filter === "Underfunded" && !o.paid && o.reserved < o.amount) ||
+        (filter === "Due now" && isDue(o))),
   );
   const shortfall = state.obligations
     .filter((o) => !o.paid)
@@ -281,10 +288,10 @@ export function ObligationsView() {
         </div>
       </div>
       {shortfall > 0 && (
-        <div className="banner banner-warning">
+        <div className="banner banner-danger">
           <Wallet size={18} />
           <span>
-            Add {money(shortfall)} USDC to fully fund your commitments.
+            {money(shortfall)} USDC short of funding every commitment.
           </span>
           <Button variant="ghost" onClick={() => setMoneyModal("deposit")}>
             Add funds
@@ -301,18 +308,15 @@ export function ObligationsView() {
             <div>
               <Badge tone="memory">Reserve suggestion</Badge>
               <h3>Give {o.name} a little more room.</h3>
-              <p>
-                Last cycle needed 6.80 USDC against a 6.00 USDC reserve. Set
-                aside {money(o.suggestion!)} USDC for the next one.
-              </p>
+              <p>{o.suggestionReason ?? `Set aside ${money(o.suggestion!)} USDC for the next cycle.`}</p>
               <span className="detail-note">
-                Based on a simulated billing outcome stored in local memory.
+                <Brain size={12} /> Source: obligation outcome stored on Walrus Memory. Accepting signs set_obligation_target.
               </span>
             </div>
             <div className="suggestion-actions">
               <Button
                 onClick={() =>
-                  act({
+                  void act({
                     type: "accept-reserve",
                     id: o.id,
                     amount: o.suggestion!,
@@ -324,7 +328,7 @@ export function ObligationsView() {
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => act({ type: "dismiss-suggestion", id: o.id })}
+                onClick={() => void act({ type: "dismiss-suggestion", id: o.id })}
               >
                 Keep current reserve
               </Button>
@@ -348,7 +352,7 @@ export function ObligationsView() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
-            {["All commitments", "Unpaid", "Underfunded", "Paid"].map((v) => (
+            {["All commitments", "Due now", "Underfunded"].map((v) => (
               <option key={v}>{v}</option>
             ))}
           </select>
@@ -359,8 +363,11 @@ export function ObligationsView() {
               <thead>
                 <tr>
                   <th>Commitment</th>
+                  <th>Payee</th>
                   <th>Amount / cycle</th>
-                  <th>Due date</th>
+                  <th>Type</th>
+                  <th>Cycle</th>
+                  <th>Due</th>
                   <th>Priority</th>
                   <th>Reserved</th>
                   <th>Status</th>
@@ -388,14 +395,17 @@ export function ObligationsView() {
                         </span>
                       </button>
                     </td>
+                    <td className="mono">
+                      {short(o.recipient)}
+                      <CopyButton value={o.recipient} />
+                    </td>
                     <td className="numeric">
                       {money(o.amount)} <small>USDC</small>
                     </td>
+                    <td>{o.type}</td>
+                    <td>{o.cycle}</td>
                     <td>
-                      {new Date(o.due + "T00:00:00Z").toLocaleDateString(
-                        "en-US",
-                        { month: "short", day: "numeric", timeZone: "UTC" },
-                      )}
+                      {o.nextDueMs ? <Countdown toMs={o.nextDueMs} /> : o.due}
                     </td>
                     <td>
                       <Badge>{o.priority}</Badge>
@@ -422,9 +432,11 @@ export function ObligationsView() {
                       >
                         {o.paid
                           ? "Paid"
-                          : o.reserved >= o.amount
-                            ? "Fully funded"
-                            : "Underfunded"}
+                          : isDue(o)
+                            ? "Due now"
+                            : o.reserved >= o.amount
+                              ? "Fully funded"
+                              : "Underfunded"}
                       </Badge>
                     </td>
                     <td>
@@ -461,7 +473,7 @@ export function ObligationsView() {
           />
         )}
         <div className="table-footer">
-          {items.length} commitments · All balances are simulated
+          {items.length} commitments · Reserves read from the Sui vault via Tatum · Demo cycle: {Math.round((state.live?.clock?.cycleMs ?? 120000) / 60000)} min (labels show the real-world cadence)
         </div>
       </Panel>
       <CommitmentForm value={edit} onClose={() => setEdit(null)} />
@@ -469,11 +481,11 @@ export function ObligationsView() {
         open={Boolean(remove)}
         onClose={() => setRemove(null)}
         title="Remove this commitment?"
-        description={`Remove ${remove?.name || "this commitment"} and release its reserve to available funds. Earlier demo receipts remain in activity.`}
+        description={`Remove ${remove?.name || "this commitment"} and release its reserve to free funds. This signs a Sui transaction; earlier receipts stay in activity.`}
         label="Remove commitment"
         onConfirm={() => {
           if (remove) {
-            act({ type: "delete-obligation", id: remove.id });
+            void act({ type: "delete-obligation", id: remove.id });
             setSelected(null);
           }
         }}
@@ -482,7 +494,7 @@ export function ObligationsView() {
         open={Boolean(o)}
         onClose={() => setSelected(null)}
         title={o?.name || "Commitment"}
-        description="A commitment backed by reserved demo funds."
+        description="A commitment backed by a reserve locked in the Sui vault."
         footer={
           o && (
             <>
@@ -498,11 +510,12 @@ export function ObligationsView() {
                 Edit
               </Button>
               <Button
-                onClick={() => act({ type: "pay-obligation", id: o.id })}
-                disabled={o.paid || o.reserved < o.amount}
+                onClick={() => void act({ type: "pay-obligation", id: o.id })}
+                disabled={o.paid || !isDue(o) || o.kind === "usage"}
+                title={o.kind === "usage" ? "Usage-based bills are paid by the billing cycle" : !isDue(o) ? "The vault pays only when the commitment is due" : undefined}
               >
                 {o.paid ? <Check size={14} /> : <ArrowRight size={14} />}{" "}
-                {o.paid ? "Paid" : "Pay with demo funds"}
+                {o.paid ? "Paid" : isDue(o) ? "Pay now" : "Pay when due"}
               </Button>
             </>
           )
@@ -549,7 +562,11 @@ export function ObligationsView() {
               </div>
               <div>
                 <dt>Due</dt>
-                <dd>{o.due}</dd>
+                <dd>{o.nextDueMs ? <Countdown toMs={o.nextDueMs} /> : o.due}</dd>
+              </div>
+              <div>
+                <dt>Obligation id</dt>
+                <dd className="mono">#{o.id}</dd>
               </div>
               <div>
                 <dt>Recipient</dt>
@@ -561,17 +578,19 @@ export function ObligationsView() {
             </dl>
             <div className="detail-section">
               <h3>Payment history</h3>
-              {state.activities.filter(
-                (a) => a.obligationId === o.id && a.kind === "Pay obligation",
-              ).length ? (
+              {state.activities.filter((a) => a.kind === "Pay obligation" && a.to === o.name).length ? (
                 state.activities
-                  .filter(
-                    (a) =>
-                      a.obligationId === o.id && a.kind === "Pay obligation",
-                  )
+                  .filter((a) => a.kind === "Pay obligation" && a.to === o.name)
                   .map((a) => (
                     <div className="detail-list-row" key={a.id}>
-                      <span>{a.description}</span>
+                      <span>
+                        {new Date(a.timestamp).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                        {a.explorerUrl && (
+                          <a className="text-button" href={a.explorerUrl} target="_blank" rel="noreferrer">
+                            {a.digest?.slice(0, 8)}… <ExternalLink size={11} />
+                          </a>
+                        )}
+                      </span>
                       <strong>{money(a.amount)} USDC</strong>
                     </div>
                   ))
@@ -579,6 +598,22 @@ export function ObligationsView() {
                 <p className="muted">
                   No payments recorded for this commitment yet.
                 </p>
+              )}
+            </div>
+            <div className="detail-section">
+              <h3>Related memories</h3>
+              {state.memories.filter((m) => m.text.includes(o.name)).length ? (
+                state.memories
+                  .filter((m) => m.text.includes(o.name))
+                  .slice(0, 4)
+                  .map((m) => (
+                    <div className="detail-list-row" key={m.id}>
+                      <span>{m.text}</span>
+                      <Badge tone="memory">{m.kind}</Badge>
+                    </div>
+                  ))
+              ) : (
+                <p className="muted">No memories mention this commitment yet.</p>
               )}
             </div>
             <Button

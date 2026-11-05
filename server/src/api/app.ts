@@ -25,6 +25,11 @@ import { addLocalRule, cachedRule, cachedRules, currentSession, kvRead, setRuleA
 import { isScenario, runTask, SCENARIOS } from "../agent/runner.js";
 import { advanceCycle, clock, resetDemo } from "../demo/controls.js";
 import { merchantRoutes } from "../x402/merchants.js";
+import { allowedOrigins, DEMO_TOKEN_HEADER, demoGuard } from "./guard.js";
+import { usdcType } from "../chain/sisih.js";
+import { suiClient } from "../lib/tatum.js";
+import { address as walletAddress } from "../lib/wallets.js";
+import { kvSet, defaultThreshold } from "../services/state.js";
 
 export const walrusBlobUrl = (blobId: string) => `https://walruscan.com/mainnet/blob/${blobId}`;
 
@@ -65,7 +70,17 @@ function ruleView(r: ReturnType<typeof cachedRules>[number]) {
 
 export function createApp() {
   const app = new Hono();
-  app.use("/api/*", cors({ origin: (o) => o ?? "*", allowMethods: ["GET", "POST", "PATCH", "OPTIONS"] }));
+  const origins = allowedOrigins();
+  app.use(
+    "/api/*",
+    cors({
+      origin: (o) => (o && origins.includes(o.replace(/\/$/, "")) ? o : null),
+      allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
+      allowHeaders: ["content-type", DEMO_TOKEN_HEADER, "last-event-id"],
+      maxAge: 600,
+    }),
+  );
+  app.use("/api/*", demoGuard());
 
   app.onError((err, c) => {
     if (err instanceof ApiError) return c.json({ error: err.message, code: err.code }, err.status);
@@ -93,6 +108,7 @@ export function createApp() {
       network: suiNetwork(),
       vault: { ...vault, explorerUrl: explorerObjectUrl(vault.vaultId), operatorCapId: operatorCapId() },
       verifiedVia: "Tatum Sui gRPC",
+      agentAddress: walletAddress("agent"),
       readAtMs: vault.readAtMs,
       session: currentSession(),
       heldRequests: held,
@@ -100,6 +116,32 @@ export function createApp() {
       tatum: tatumStatus(),
       demo: { merchants: MERCHANTS.map((m) => ({ name: m.name, demo: true })) },
     });
+  });
+
+  /** USDC + SUI balance of an address (deposit dialog). Cached 10 s per address. */
+  const walletCache = new Map<string, { at: number; value: unknown }>();
+  app.get("/api/wallet/:address", async (c) => {
+    const addr = c.req.param("address");
+    if (!/^0x[0-9a-fA-F]{1,64}$/.test(addr)) throw new ApiError(400, "Not a Sui address");
+    const hit = walletCache.get(addr);
+    if (hit && Date.now() - hit.at < 10_000) return ok(c, hit.value);
+    const [u, s] = await Promise.all([
+      suiClient().core.getBalance({ owner: addr, coinType: usdcType() }),
+      suiClient().core.getBalance({ owner: addr, coinType: "0x2::sui::SUI" }),
+    ]);
+    const value = { address: addr, usdc: u.balance.balance, sui: s.balance.balance, readAtMs: Date.now() };
+    walletCache.set(addr, { at: Date.now(), value });
+    return ok(c, value);
+  });
+
+  app.get("/api/settings", (c) => ok(c, { defaultThreshold: defaultThreshold().toString() }));
+  app.patch("/api/settings", async (c) => {
+    const body = await c.req.json<{ defaultThreshold?: string }>();
+    if (body.defaultThreshold !== undefined) {
+      if (!/^\d+$/.test(body.defaultThreshold)) throw new ApiError(400, "defaultThreshold must be base units");
+      kvSet("default_threshold", body.defaultThreshold);
+    }
+    return ok(c, { defaultThreshold: defaultThreshold().toString() });
   });
 
   /** Force one fresh vault read (the dashboard's "Refresh" button). */
@@ -269,6 +311,8 @@ export function createApp() {
   app.post("/api/demo/new-session", async (c) => ok(c, await startSession(), 201));
   app.post("/api/demo/reset", async (c) => ok(c, await resetDemo()));
   app.get("/api/demo/clock", async (c) => ok(c, await clock()));
+  /** The guard already checked x-demo-token; this only confirms it to the dock. */
+  app.post("/api/demo/token-check", (c) => ok(c, { ok: true }));
 
   // --- SSE ----------------------------------------------------------------------------
   app.get("/api/events", (c) =>

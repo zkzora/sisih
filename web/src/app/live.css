@@ -1,0 +1,318 @@
+/* Live-status pieces added in Phase 4. Uses the design tokens from tokens.css only. */
+
+.banner-danger {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: color-mix(in oklch, var(--danger), transparent 65%);
+}
+.available-meter.empty {
+  color: var(--danger);
+}
+
+/* Top bar: Tatum dot, wallet connect */
+.tatum-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  color: var(--muted-foreground);
+}
+.tatum-green .status-dot {
+  color: var(--success);
+}
+.tatum-yellow .status-dot {
+  color: var(--warning);
+}
+.tatum-red {
+  color: var(--danger);
+}
+.tatum-red .status-dot {
+  color: var(--danger);
+}
+.wallet-connect {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.wallet-connect button {
+  font: inherit;
+  font-size: 12px !important;
+  padding: 6px 10px !important;
+  border-radius: 8px !important;
+  background: var(--secondary) !important;
+  color: var(--secondary-foreground) !important;
+  box-shadow: none !important;
+}
+.toast-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  color: inherit;
+  text-decoration: underline;
+}
+
+/* Verified via Tatum badge */
+.verified-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--success);
+  background: var(--success-soft);
+  border-radius: 999px;
+  padding: 4px 10px;
+  flex-wrap: wrap;
+}
+.verified-badge a {
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.verified-badge .text-button {
+  font-size: 12px;
+  color: inherit;
+}
+.verified-badge-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* Walrus write status: "Writing" counts up so a ~25 s save reads as progress */
+.memory-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.memory-chip-writing {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+.memory-chip-bar {
+  display: inline-block;
+  width: 46px;
+  height: 4px;
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--warning), transparent 75%);
+  overflow: hidden;
+}
+.memory-chip-bar span {
+  display: block;
+  height: 100%;
+  background: var(--warning);
+  transition: width 1s linear;
+}
+.memory-chip-stored {
+  color: var(--success);
+  background: var(--success-soft);
+}
+.memory-chip-failed {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.memory-chip-failed .text-button {
+  font-size: 11px;
+  color: inherit;
+}
+.memory-entry .memory-entry-content {
+  text-align: left;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  flex: 1;
+}
+.memory-entry .memory-entry-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+/* x402 stepper */
+.x402-steps {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.x402-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.x402-steps li.done {
+  color: var(--success);
+}
+.x402-steps li.active {
+  color: var(--warning);
+}
+.x402-steps li.failed {
+  color: var(--danger);
+}
+.x402-steps li a {
+  margin-left: auto;
+  font-size: 11px;
+  color: inherit;
+}
+.explorer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--primary);
+}
+
+.countdown {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* New request highlight */
+@keyframes sisih-row-new {
+  from {
+    background: color-mix(in oklch, var(--available), transparent 40%);
+  }
+  to {
+    background: transparent;
+  }
+}
+.row-new td {
+  animation: sisih-row-new 4s ease-out;
+}
+.request-task {
+  max-width: 180px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+/* Revoked agent: gray card */
+.agent-card-revoked,
+.permission-revoked {
+  filter: grayscale(1);
+  opacity: 0.75;
+}
+.agent-card-revoked .agent-actions .button-primary {
+  filter: none;
+}
+
+/* Demo dock lock */
+.dock-lock {
+  display: grid;
+  gap: 10px;
+}
+.dock-lock input {
+  font: inherit;
+  padding: 9px 10px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--foreground);
+}
+
+/* Charts and tables */
+.recharts-box {
+  width: 100%;
+  min-height: 200px;
+}
+.metrics-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 1100px) {
+  .metrics-grid-4 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.changes-table td,
+.changes-table th {
+  font-size: 13px;
+}
+.recall-results {
+  margin: 12px 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 10px;
+}
+.recall-results li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.recall-results li span {
+  flex: 1;
+  min-width: 220px;
+}
+.small-strong {
+  font-size: 14px !important;
+}
+.dev-states {
+  display: grid;
+  gap: 18px;
+}
+.dev-state {
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--card);
+}
+.dev-state h2 {
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+.dev-state > p {
+  margin: 0 0 12px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.dev-state .toast-stack {
+  position: static;
+}
+
+/* Keep the top bar inside the viewport down to 1280 px */
+.main-shell,
+.topbar,
+.topbar-right {
+  min-width: 0;
+}
+.topbar-right > * {
+  flex-shrink: 0;
+}
+@media (max-width: 1599px) {
+  .tatum-detail,
+  .walrus-net,
+  .topbar-session {
+    display: none;
+  }
+  .topbar-right {
+    gap: 10px;
+  }
+}
+@media (max-width: 1320px) {
+  .available-meter small {
+    display: none;
+  }
+}
+
+/* Wide tables scroll inside their panel instead of widening the page */
+.main-content,
+.panel {
+  min-width: 0;
+}
+.table-scroll {
+  max-width: 100%;
+}
+.request-task {
+  white-space: normal;
+}

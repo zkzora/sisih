@@ -23,9 +23,11 @@ import {
   Pause,
   AlertCircle,
 } from "lucide-react";
+import { ConnectButton } from "@mysten/dapp-kit";
 import { useSisih } from "./context";
 import { Badge, Button, Overlay, Skeleton } from "./ui";
-import { freeFunds, money, short, address } from "@/lib/engine";
+import { freeFunds, money } from "@/lib/engine";
+import { TatumDot, useNow } from "./live-bits";
 import { MoneyDialog } from "./money-dialog";
 import { DemoDock } from "./demo-dock";
 const navigation = [
@@ -38,7 +40,10 @@ const navigation = [
   { href: "/settings", label: "Settings", icon: Settings2 },
 ];
 export function Shell({ children }: { children: ReactNode }) {
-  const { state, ready, act, storageError, retryStorage } = useSisih();
+  const { state, ready, act, storageError, retryStorage, loadError, refreshVault } = useSisih();
+  const now = useNow(5000);
+  const free = freeFunds(state);
+  const live = state.live;
   const pathname = usePathname();
   const [mobile, setMobile] = useState(false);
   const [help, setHelp] = useState(false);
@@ -117,7 +122,7 @@ export function Shell({ children }: { children: ReactNode }) {
             How Sisih works
             <ExternalLink size={12} />
           </button>
-          <span className="sidebar-version">SISIH / DEMO WORKSPACE</span>
+          <span className="sidebar-version">SISIH · SUI {state.preferences.network.toUpperCase()}</span>
         </div>
       </aside>
       <div className="main-shell">
@@ -136,28 +141,30 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
           <div className="topbar-right">
             <div
-              className={`available-meter ${freeFunds(state) < 1_000_000 ? "low" : ""}`}
+              className={`available-meter ${free <= 0 ? "empty" : free < 1_000_000 ? "low" : ""}`}
+              title="Free funds the agent may spend"
             >
               <span className="status-dot" />
               <span>
-                {money(freeFunds(state))} <small>USDC available</small>
+                {money(free)} <small>USDC available to agent</small>
               </span>
             </div>
-            <span className="topbar-session">Session {state.session}</span>
             <Badge>
               <span className="status-dot" />
-              Demo · {state.preferences.network}
+              Sui {state.preferences.network}
             </Badge>
-            <button
-              className="wallet-button"
-              onClick={() =>
-                act({ type: "wallet", connected: !state.walletConnected })
-              }
-            >
+            <span title={`Walrus Memory on mainnet · namespace ${live?.memory.namespace ?? ""}`}>
+              <Badge tone="memory">
+                Walrus Memory<span className="walrus-net"> · Mainnet</span> · {live?.memory.stored ?? 0} {live?.memory.stored === 1 ? "memory" : "memories"}
+                {live?.memory.writing ? ` · ${live.memory.writing} writing` : ""}
+              </Badge>
+            </span>
+            <TatumDot tatum={live?.tatum} now={now} onRetry={() => void refreshVault()} />
+            <span className="topbar-session">Session {state.session}</span>
+            <span className="wallet-connect">
               <Wallet size={14} />
-              {state.walletConnected ? short(address) : "Demo wallet"}
-              <span className="avatar">YO</span>
-            </button>
+              <ConnectButton connectText="Connect wallet" />
+            </span>
           </div>
         </header>
         <main id="main-content" className="main-content">
@@ -167,8 +174,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <span>
                 Demo workspace{" "}
                 <span className="demo-banner-detail">
-                  · Simulated USDC, payments, and memory. No live wallet
-                  connection.
+                  · DataMart, SearchBox and ReportLab are demo merchants run by the Sisih team. Sui {state.preferences.network}; income is simulated and demo funds are recycled.
                 </span>
               </span>
               <button onClick={() => setHelp(true)}>
@@ -177,12 +183,29 @@ export function Shell({ children }: { children: ReactNode }) {
               </button>
             </div>
           )}
+          {loadError && (
+            <div className="banner banner-danger">
+              <AlertCircle size={17} />
+              <span>Cannot reach the Sisih server: {loadError}</span>
+              <Button variant="ghost" onClick={() => location.reload()}>
+                Retry
+              </Button>
+            </div>
+          )}
+          {live?.tatum.level === "red" && (
+            <div className="banner banner-danger">
+              <AlertCircle size={17} />
+              <span>Tatum RPC is not responding. Showing the last verified vault state.</span>
+              <Button variant="ghost" onClick={() => void refreshVault()}>
+                Retry
+              </Button>
+            </div>
+          )}
           {storageError && (
             <div className="banner banner-warning">
               <AlertCircle size={17} />
               <span>
-                Browser storage is unavailable. Changes may not survive a
-                reload.
+                Browser storage is unavailable. Your theme and banner preferences will not be kept.
               </span>
               <Button variant="ghost" onClick={retryStorage}>
                 Retry save
@@ -193,17 +216,15 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="banner banner-warning">
               <Pause size={16} />
               <span>
-                Agent{" "}
                 {state.agentStatus === "paused"
-                  ? "paused"
-                  : "permission revoked"}
-                . New spending requests are blocked.
+                  ? "Agent paused. All requests are denied."
+                  : "Agent permission revoked. New spending requests are blocked."}
               </span>
               {state.agentStatus === "paused" ? (
                 <Button
                   variant="ghost"
                   onClick={() =>
-                    act({ type: "agent-status", status: "active" })
+                    void act({ type: "agent-status", status: "active" })
                   }
                 >
                   Resume agent
@@ -221,7 +242,9 @@ export function Shell({ children }: { children: ReactNode }) {
               <LockKeyhole size={12} />
               Committed funds stay out of reach.
             </span>
-            <span>Local demo · No Mainnet transactions</span>
+            <span>
+              Sui {state.preferences.network} · vault read through Tatum · memory on Walrus mainnet
+            </span>
           </footer>
         </main>
       </div>
@@ -263,9 +286,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="info-box">
           <FlaskConical size={18} />
           <p>
-            This is a working frontend demo. Balances, payments, and memories
-            stay in your browser. Sui, Tatum, Walrus, and x402 are not
-            connected.
+            Live on Sui {state.preferences.network}: the Move vault locks reserves, Tatum reads and verifies every transaction, Walrus Memory stores decisions and rules, and the agent pays demo merchants over x402. Income is simulated and demo funds are recycled.
           </p>
         </div>
       </Overlay>

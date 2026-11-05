@@ -229,6 +229,8 @@ export interface VerifiedTx {
   timestampMs: number | null;
   events: TxEvent[];
   gasMist: bigint;
+  /** Output version per changed object (from effects), to wait out read lag on later reads. */
+  objectVersions: Record<string, string>;
   attempts: number;
 }
 
@@ -252,6 +254,9 @@ export async function verifyTransaction(digest: string, opts: { network?: SuiNet
         timestampMs: t.timestampMs,
         events: t.events.map((e) => ({ type: e.eventType, sender: e.sender, json: e.json })),
         gasMist: BigInt(g.computationCost) + BigInt(g.storageCost) - BigInt(g.storageRebate),
+        objectVersions: Object.fromEntries(
+          t.effects.changedObjects.filter((c) => c.outputVersion).map((c) => [c.objectId, c.outputVersion as string]),
+        ),
         attempts: attempt,
       };
     } catch (err) {

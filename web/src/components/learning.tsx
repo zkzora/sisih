@@ -1,122 +1,50 @@
 "use client";
-import {
-  ArrowRight,
-  Brain,
-  ChartNoAxesCombined,
-  CheckCircle2,
-  Download,
-  ShieldCheck,
-} from "lucide-react";
+import { ArrowRight, Brain, ChartNoAxesCombined, CheckCircle2, Download, ShieldCheck, ListChecks } from "lucide-react";
+import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useSisih } from "./context";
 import { Badge, Button, Empty, PageHeading, Panel } from "./ui";
-import { categories, money, sessionStats } from "@/lib/engine";
-function Chart({
-  values,
-  unit = "requests",
-  line = false,
-}: {
-  values: { label: string; value: number }[];
-  unit?: string;
-  line?: boolean;
-}) {
-  const max = Math.max(1, ...values.map((v) => v.value));
-  if (line) {
-    const points = values.map((v, i) => ({
-      x: values.length === 1 ? 300 : 40 + (i * 520) / (values.length - 1),
-      y: 130 - (v.value / max) * 100,
-      ...v,
-    }));
-    return (
-      <svg
-        className="line-chart"
-        viewBox="0 0 600 185"
-        role="img"
-        aria-label={values
-          .map((v) => `${v.label}: ${v.value} ${unit}`)
-          .join(", ")}
-      >
-        <line x1="30" y1="130" x2="570" y2="130" className="chart-grid" />
-        <line x1="30" y1="80" x2="570" y2="80" className="chart-grid" />
-        {points.length > 1 && (
-          <polyline
-            points={points.map((p) => `${p.x},${p.y}`).join(" ")}
-            className="chart-line"
-          />
-        )}
-        {points.map((p) => (
-          <g key={p.label}>
-            <circle cx={p.x} cy={p.y} r="5" className="chart-point" />
-            <text
-              x={p.x}
-              y={p.y - 14}
-              textAnchor="middle"
-              className="chart-label"
-            >
-              {p.value}
-            </text>
-            <text x={p.x} y="162" textAnchor="middle" className="chart-axis">
-              {p.label}
-            </text>
-          </g>
-        ))}
-      </svg>
-    );
-  }
+import { categories, money } from "@/lib/engine";
+
+const SOURCE = "From Walrus memories + Sui events via Tatum";
+const C = { primary: "var(--primary)", reserved: "var(--reserved)", available: "var(--available)", danger: "var(--danger)", memory: "var(--memory)", grid: "var(--border)", text: "var(--muted-foreground)" };
+const axis = { stroke: C.text, fontSize: 12, tickLine: false, axisLine: false } as const;
+const tooltipStyle = { contentStyle: { background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 8, fontSize: 12 }, labelStyle: { color: "var(--foreground)" } };
+
+function ChartBox({ children, label }: { children: React.ReactElement; label: string }) {
   return (
-    <div
-      className="bar-chart"
-      role="img"
-      aria-label={values
-        .map((v) => `${v.label}: ${v.value} ${unit}`)
-        .join(", ")}
-    >
-      {values.map((v) => (
-        <div className="bar-column" key={v.label}>
-          <span>{v.value}</span>
-          <div className="bar-track">
-            <i style={{ height: `${(v.value / max) * 100}%` }} />
-          </div>
-          <small>{v.label}</small>
-        </div>
-      ))}
+    <div className="recharts-box" role="img" aria-label={label}>
+      <ResponsiveContainer width="100%" height={200}>
+        {children}
+      </ResponsiveContainer>
     </div>
   );
 }
+
 export function LearningView() {
-  const { state, act, notify } = useSisih();
-  const history = state.sessions;
-  const current = sessionStats(state);
-  const total = state.requests.length;
-  const automatic = state.requests.filter((r) => r.automatic).length;
-  let blocked = 0;
-  const cumulative = history.map((s) => {
-    blocked += s.blocked;
-    return {
-      label: `S${s.session}`,
-      value: Number((blocked / 1_000_000).toFixed(2)),
-    };
-  });
+  const { state, act, notify, unlocked } = useSisih();
+  const insights = state.live?.insights;
+  const sessions = (insights?.sessions ?? []).filter((s) => s.requests > 0 || s.obligationsOnTime + s.obligationsUnderfunded > 0);
+  const cards = insights?.cards;
+  const rows = sessions.map((s) => ({
+    name: `S${s.session}`,
+    manual: s.manualReviews,
+    falseHolds: s.falseHolds,
+    protected: Number(s.moneyProtectedCumulative) / 1e6,
+    onTime: s.obligationsOnTime,
+    underfunded: s.obligationsUnderfunded,
+  }));
+  const spend = categories.map((c) => ({
+    name: c,
+    usdc: sessions.reduce((v, s) => v + Number(s.spendByCategory[c.toLowerCase()] ?? 0), 0) / 1e6,
+  }));
   const download = () => {
-    const url = URL.createObjectURL(
-      new Blob(
-        [
-          JSON.stringify(
-            { mode: "local-demo", sessions: history, currentSession: current },
-            null,
-            2,
-          ),
-        ],
-        { type: "application/json" },
-      ),
-    );
+    const url = URL.createObjectURL(new Blob([JSON.stringify({ source: SOURCE, insights }, null, 2)], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = "sisih-demo-learning.json";
+    a.download = "sisih-learning.json";
     a.click();
     URL.revokeObjectURL(url);
-    notify(
-      "Learning report exported. All figures are from your demo sessions.",
-    );
+    notify("Learning report exported. Every figure comes from real requests, memories and vault events.");
   };
   return (
     <>
@@ -130,14 +58,22 @@ export function LearningView() {
           </Button>
         }
       />
-      <div className="metrics-grid">
+      <div className="metrics-grid metrics-grid-4">
         <Panel>
           <span className="metric-label">
             <Brain size={15} />
-            Local memories
+            Memories stored
           </span>
-          <strong className="metric-value">{state.memories.length}</strong>
-          <small className="muted">Decisions and outcomes retained</small>
+          <strong className="metric-value">{cards?.memoriesStored ?? 0}</strong>
+          <small className="muted">On Walrus mainnet{cards?.memoriesWriting ? ` · ${cards.memoriesWriting} writing` : ""}</small>
+        </Panel>
+        <Panel>
+          <span className="metric-label">
+            <ListChecks size={15} />
+            Active rules
+          </span>
+          <strong className="metric-value">{cards?.activeRules ?? 0}</strong>
+          <small className="muted">Rebuilt from Walrus each session</small>
         </Panel>
         <Panel>
           <span className="metric-label">
@@ -145,112 +81,87 @@ export function LearningView() {
             Automatic decisions
           </span>
           <strong className="metric-value">
-            {total ? Math.round((automatic / total) * 100) : 0}
+            {cards?.automaticPctLastSession ?? 0}
             <small>%</small>
           </strong>
-          <small className="muted">
-            {automatic} of {total} demo requests
-          </small>
+          <small className="muted">In the last session with requests</small>
         </Panel>
         <Panel>
           <span className="metric-label">
             <ShieldCheck size={15} />
-            Attempted overspend blocked
+            Money protected
           </span>
           <strong className="metric-value">
-            {money(state.requests.reduce((v, r) => v + r.blockedAmount, 0))}
+            {money(Number(cards?.moneyProtectedTotal ?? 0))}
             <small>USDC</small>
           </strong>
-          <small className="muted">Sum of reserve shortfalls prevented</small>
+          <small className="muted">Committed funds requests would have used</small>
         </Panel>
       </div>
       <div className="learning-explanation">
-        <Badge tone="memory">Measured demo activity</Badge>
-        <p>
-          Charts use completed sessions from this browser. No seeded performance
-          history or Mainnet results are included. Repeated blocked requests are
-          counted individually.
-        </p>
+        <Badge tone="memory">Data from {sessions.length} demo {sessions.length === 1 ? "session" : "sessions"}</Badge>
+        <p>Every figure comes from real agent requests, Walrus memories and Tatum-verified vault events in this workspace. Nothing is seeded or estimated.</p>
       </div>
-      {history.length ? (
-        <>
-          <div className="charts-grid">
-            <Panel
-              title="Requests requiring review"
-              action={<Badge>{history.length} sessions</Badge>}
-            >
-              <Chart
-                values={history.map((s) => ({
-                  label: `S${s.session}`,
-                  value: s.manual,
-                }))}
-                line
-              />
-              <p className="chart-caption">
-                Requests routed to owner review, including unresolved holds.
-              </p>
-            </Panel>
-            <Panel title="Approved after review">
-              <Chart
-                values={history.map((s) => ({
-                  label: `S${s.session}`,
-                  value: s.falseHolds,
-                }))}
-              />
-              <p className="chart-caption">
-                Owner approvals after an initial hold. This does not prove the
-                original hold was incorrect.
-              </p>
-            </Panel>
-            <Panel title="Attempted overspend blocked">
-              <Chart values={cumulative} line unit="USDC" />
-              <p className="chart-caption">
-                Cumulative difference between blocked payment amounts and
-                available funds.
-              </p>
-            </Panel>
-            <Panel title="Commitment funding">
-              <div className="funding-chart">
-                {history.map((s) => (
-                  <div key={s.session}>
-                    <span>Session {s.session}</span>
-                    <div className="funding-bar">
-                      <i className="funded" style={{ flex: s.funded }} />
-                      <i
-                        className="underfunded"
-                        style={{ flex: s.underfunded }}
-                      />
-                    </div>
-                    <strong>
-                      {s.funded}
-                      <small> / {s.funded + s.underfunded}</small>
-                    </strong>
-                  </div>
-                ))}
-              </div>
-              <div className="chart-key">
-                <span>
-                  <i className="funded" />
-                  Funded or paid
-                </span>
-                <span>
-                  <i className="underfunded" />
-                  Underfunded
-                </span>
-              </div>
-              <p className="chart-caption">
-                Funding status at the close of each demo session.
-              </p>
-            </Panel>
-          </div>
-        </>
+      {rows.length ? (
+        <div className="charts-grid">
+          <Panel title="Requests needing manual review" action={<Badge>{rows.length} sessions</Badge>}>
+            <ChartBox label={rows.map((r) => `${r.name}: ${r.manual} manual reviews`).join(", ")}>
+              <LineChart data={rows} margin={{ top: 12, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke={C.grid} vertical={false} />
+                <XAxis dataKey="name" {...axis} />
+                <YAxis allowDecimals={false} {...axis} />
+                <Tooltip {...tooltipStyle} />
+                <Line type="monotone" dataKey="manual" name="Manual reviews" stroke={C.primary} strokeWidth={2.5} dot={{ r: 4 }} />
+              </LineChart>
+            </ChartBox>
+            <p className="chart-caption">{SOURCE}. Requests held for the owner, per session.</p>
+          </Panel>
+          <Panel title="False holds (held, then approved)">
+            <ChartBox label={rows.map((r) => `${r.name}: ${r.falseHolds}`).join(", ")}>
+              <BarChart data={rows} margin={{ top: 12, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke={C.grid} vertical={false} />
+                <XAxis dataKey="name" {...axis} />
+                <YAxis allowDecimals={false} {...axis} />
+                <Tooltip {...tooltipStyle} />
+                <Bar dataKey="falseHolds" name="Held, then approved" fill={C.memory} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartBox>
+            <p className="chart-caption">{SOURCE}. Legitimate requests that still needed a click.</p>
+          </Panel>
+          <Panel title="Money protected (cumulative)">
+            <ChartBox label={rows.map((r) => `${r.name}: ${r.protected.toFixed(2)} USDC`).join(", ")}>
+              <LineChart data={rows} margin={{ top: 12, right: 12, left: -10, bottom: 0 }}>
+                <CartesianGrid stroke={C.grid} vertical={false} />
+                <XAxis dataKey="name" {...axis} />
+                <YAxis {...axis} tickFormatter={(v: number) => v.toFixed(1)} />
+                <Tooltip {...tooltipStyle} formatter={(v) => `${Number(v).toFixed(2)} USDC`} />
+                <Line type="stepAfter" dataKey="protected" name="Protected" stroke={C.reserved} strokeWidth={2.5} dot={{ r: 4 }} />
+              </LineChart>
+            </ChartBox>
+            <p className="chart-caption">{SOURCE}. USDC of committed funds that requests would have cut, kept reserved.</p>
+          </Panel>
+          <Panel title="Obligations paid on time">
+            <ChartBox label={rows.map((r) => `${r.name}: ${r.onTime} on time, ${r.underfunded} underfunded`).join(", ")}>
+              <BarChart data={rows} margin={{ top: 12, right: 12, left: -18, bottom: 0 }}>
+                <CartesianGrid stroke={C.grid} vertical={false} />
+                <XAxis dataKey="name" {...axis} />
+                <YAxis allowDecimals={false} {...axis} />
+                <Tooltip {...tooltipStyle} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="onTime" name="Covered by reserve" stackId="a" fill={C.primary} />
+                <Bar dataKey="underfunded" name="Reserve short" stackId="a" fill={C.danger} radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ChartBox>
+            <p className="chart-caption">{SOURCE}. ObligationPaid events: a bill is short when its reserve did not cover it.</p>
+          </Panel>
+        </div>
       ) : (
         <Panel>
           <Empty
             title="Your first session is still in progress."
-            description="Review a request, remember a preference, and start the next session. Your real demo measurements will appear here."
+            description="Run a few tasks, remember a preference and start the next session. Real measurements appear here."
             action={
-              <Button onClick={() => act({ type: "new-session" })}>
+              <Button onClick={() => void act({ type: "new-session" })} disabled={!unlocked}>
                 Complete Session {state.session}
                 <ArrowRight size={15} />
               </Button>
@@ -258,47 +169,21 @@ export function LearningView() {
           />
         </Panel>
       )}
-      <Panel
-        title="Where your agent spends"
-        action={<Badge>All demo sessions</Badge>}
-      >
-        <div className="category-chart">
-          {categories.map((c, i) => {
-            const spend = state.requests
-              .filter((r) => r.status === "approved" && r.category === c)
-              .reduce((v, r) => v + r.amount, 0);
-            const max = Math.max(
-              1,
-              ...categories.map((k) =>
-                state.requests
-                  .filter((r) => r.status === "approved" && r.category === k)
-                  .reduce((v, r) => v + r.amount, 0),
-              ),
-            );
-            return (
-              <div key={c}>
-                <span>{c}</span>
-                <div className="category-track">
-                  <i
-                    className={`reserve-${i}`}
-                    style={{ width: `${(spend / max) * 100}%` }}
-                  />
-                </div>
-                <strong>
-                  {money(spend)} <small>USDC</small>
-                </strong>
-              </div>
-            );
-          })}
-        </div>
+      <Panel title="Agent spend by category" action={<Badge>All sessions</Badge>}>
+        <ChartBox label={spend.map((s) => `${s.name}: ${s.usdc.toFixed(2)} USDC`).join(", ")}>
+          <BarChart data={spend} layout="vertical" margin={{ top: 4, right: 24, left: 16, bottom: 0 }}>
+            <CartesianGrid stroke={C.grid} horizontal={false} />
+            <XAxis type="number" {...axis} tickFormatter={(v: number) => v.toFixed(2)} />
+            <YAxis type="category" dataKey="name" {...axis} width={80} />
+            <Tooltip {...tooltipStyle} formatter={(v) => `${Number(v).toFixed(2)} USDC`} />
+            <Bar dataKey="usdc" name="Spent" fill={C.available} stroke={C.primary} radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ChartBox>
+        <p className="chart-caption">{SOURCE}. Where free money went (approved and paid requests).</p>
       </Panel>
       <div className="notice notice-neutral">
         <ChartNoAxesCombined size={19} />
-        <p>
-          Fewer approval prompts are useful only when legitimate payments still
-          succeed and commitments remain protected. This demo records both
-          outcomes; it does not establish production effectiveness.
-        </p>
+        <p>Fewer approval prompts are useful only when legitimate payments still succeed and commitments stay protected. Both are measured here, from this workspace only.</p>
       </div>
     </>
   );

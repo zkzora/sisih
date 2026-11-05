@@ -1,0 +1,12 @@
+**/node_modules
+**/.next
+**/.vercel
+.git
+.env
+.env.*
+!.env.example
+server/data
+contracts/**/build
+docs
+web/*
+!web/package.json

@@ -100,7 +100,8 @@ export async function advanceCycle(): Promise<CycleResult> {
 function nextNamespace(): string {
   const n = Number(kvRead("memwal_namespace_n") ?? (namespace().match(/-(\d+)$/)?.[1] ?? "1")) + 1;
   kvSet("memwal_namespace_n", String(n));
-  return `sisih-demo-${n}`;
+  // Prefix keeps hosted and local runs in separate namespaces (both share the testnet vault).
+  return `${env("MEMWAL_NAMESPACE_PREFIX") ?? "sisih-demo"}-${n}`;
 }
 
 /**
