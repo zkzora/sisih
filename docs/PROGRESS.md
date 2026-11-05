@@ -82,6 +82,20 @@ Walrus Memory fields (what the UI can show):
   owner is the MemWal account owner wallet; no need to show it.
 - Writes take ~20 s, so the "Writing" chip state is real and must be designed for.
 
+## Notes for Phase 2 (recorded at the start of Phase 1)
+
+- The activity feed is built from our own tx_log of digests plus the events of each
+  transaction, read through Tatum with gRPC `GetTransaction` + `include: { events: true }`
+  (`ListEvents` is blocked). Every owner-signed transaction from the browser must post its
+  digest to the server, or it never appears in the feed.
+- Rules created in a session apply immediately from the local cache. `start_session` waits
+  for all pending remember jobs (about 21 s each) to finish before it reloads rules from
+  Walrus recall, so a rule written seconds earlier is not lost.
+- Payees and merchants may hold funds as coin objects or address balances. Always read
+  `getBalance().balance` (coins + address balance) and sweep with `coinWithBalance`.
+- The vault pays payees, the agent and the owner as Coin objects (testable with
+  test_scenario); x402 merchants receive into address balances.
+
 ## Decisions
 
 - Product name is **Sisih** (spec was drafted as BillFirst). Move module `sisih::vault`,

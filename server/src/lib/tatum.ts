@@ -137,6 +137,44 @@ export async function signAndExecute(tx: Transaction, signer: Keypair, network?:
   return { digest: t.digest, success: t.status.success, error: t.status.success ? null : JSON.stringify(t.status.error) };
 }
 
+export interface CreatedObject {
+  objectId: string;
+  type: string;
+  /** "package" for a published package, otherwise the owner kind. */
+  owner: string;
+}
+
+export interface DetailedTx extends ExecutedTx {
+  created: CreatedObject[];
+  /** computation + storage - rebate, in MIST */
+  gasUsedMist: bigint;
+}
+
+/** Like signAndExecute, but also returns created objects (with types) and gas used. */
+export async function signAndExecuteDetailed(tx: Transaction, signer: Keypair, network?: SuiNetwork): Promise<DetailedTx> {
+  const res = await suiClient(network).signAndExecuteTransaction({
+    transaction: tx,
+    signer,
+    include: { effects: true, objectTypes: true },
+  });
+  const t = res.Transaction ?? res.FailedTransaction;
+  const created = t.effects.changedObjects
+    .filter((c) => c.idOperation === "Created")
+    .map((c) => ({
+      objectId: c.objectId,
+      type: c.outputState === "PackageWrite" ? "package" : (t.objectTypes[c.objectId] ?? "unknown"),
+      owner: c.outputState === "PackageWrite" ? "package" : (c.outputOwner?.$kind ?? "unknown"),
+    }));
+  const g = t.effects.gasUsed;
+  return {
+    digest: t.digest,
+    success: t.status.success,
+    error: t.status.success ? null : JSON.stringify(t.status.error),
+    created,
+    gasUsedMist: BigInt(g.computationCost) + BigInt(g.storageCost) - BigInt(g.storageRebate),
+  };
+}
+
 export interface VerifiedTx {
   digest: string;
   success: boolean;
