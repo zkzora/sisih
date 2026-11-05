@@ -4,9 +4,9 @@
  *   pnpm tsx scripts/recycle.ts            # includes the agent
  *   pnpm tsx scripts/recycle.ts --no-agent
  */
-import { formatUsdc } from "../src/lib/env.js";
-import { address } from "../src/lib/wallets.js";
-import { recycle, usdcBalance } from "../src/demo/recycle.js";
+import { formatUsdc } from "../src/lib/env";
+import { address } from "../src/lib/wallets";
+import { recycle, usdcBalance } from "../src/demo/recycle";
 
 const before = await usdcBalance(address("operator"));
 const records = await recycle({ includeAgent: !process.argv.includes("--no-agent") });

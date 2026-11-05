@@ -2,7 +2,8 @@
  * Live API client and response types for the Sisih server (server/src/api/app.ts).
  * Amounts arrive as base-unit strings; convert with toUnits() only at the display edge.
  */
-export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8787").replace(/\/$/, "");
+/** Same origin by default (the server is mounted at /api in this Next app); override for a separate server. */
+export const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
 export const TOKEN_KEY = "sisih-demo-token";
 
 export function demoToken(): string | null {

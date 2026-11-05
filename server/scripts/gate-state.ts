@@ -2,11 +2,11 @@
  * Phase 2 gate: GET /api/state must equal an independent read of the Vault through Tatum.
  * Compares totals, every obligation (target, reserve, due) and the agent policy.
  */
-import { parseVault } from "../src/chain/vault.js";
-import { explorerObjectUrl } from "../src/chain/activity.js";
-import { vaultId } from "../src/chain/sisih.js";
-import { formatUsdc } from "../src/lib/env.js";
-import { suiClient } from "../src/lib/tatum.js";
+import { parseVault } from "../src/chain/vault";
+import { explorerObjectUrl } from "../src/chain/activity";
+import { vaultId } from "../src/chain/sisih";
+import { formatUsdc } from "../src/lib/env";
+import { suiClient } from "../src/lib/tatum";
 
 const API = process.env.API_URL ?? "http://127.0.0.1:8787";
 const api = (await (await fetch(`${API}/api/state`)).json()) as { vault: Record<string, unknown>; readAtMs: number; verifiedVia: string };

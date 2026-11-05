@@ -5,7 +5,7 @@
  */
 import { timingSafeEqual } from "node:crypto";
 import type { Context, MiddlewareHandler } from "hono";
-import { env } from "../lib/env.js";
+import { env } from "../lib/env";
 
 export const DEMO_TOKEN_HEADER = "x-demo-token";
 

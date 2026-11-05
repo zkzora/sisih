@@ -10,11 +10,11 @@ import { execFileSync } from "node:child_process";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Transaction } from "@mysten/sui/transactions";
-import { target, usdcType } from "../src/chain/sisih.js";
-import { env, suiNetwork } from "../src/lib/env.js";
-import { upsertEnv } from "../src/lib/env-file.js";
-import { setGas, signAndExecuteDetailed, verifyTransaction, type CreatedObject } from "../src/lib/tatum.js";
-import { address, keypair } from "../src/lib/wallets.js";
+import { target, usdcType } from "../src/chain/sisih";
+import { env, suiNetwork } from "../src/lib/env";
+import { upsertEnv } from "../src/lib/env-file";
+import { setGas, signAndExecuteDetailed, verifyTransaction, type CreatedObject } from "../src/lib/tatum";
+import { address, keypair } from "../src/lib/wallets";
 
 const network = suiNetwork();
 if (env("SISIH_PACKAGE_ID") && !process.argv.includes("--force")) {

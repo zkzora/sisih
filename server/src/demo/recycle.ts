@@ -8,10 +8,10 @@
 import type { Keypair } from "@mysten/sui/cryptography";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import { usdcType } from "../chain/sisih.js";
-import { env, formatUsdc, suiNetwork } from "../lib/env.js";
-import { setGas, signAndExecute, suiClient, verifyTransaction } from "../lib/tatum.js";
-import { keypair } from "../lib/wallets.js";
+import { usdcType } from "../chain/sisih";
+import { env, formatUsdc, suiNetwork } from "../lib/env";
+import { setGas, signAndExecute, suiClient, verifyTransaction } from "../lib/tatum";
+import { keypair } from "../lib/wallets";
 
 export interface Holder {
   label: string;

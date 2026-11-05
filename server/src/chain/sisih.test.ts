@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { usdc, vaultAbortName } from "./sisih.js";
+import { usdc, vaultAbortName } from "./sisih";
 
 describe("vaultAbortName", () => {
   it("reads the quoted constant from the node message", () => {

@@ -4,7 +4,7 @@
  * Writes to the "sisih-spike" namespace so demo namespaces start with zero memories.
  */
 import { MemWal } from "@mysten-incubation/memwal";
-import { env, requireEnv } from "../src/lib/env.js";
+import { env, requireEnv } from "../src/lib/env";
 
 const RELAYER = "https://relayer.memory.walrus.xyz";
 const namespace = env("SPIKE_MEMWAL_NAMESPACE") ?? "sisih-spike";

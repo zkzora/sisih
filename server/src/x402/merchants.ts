@@ -6,14 +6,17 @@
 import type { PaymentRequired, PaymentRequirements } from "@x402/core/types";
 import { decodePaymentSignatureHeader, encodePaymentRequiredHeader, encodePaymentResponseHeader } from "@x402/core/http";
 import { Hono } from "hono";
-import { usdcType } from "../chain/sisih.js";
-import { recordTx } from "../chain/vault.js";
-import { publish } from "../lib/bus.js";
-import { MERCHANTS, merchantAddress, type Merchant } from "../merchants/registry.js";
-import { x402Facilitator, x402Network } from "./facilitator.js";
+import { usdcType } from "../chain/sisih";
+import { recordTx } from "../chain/vault";
+import { publish } from "../lib/bus";
+import { MERCHANTS, merchantAddress, type Merchant } from "../merchants/registry";
+import { x402Facilitator, x402Network } from "./facilitator";
 
 export function baseUrl(): string {
-  return process.env.PUBLIC_BASE_URL ?? `http://127.0.0.1:${process.env.PORT ?? 8787}`;
+  // Hosted: the public deployment URL (the agent calls the demo merchants over real HTTP).
+  if (process.env.PUBLIC_BASE_URL) return process.env.PUBLIC_BASE_URL.replace(/\/$/, "");
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  return `http://127.0.0.1:${process.env.PORT ?? 8787}`;
 }
 
 export function requirementsFor(m: Merchant): PaymentRequirements {

@@ -1,22 +1,24 @@
 /**
  * Walrus Memory (always mainnet). remember() is an async job: a row is "writing" until
  * waitForRememberJob resolves, then "stored" with its blob_id, or "failed" (retryable).
- * Decisions never wait on any of this.
+ * The row in Postgres is the job state, so any instance can finish a write another instance
+ * started (serverless). Decisions never wait on any of this.
  */
 import { randomUUID } from "node:crypto";
 import { MemWal, type RecallResult } from "@mysten-incubation/memwal";
-import { eq } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
-import type { Category, RecalledMemory, Rule } from "../domain/types.js";
-import { publish } from "../lib/bus.js";
-import { env, formatUsdc, requireEnv } from "../lib/env.js";
-import { parseMemory, serializeMemory, type MemoryType } from "./format.js";
+import { and, eq } from "drizzle-orm";
+import { db, schema } from "../db/index";
+import type { Category, RecalledMemory, Rule } from "../domain/types";
+import { background } from "../lib/background";
+import { publish } from "../lib/bus";
+import { env, formatUsdc, requireEnv } from "../lib/env";
+import { parseMemory, serializeMemory, type MemoryType } from "./format";
 
 export const RELAYER_URL = "https://relayer.memory.walrus.xyz";
 
 /** Active namespace: kv override (set by demo reset) or MEMWAL_NAMESPACE. */
-export function namespace(): string {
-  const row = db().select().from(schema.kv).where(eq(schema.kv.key, "memwal_namespace")).get();
+export async function namespace(): Promise<string> {
+  const [row] = await db().select().from(schema.kv).where(eq(schema.kv.key, "memwal_namespace"));
   return row?.value ?? env("MEMWAL_NAMESPACE") ?? "sisih-demo-1";
 }
 
@@ -37,8 +39,6 @@ export async function delegatePublicKey(): Promise<string> {
 
 // --- remember -------------------------------------------------------------------------
 
-const pending = new Map<string, Promise<void>>();
-
 export interface RememberOptions {
   session: number;
   usedIn?: string[];
@@ -53,57 +53,94 @@ export interface MemoryRow {
   namespace: string;
 }
 
-/** Queue a memory. Returns immediately with the "writing" row; the job runs in the background. */
-export function remember(type: MemoryType, sentence: string, payload: object, opts: RememberOptions): MemoryRow {
+const local = new Map<string, Promise<void>>();
+
+/** Queue a memory. Returns once the "writing" row exists; the Walrus job runs in the background. */
+export async function remember(type: MemoryType, sentence: string, payload: object, opts: RememberOptions): Promise<MemoryRow> {
   const id = `mem-${randomUUID().slice(0, 12)}`;
   const text = serializeMemory(type, sentence, payload);
-  const ns = namespace();
-  const now = Date.now();
-  db().insert(schema.memories)
-    .values({ id, type, text, payload: JSON.stringify(payload, (_k, v) => (typeof v === "bigint" ? v.toString() : v)), session: opts.session, status: "writing", namespace: ns, usedInDecisions: JSON.stringify(opts.usedIn ?? []), createdAt: now })
-    .run();
+  const ns = await namespace();
+  await db().insert(schema.memories).values({
+    id,
+    type,
+    text,
+    payload: JSON.stringify(payload, (_k, v) => (typeof v === "bigint" ? v.toString() : v)),
+    session: opts.session,
+    status: "writing",
+    namespace: ns,
+    usedInDecisions: JSON.stringify(opts.usedIn ?? []),
+    createdAt: Date.now(),
+  });
   publish("memory.writing", { id, type, text, namespace: ns });
   startJob(id, text, ns);
   return { id, type, text, status: "writing", blobId: null, namespace: ns };
 }
 
-function startJob(id: string, text: string, ns: string): void {
+async function markStored(id: string, blobId: string, jobId: string, ns: string, startedAt: number) {
+  await db().update(schema.memories).set({ status: "stored", blobId, storedAt: Date.now(), error: null }).where(eq(schema.memories.id, id));
+  publish("memory.stored", { id, blobId, jobId, namespace: ns, ms: Date.now() - startedAt });
+}
+
+async function markFailed(id: string, err: unknown) {
+  const message = ((err as Error)?.message ?? String(err)).slice(0, 300);
+  await db().update(schema.memories).set({ status: "failed", error: message }).where(eq(schema.memories.id, id));
+  publish("memory.failed", { id, error: message });
+}
+
+/** Submit (if needed) and wait for one memory job; idempotent per row. */
+function startJob(id: string, text: string, ns: string, existingJobId?: string | null, startedAt = Date.now()): Promise<void> {
+  const running = local.get(id);
+  if (running) return running;
   const job = (async () => {
-    const t0 = Date.now();
     try {
-      const accepted = await memwal().remember(text, ns);
-      db().update(schema.memories).set({ jobId: accepted.job_id }).where(eq(schema.memories.id, id)).run();
-      const done = await memwal().waitForRememberJob(accepted.job_id, { pollIntervalMs: 2000, timeoutMs: 180_000 });
-      db().update(schema.memories).set({ status: "stored", blobId: done.blob_id, storedAt: Date.now(), error: null }).where(eq(schema.memories.id, id)).run();
-      publish("memory.stored", { id, blobId: done.blob_id, jobId: accepted.job_id, namespace: ns, ms: Date.now() - t0 });
+      let jobId = existingJobId ?? null;
+      if (!jobId) {
+        const accepted = await memwal().remember(text, ns);
+        jobId = accepted.job_id;
+        await db().update(schema.memories).set({ jobId }).where(eq(schema.memories.id, id));
+      }
+      const done = await memwal().waitForRememberJob(jobId, { pollIntervalMs: 2000, timeoutMs: 180_000 });
+      await markStored(id, done.blob_id, jobId, ns, startedAt);
     } catch (err) {
-      const message = (err as Error).message.slice(0, 300);
-      db().update(schema.memories).set({ status: "failed", error: message }).where(eq(schema.memories.id, id)).run();
-      publish("memory.failed", { id, error: message });
+      await markFailed(id, err);
     }
-  })().finally(() => pending.delete(id));
-  pending.set(id, job);
+  })().finally(() => local.delete(id));
+  local.set(id, job);
+  background(job); // serverless: keep the function alive until the write settles
+  return job;
 }
 
 /** Re-run a failed write with the same text. */
-export function retryMemory(id: string): boolean {
-  const row = db().select().from(schema.memories).where(eq(schema.memories.id, id)).get();
+export async function retryMemory(id: string): Promise<boolean> {
+  const [row] = await db().select().from(schema.memories).where(eq(schema.memories.id, id));
   if (!row || row.status !== "failed") return false;
-  db().update(schema.memories).set({ status: "writing", error: null, jobId: null }).where(eq(schema.memories.id, id)).run();
+  await db().update(schema.memories).set({ status: "writing", error: null, jobId: null }).where(eq(schema.memories.id, id));
   publish("memory.writing", { id, type: row.type, text: row.text, namespace: row.namespace, retry: true });
   startJob(id, row.text, row.namespace);
   return true;
 }
 
-/** Wait until every queued remember job has finished (start_session uses this). */
+/**
+ * Wait until every memory still "writing" in the active namespace has settled (start_session).
+ * Rows started by another instance are resolved here from their Walrus job id.
+ */
 export async function waitForPendingMemories(): Promise<number> {
-  const jobs = [...pending.values()];
-  await Promise.allSettled(jobs);
-  return jobs.length;
+  const ns = await namespace();
+  const rows = await db().select().from(schema.memories).where(and(eq(schema.memories.status, "writing"), eq(schema.memories.namespace, ns)));
+  await Promise.allSettled(rows.map((r) => startJob(r.id, r.text, r.namespace, r.jobId, r.createdAt)));
+  return rows.length;
 }
 
-export function pendingMemoryCount(): number {
-  return pending.size;
+/** Finish writes whose instance went away (called on reads; cheap when nothing is pending). */
+export async function reconcilePendingMemories(olderThanMs = 15_000): Promise<number> {
+  const rows = await db().select().from(schema.memories).where(eq(schema.memories.status, "writing"));
+  const stale = rows.filter((r) => Date.now() - r.createdAt > olderThanMs && !local.has(r.id));
+  for (const r of stale) startJob(r.id, r.text, r.namespace, r.jobId, r.createdAt);
+  return stale.length;
+}
+
+export async function pendingMemoryCount(): Promise<number> {
+  return (await db().select({ id: schema.memories.id }).from(schema.memories).where(eq(schema.memories.status, "writing"))).length;
 }
 
 // --- recall ---------------------------------------------------------------------------
@@ -114,17 +151,16 @@ export interface TimedRecall {
   results: RecalledMemory[];
 }
 
-function toRecalled(r: RecallResult): RecalledMemory[] {
-  const byBlob = new Map(
-    db().select({ id: schema.memories.id, blobId: schema.memories.blobId }).from(schema.memories).all().filter((m) => m.blobId).map((m) => [m.blobId!, m.id]),
-  );
+async function toRecalled(r: RecallResult): Promise<RecalledMemory[]> {
+  const rows = await db().select({ id: schema.memories.id, blobId: schema.memories.blobId }).from(schema.memories);
+  const byBlob = new Map(rows.filter((m) => m.blobId).map((m) => [m.blobId!, m.id]));
   return r.results.map((x) => ({ memoryId: byBlob.get(x.blob_id) ?? null, blobId: x.blob_id, text: x.text, distance: x.distance }));
 }
 
 export async function recall(query: string, limit = 5): Promise<TimedRecall> {
   const t0 = Date.now();
-  const r = await memwal().recall({ query, limit, namespace: namespace() });
-  return { query, ms: Date.now() - t0, results: toRecalled(r) };
+  const r = await memwal().recall({ query, limit, namespace: await namespace() });
+  return { query, ms: Date.now() - t0, results: await toRecalled(r) };
 }
 
 /** Recall context for a payment request. Called in parallel with the decision, never awaited by it. */
@@ -172,7 +208,7 @@ const isRuleText = (t: string) => t.startsWith("[sisih:v1:rule]") || t.startsWit
  * so a truncated result is visible.
  */
 export async function loadRules(opts: { namespace?: string; limit?: number } = {}): Promise<LoadedRules> {
-  const ns = opts.namespace ?? namespace();
+  const ns = opts.namespace ?? (await namespace());
   const limit = opts.limit ?? RULE_RECALL_LIMIT;
   const t0 = Date.now();
   const queries = [

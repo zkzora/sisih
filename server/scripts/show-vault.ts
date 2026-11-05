@@ -2,9 +2,9 @@
  * Read the Vault object through Tatum and print total / committed / free and each obligation.
  * Phase 2 lifts the parsing into server/src/chain/vault.ts.
  */
-import { vaultId } from "../src/chain/sisih.js";
-import { formatUsdc, suiNetwork } from "../src/lib/env.js";
-import { suiClient } from "../src/lib/tatum.js";
+import { vaultId } from "../src/chain/sisih";
+import { formatUsdc, suiNetwork } from "../src/lib/env";
+import { suiClient } from "../src/lib/tatum";
 
 type Json = Record<string, unknown>;
 const num = (v: unknown): bigint => {

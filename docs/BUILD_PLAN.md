@@ -309,7 +309,7 @@ Read CLAUDE.md, docs/SPEC.md (demo flow and sample data), docs/PROGRESS.md
    - POST /api/demo/run-task { scenario: cheap_data | new_merchant_search | expensive_report }
    - POST /api/demo/advance-cycle: deposit simulated income (17.00 USDC, labeled
      simulated), pay every due obligation (usage bills scripted per cycle in
-     server/demo/bills.json, cycle 1 Inference API = 6.80), then fund_reserves.
+     server/src/demo/bills.ts, cycle 1 Inference API = 6.80), then fund_reserves.
      If nothing is due yet, return the seconds until the next due time.
    - POST /api/demo/new-session
    - POST /api/demo/reset (testnet only): emergency_withdraw_all, re-seed the vault,

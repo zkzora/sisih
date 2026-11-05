@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { describe, expect, it, beforeEach } from "vitest";
-import { RateLimiter, demoGuard, tokenMatches } from "./guard.js";
+import { RateLimiter, demoGuard, tokenMatches } from "./guard";
 
 describe("tokenMatches", () => {
   it("requires the exact token when one is configured", () => {

@@ -6,9 +6,9 @@
 import { fromBase64 } from "@mysten/sui/utils";
 import { createSuiClientRegistry, toFacilitatorSuiSigner, type SuiClientRegistry } from "@tentaclepay/sui-x402";
 import { ExactSuiScheme as ExactSuiFacilitatorScheme } from "@tentaclepay/sui-x402/exact/facilitator";
-import { suiNetwork } from "../lib/env.js";
-import { suiClient } from "../lib/tatum.js";
-import { keypair } from "../lib/wallets.js";
+import { suiNetwork } from "../lib/env";
+import { suiClient } from "../lib/tatum";
+import { keypair } from "../lib/wallets";
 
 export type X402Network = "sui:testnet" | "sui:mainnet";
 

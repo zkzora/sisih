@@ -3,7 +3,7 @@
  * for owner-signed transactions), measure the Tatum calls each one costs, and print the
  * activity feed with verification status.
  */
-import { formatUsdc } from "../src/lib/env.js";
+import { formatUsdc } from "../src/lib/env";
 
 const API = process.env.API_URL ?? "http://127.0.0.1:8787";
 const DIGESTS: [string, string][] = [

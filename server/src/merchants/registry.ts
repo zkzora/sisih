@@ -2,8 +2,8 @@
  * Demo merchants (labeled demo everywhere). The category always comes from this registry,
  * never from the agent, so an agent cannot relabel a purchase to match a rule.
  */
-import { env } from "../lib/env.js";
-import type { Category } from "../domain/types.js";
+import { env } from "../lib/env";
+import type { Category } from "../domain/types";
 
 export interface Merchant {
   slug: "datamart" | "searchbox" | "reportlab";

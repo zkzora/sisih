@@ -5,10 +5,10 @@
  * abort has a digest as evidence.
  */
 import { Inputs, Transaction } from "@mysten/sui/transactions";
-import { CLOCK_ID, vaultAbortName as abortName, operatorCapId, target, usdc, usdcType, vaultId } from "../src/chain/sisih.js";
-import { formatUsdc } from "../src/lib/env.js";
-import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction } from "../src/lib/tatum.js";
-import { address, keypair } from "../src/lib/wallets.js";
+import { CLOCK_ID, vaultAbortName as abortName, operatorCapId, target, usdc, usdcType, vaultId } from "../src/chain/sisih";
+import { formatUsdc } from "../src/lib/env";
+import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction } from "../src/lib/tatum";
+import { address, keypair } from "../src/lib/wallets";
 
 const operator = keypair("operator");
 const agent = address("agent");

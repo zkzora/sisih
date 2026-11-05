@@ -2,8 +2,8 @@
  * Reserve suggestions. When a usage bill exceeds its target, suggest a new target: the bill
  * rounded up to the next 0.50 USDC, raised to the largest past bill recalled from memory.
  */
-import { formatUsdc } from "../lib/env.js";
-import { roundUp } from "./composer.js";
+import { formatUsdc } from "../lib/env";
+import { roundUp } from "./composer";
 
 export interface SuggestionDraft {
   suggestedTarget: bigint;

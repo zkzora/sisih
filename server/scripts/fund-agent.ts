@@ -6,9 +6,9 @@
  * USDC sits in coin objects or in its address balance.
  */
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
-import { formatUsdc, requireEnv, suiNetwork } from "../src/lib/env.js";
-import { setGas, signAndExecute, suiClient, verifyTransaction } from "../src/lib/tatum.js";
-import { address, keypair } from "../src/lib/wallets.js";
+import { formatUsdc, requireEnv, suiNetwork } from "../src/lib/env";
+import { setGas, signAndExecute, suiClient, verifyTransaction } from "../src/lib/tatum";
+import { address, keypair } from "../src/lib/wallets";
 
 const [mode = "coin", amountArg = "0.01"] = process.argv.slice(2);
 if (mode !== "coin" && mode !== "address") throw new Error("mode must be coin or address");

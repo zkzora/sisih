@@ -18,9 +18,9 @@ import {
 } from "@x402/core/http";
 import type { PaymentRequired, PaymentRequirements } from "@x402/core/types";
 import { Hono } from "hono";
-import { formatUsdc, requireEnv } from "../src/lib/env.js";
-import { suiClient, verifyTransaction } from "../src/lib/tatum.js";
-import { keypair } from "../src/lib/wallets.js";
+import { formatUsdc, requireEnv } from "../src/lib/env";
+import { suiClient, verifyTransaction } from "../src/lib/tatum";
+import { keypair } from "../src/lib/wallets";
 
 const NETWORK = "sui:testnet" as const;
 const PRICE = 10_000n; // 0.01 USDC in base units

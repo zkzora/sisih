@@ -1,21 +1,22 @@
 /**
  * Agent payment requests: decide from caches, persist, notify, remember, pay.
- * The decision never waits on Walrus; recall runs in parallel and is attached when it lands.
+ * The decision never waits on Walrus; recall runs in the background and is attached when it lands.
  */
 import { randomUUID } from "node:crypto";
 import { desc, eq } from "drizzle-orm";
-import { cachedVault, vaultState } from "../chain/vault.js";
-import { db, schema } from "../db/index.js";
-import type { Category, PaymentRequestInput } from "../domain/types.js";
-import { jsonSafe, publish } from "../lib/bus.js";
-import { formatUsdc } from "../lib/env.js";
-import { recall, recallQueryFor, remember } from "../memory/memwal.js";
-import { findMerchant, CATEGORY_LABEL } from "../merchants/registry.js";
-import { draftRule, ruleSentence, type RuleFields } from "../policy/composer.js";
-import { decide, hardLimit, type EngineResult } from "../policy/engine.js";
-import { attachInvoice, paymentExecutor } from "./payments.js";
-import type { Invoice } from "../x402/agentPay.js";
-import { addLocalRule, cachedRules, currentSession, defaultThreshold, knownMerchants, kvSet, markRulesUsed } from "./state.js";
+import { vaultState } from "../chain/vault";
+import { db, schema } from "../db/index";
+import type { Category, PaymentRequestInput } from "../domain/types";
+import { background } from "../lib/background";
+import { jsonSafe, publish } from "../lib/bus";
+import { formatUsdc } from "../lib/env";
+import { recall, recallQueryFor, remember } from "../memory/memwal";
+import { findMerchant, CATEGORY_LABEL } from "../merchants/registry";
+import { draftRule, ruleSentence, type RuleFields } from "../policy/composer";
+import { decide, hardLimit, type EngineResult } from "../policy/engine";
+import type { Invoice } from "../x402/agentPay";
+import { invoiceReceived, paymentExecutor, serializeInvoice } from "./payments";
+import { addLocalRule, cachedRules, currentSession, defaultThreshold, knownMerchants, kvSet, markRulesUsed } from "./state";
 
 export class ApiError extends Error {
   constructor(public status: 400 | 404 | 409, message: string, public code = "bad_request") {
@@ -58,14 +59,14 @@ export function requestView(r: RequestRow) {
   };
 }
 
-export function getRequest(id: string): RequestRow {
-  const r = db().select().from(schema.requests).where(eq(schema.requests.id, id)).get();
+export async function getRequest(id: string): Promise<RequestRow> {
+  const [r] = await db().select().from(schema.requests).where(eq(schema.requests.id, id));
   if (!r) throw new ApiError(404, `No request ${id}`, "not_found");
   return r;
 }
 
-export function listRequests(limit = 200): RequestRow[] {
-  return db().select().from(schema.requests).orderBy(desc(schema.requests.createdAt)).limit(limit).all();
+export async function listRequests(limit = 200): Promise<RequestRow[]> {
+  return db().select().from(schema.requests).orderBy(desc(schema.requests.createdAt)).limit(limit);
 }
 
 function statusFor(result: EngineResult): RequestStatus {
@@ -85,22 +86,23 @@ function writeDecisionMemory(r: RequestRow, kind: string, decision: string, by: 
   );
 }
 
-/** Kick off recall for a request without blocking anything; attach results when they arrive. */
+/** Recall for a request in the background; attached to the row when it lands. */
 function attachRecall(id: string, req: PaymentRequestInput): void {
   const query = recallQueryFor(req);
-  db().update(schema.requests).set({ recallQuery: query }).where(eq(schema.requests.id, id)).run();
   const t0 = Date.now();
-  recall(query, 5)
-    .then((res) => {
-      db().update(schema.requests).set({ recallResults: JSON.stringify(res.results), recallMs: res.ms }).where(eq(schema.requests.id, id)).run();
-      kvSet("last_recall", JSON.stringify({ requestId: id, query, ms: res.ms, results: res.results, at: Date.now() }));
+  background(async () => {
+    await db().update(schema.requests).set({ recallQuery: query }).where(eq(schema.requests.id, id));
+    try {
+      const res = await recall(query, 5);
+      await db().update(schema.requests).set({ recallResults: JSON.stringify(res.results), recallMs: res.ms }).where(eq(schema.requests.id, id));
+      await kvSet("last_recall", JSON.stringify({ requestId: id, query, ms: res.ms, results: res.results, at: Date.now() }));
       publish("request.recall", { id, query, ms: res.ms, results: res.results });
-    })
-    .catch((err) => {
+    } catch (err) {
       const message = (err as Error).message.slice(0, 200);
-      db().update(schema.requests).set({ recallError: message, recallMs: Date.now() - t0 }).where(eq(schema.requests.id, id)).run();
+      await db().update(schema.requests).set({ recallError: message, recallMs: Date.now() - t0 }).where(eq(schema.requests.id, id));
       publish("request.recall_failed", { id, error: message });
-    });
+    }
+  });
 }
 
 export interface SubmitInput {
@@ -119,48 +121,45 @@ export async function submitRequest(input: SubmitInput) {
   if (amount <= 0n) throw new ApiError(400, "Amount must be positive");
   const req: PaymentRequestInput = { merchant: m.name, item: input.item ?? m.item, category: m.category, amount, taskContext: input.taskContext };
 
-  const vault = cachedVault() ?? (await vaultState());
+  const [vault, rules, known, threshold, session] = await Promise.all([vaultState(), cachedRules(), knownMerchants(), defaultThreshold(), currentSession()]);
   const nowMs = Date.now();
-  const result = decide({ request: req, vault, rules: cachedRules(), knownMerchants: knownMerchants(), defaults: { autoAllowUpTo: defaultThreshold() }, nowMs });
+  const result = decide({ request: req, vault, rules, knownMerchants: known, defaults: { autoAllowUpTo: threshold }, nowMs });
 
   const id = `req-${randomUUID().slice(0, 12)}`;
-  const session = currentSession();
-  const status = statusFor(result);
-  db().insert(schema.requests)
-    .values({
-      id,
-      session,
-      merchant: req.merchant,
-      item: req.item,
-      category: req.category,
-      amount: amount.toString(),
-      taskContext: req.taskContext ?? null,
-      action: result.action,
-      code: result.code,
-      status,
-      reasons: JSON.stringify(result.reasons),
-      cutsReserveBy: result.cutsReserveBy.toString(),
-      allowDisabled: result.allowDisabled,
-      matchedRuleIds: JSON.stringify(result.matchedRuleIds),
-      simulation: JSON.stringify(jsonSafe(result.simulation)),
-      paymentStatus: "none",
-      decidedAt: result.action === "hold" ? null : nowMs,
-      createdAt: nowMs,
-    })
-    .run();
-  if (input.invoice) attachInvoice(id, input.invoice);
-  attachRecall(id, req); // parallel, never awaited
+  await db().insert(schema.requests).values({
+    id,
+    session,
+    merchant: req.merchant,
+    item: req.item,
+    category: req.category,
+    amount: amount.toString(),
+    taskContext: req.taskContext ?? null,
+    action: result.action,
+    code: result.code,
+    status: statusFor(result),
+    reasons: JSON.stringify(result.reasons),
+    cutsReserveBy: result.cutsReserveBy.toString(),
+    allowDisabled: result.allowDisabled,
+    matchedRuleIds: JSON.stringify(result.matchedRuleIds),
+    simulation: JSON.stringify(jsonSafe(result.simulation)),
+    invoice: input.invoice ? serializeInvoice(input.invoice) : null,
+    paymentStatus: "none",
+    decidedAt: result.action === "hold" ? null : nowMs,
+    createdAt: nowMs,
+  });
+  if (input.invoice) invoiceReceived(id, input.invoice);
+  attachRecall(id, req); // background, never awaited by the decision
 
-  const row = getRequest(id);
+  const row = await getRequest(id);
   publish("request.created", requestView(row));
 
   if (result.action !== "hold") {
-    db().insert(schema.decisions).values({ requestId: id, kind: result.action, ruleId: result.matchedRuleIds[0] ?? null, at: nowMs }).run();
-    markRulesUsed(result.matchedRuleIds);
-    writeDecisionMemory(row, result.action, result.action === "auto_allow" ? "approved" : "denied", "automatically", result.reasons[0] ?? "", result.matchedRuleIds[0]);
+    await db().insert(schema.decisions).values({ requestId: id, kind: result.action, ruleId: result.matchedRuleIds[0] ?? null, at: nowMs });
+    await markRulesUsed(result.matchedRuleIds);
+    await writeDecisionMemory(row, result.action, result.action === "auto_allow" ? "approved" : "denied", "automatically", result.reasons[0] ?? "", result.matchedRuleIds[0]);
     if (result.action === "auto_allow") await paymentExecutor().execute({ requestId: id, merchant: req.merchant, amount });
   }
-  return requestView(getRequest(id));
+  return requestView(await getRequest(id));
 }
 
 export type OwnerDecision = "approve_once" | "approve_and_remember" | "deny" | "deny_and_remember";
@@ -178,23 +177,22 @@ function rowInput(r: RequestRow): PaymentRequestInput {
 }
 
 /** Prefilled rule fields + sentence for the composer. */
-export function ruleDraft(id: string, action?: "allow" | "deny") {
-  const r = getRequest(id);
+export async function ruleDraft(id: string, action?: "allow" | "deny") {
+  const r = await getRequest(id);
   const act = action ?? (r.code === "would_cut_reserve" ? "deny" : "allow");
   const fields = draftRule(rowInput(r), act, Date.now());
   return { ...fields, maxAmount: fields.maxAmount.toString(), sentence: ruleSentence(fields) };
 }
 
 export async function ownerDecision(id: string, kind: OwnerDecision, ruleInput?: RuleInput) {
-  const r = getRequest(id);
+  const r = await getRequest(id);
   if (r.status !== "held") throw new ApiError(409, `Request is ${r.status}, not held`, "not_held");
   const approve = kind === "approve_once" || kind === "approve_and_remember";
   const nowMs = Date.now();
 
   if (approve) {
     // Re-check hard limits against the current cache: reserves are locked by the contract.
-    const vault = cachedVault() ?? (await vaultState());
-    const blocked = hardLimit(vault, BigInt(r.amount), nowMs);
+    const blocked = hardLimit(await vaultState(), BigInt(r.amount), nowMs);
     if (blocked) throw new ApiError(409, blocked.reason, blocked.code === "would_cut_reserve" ? "reserves_locked" : blocked.code);
   }
 
@@ -213,22 +211,22 @@ export async function ownerDecision(id: string, kind: OwnerDecision, ruleInput?:
     if (fields.maxAmount <= 0n) throw new ApiError(400, "Rule max amount must be positive");
     const sentence = ruleSentence(fields);
     ruleId = `rule-${randomUUID().slice(0, 8)}`;
-    const mem = remember(
+    const mem = await remember(
       "rule",
       sentence,
       { ruleId, merchant: fields.merchant, category: fields.category, maxAmount: fields.maxAmount.toString(), action: fields.action, expiresMs: fields.expiresMs, requestId: r.id },
       { session: r.session, usedIn: [r.id] },
     );
     ruleMemoryId = mem.id;
-    const rule = addLocalRule({ ...fields, sentence }, mem.id, ruleId); // applies immediately from the local cache
+    const rule = await addLocalRule({ ...fields, sentence }, mem.id, ruleId); // applies immediately from the local cache
     publish("rule.created", jsonSafe(rule));
   }
 
-  db().update(schema.requests).set({ status: approve ? "approved" : "denied", decidedAt: nowMs }).where(eq(schema.requests.id, id)).run();
-  db().insert(schema.decisions).values({ requestId: id, kind, ruleId: ruleId ?? null, memoryId: ruleMemoryId ?? null, at: nowMs }).run();
-  const updated = getRequest(id);
-  writeDecisionMemory(updated, kind, approve ? "approved" : "denied", "by the owner", JSON.parse(r.reasons)[0] ?? "", ruleId);
+  await db().update(schema.requests).set({ status: approve ? "approved" : "denied", decidedAt: nowMs }).where(eq(schema.requests.id, id));
+  await db().insert(schema.decisions).values({ requestId: id, kind, ruleId: ruleId ?? null, memoryId: ruleMemoryId ?? null, at: nowMs });
+  const updated = await getRequest(id);
+  await writeDecisionMemory(updated, kind, approve ? "approved" : "denied", "by the owner", JSON.parse(r.reasons)[0] ?? "", ruleId);
   publish("request.updated", requestView(updated));
   if (approve) await paymentExecutor().execute({ requestId: id, merchant: r.merchant, amount: BigInt(r.amount) });
-  return { request: requestView(getRequest(id)), ruleId: ruleId ?? null, ruleMemoryId: ruleMemoryId ?? null };
+  return { request: requestView(await getRequest(id)), ruleId: ruleId ?? null, ruleMemoryId: ruleMemoryId ?? null };
 }

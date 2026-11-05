@@ -8,14 +8,14 @@
 import { Transaction, coinWithBalance } from "@mysten/sui/transactions";
 import { SimulationError } from "@mysten/sui/client";
 import { eq } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
-import type { AgentPolicyState, ObligationState, VaultState } from "../domain/types.js";
-import { publish, jsonSafe } from "../lib/bus.js";
-import { hardLimit } from "../policy/engine.js";
+import { db, schema } from "../db/index";
+import type { AgentPolicyState, ObligationState, VaultState } from "../domain/types";
+import { publish, jsonSafe } from "../lib/bus";
+import { hardLimit } from "../policy/engine";
 import type { Keypair } from "@mysten/sui/cryptography";
-import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction, type CreatedObject, type TxEvent } from "../lib/tatum.js";
-import { keypair } from "../lib/wallets.js";
-import { CLOCK_ID, operatorCapId, target, usdcType, vaultAbortName, vaultId } from "./sisih.js";
+import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction, type CreatedObject, type TxEvent } from "../lib/tatum";
+import { keypair } from "../lib/wallets";
+import { CLOCK_ID, operatorCapId, target, usdcType, vaultAbortName, vaultId } from "./sisih";
 
 type Json = Record<string, unknown>;
 
@@ -73,21 +73,52 @@ export function parseVault(objectId: string, v: Json, readAtMs = Date.now()): Va
   };
 }
 
-let cached: VaultState | null = null;
-let lastReadError: { at: number; message: string } | null = null;
+// The vault snapshot lives in Postgres (kv "vault_snapshot") so every serverless instance shares
+// one cache: Tatum is read only after a transaction (or on an explicit refresh / first boot).
+const SNAPSHOT_KEY = "vault_snapshot";
+const ERROR_KEY = "vault_read_error";
 
-export function cachedVault(): VaultState | null {
-  return cached;
+function revive(raw: string): VaultState {
+  const j = JSON.parse(raw) as Record<string, unknown> & { obligations: Record<string, unknown>[]; policy: Record<string, unknown> | null };
+  const big = (v: unknown) => BigInt(String(v));
+  return {
+    vaultId: String(j.vaultId),
+    version: Number(j.version),
+    owner: String(j.owner),
+    free: big(j.free),
+    reserved: big(j.reserved),
+    total: big(j.total),
+    obligations: j.obligations.map((o) => ({ ...(o as unknown as ObligationState), target: big(o.target), reserve: big(o.reserve) })),
+    policy: j.policy
+      ? { ...(j.policy as unknown as AgentPolicyState), maxPerRequest: big(j.policy.maxPerRequest), maxPerDay: big(j.policy.maxPerDay), spentInWindow: big(j.policy.spentInWindow) }
+      : null,
+    readAtMs: Number(j.readAtMs),
+  };
 }
 
-export function vaultReadError() {
-  return lastReadError;
+async function kvGet(key: string): Promise<string | undefined> {
+  const [row] = await db().select().from(schema.kv).where(eq(schema.kv.key, key));
+  return row?.value;
+}
+
+async function kvPut(key: string, value: string): Promise<void> {
+  await db().insert(schema.kv).values({ key, value }).onConflictDoUpdate({ target: schema.kv.key, set: { value } });
+}
+
+export async function cachedVault(): Promise<VaultState | null> {
+  const raw = await kvGet(SNAPSHOT_KEY);
+  return raw ? revive(raw) : null;
+}
+
+export async function vaultReadError(): Promise<{ at: number; message: string } | null> {
+  const raw = await kvGet(ERROR_KEY);
+  return raw ? (JSON.parse(raw) as { at: number; message: string }) : null;
 }
 
 const sameId = (a: string, b: string) => a.toLowerCase().replace(/^0x0*/, "") === b.toLowerCase().replace(/^0x0*/, "");
 
 /**
- * One Vault getObject through Tatum; updates the cache and emits state.changed.
+ * One Vault getObject through Tatum; updates the shared cache and emits state.changed.
  * With minVersion (from a transaction's effects) it re-reads with backoff until the gateway
  * serves at least that version, so a lagging node never shows a pre-transaction balance.
  */
@@ -102,20 +133,22 @@ export async function readVault(minVersion?: string): Promise<VaultState> {
       publish("state.lagging", { have: object.version, want: minVersion });
     }
     const next = parseVault(object.objectId, object.json as Json);
-    const changed = !cached || JSON.stringify(jsonSafe({ ...cached, readAtMs: 0 })) !== JSON.stringify(jsonSafe({ ...next, readAtMs: 0 }));
-    cached = next;
-    lastReadError = null;
+    const prev = await cachedVault();
+    const changed = !prev || JSON.stringify(jsonSafe({ ...prev, readAtMs: 0 })) !== JSON.stringify(jsonSafe({ ...next, readAtMs: 0 }));
+    await kvPut(SNAPSHOT_KEY, JSON.stringify(jsonSafe(next)));
+    await db().delete(schema.kv).where(eq(schema.kv.key, ERROR_KEY));
     publish(changed ? "state.changed" : "state.verified", jsonSafe(next));
     return next;
   } catch (err) {
-    lastReadError = { at: Date.now(), message: (err as Error).message.slice(0, 200) };
-    publish("state.error", lastReadError);
+    const e = { at: Date.now(), message: (err as Error).message.slice(0, 200) };
+    await kvPut(ERROR_KEY, JSON.stringify(e)).catch(() => {});
+    publish("state.error", e);
     throw err;
   }
 }
 
 export async function vaultState(): Promise<VaultState> {
-  return cached ?? readVault();
+  return (await cachedVault()) ?? readVault();
 }
 
 export interface RecordedTx {
@@ -137,11 +170,10 @@ export async function recordTx(
   meta: { source: "our" | "owner" | "import"; label?: string; requestId?: string; memoryId?: string; refreshVault?: boolean },
 ): Promise<RecordedTx> {
   const d = db();
-  const now = Date.now();
-  d.insert(schema.txLog)
-    .values({ digest, source: meta.source, label: meta.label ?? null, status: "pending", recordedAt: now, requestId: meta.requestId ?? null, memoryId: meta.memoryId ?? null })
-    .onConflictDoNothing()
-    .run();
+  await d
+    .insert(schema.txLog)
+    .values({ digest, source: meta.source, label: meta.label ?? null, status: "pending", recordedAt: Date.now(), requestId: meta.requestId ?? null, memoryId: meta.memoryId ?? null })
+    .onConflictDoNothing();
   publish("tx.pending", { digest, label: meta.label });
   let rec: RecordedTx;
   let vaultVersion: string | undefined;
@@ -149,7 +181,8 @@ export async function recordTx(
     const v = await verifyTransaction(digest);
     vaultVersion = Object.entries(v.objectVersions).find(([id]) => sameId(id, vaultId()))?.[1];
     rec = { digest, status: v.success ? "verified" : "failed", success: v.success, checkpoint: v.checkpoint, timestampMs: v.timestampMs, events: v.events, error: v.error };
-    d.update(schema.txLog)
+    await d
+      .update(schema.txLog)
       .set({
         status: rec.status,
         success: v.success,
@@ -162,12 +195,11 @@ export async function recordTx(
         ...(meta.requestId ? { requestId: meta.requestId } : {}),
         ...(meta.memoryId ? { memoryId: meta.memoryId } : {}),
       })
-      .where(eq(schema.txLog.digest, digest))
-      .run();
+      .where(eq(schema.txLog.digest, digest));
     publish(v.success ? "tx.confirmed" : "tx.failed", { digest, label: meta.label, checkpoint: v.checkpoint, error: v.error ? vaultAbortName(v.error) : null });
   } catch (err) {
     rec = { digest, status: "error", success: null, checkpoint: null, timestampMs: null, events: [], error: (err as Error).message.slice(0, 200) };
-    d.update(schema.txLog).set({ status: "error", error: rec.error }).where(eq(schema.txLog.digest, digest)).run();
+    await d.update(schema.txLog).set({ status: "error", error: rec.error }).where(eq(schema.txLog.digest, digest));
     publish("tx.failed", { digest, label: meta.label, error: rec.error });
   }
   if (meta.refreshVault !== false) await readVault(vaultVersion).catch(() => {});

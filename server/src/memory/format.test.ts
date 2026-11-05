@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { roundUp } from "../policy/composer.js";
-import { suggestTarget } from "../policy/suggestions.js";
-import { parseMemory, serializeMemory } from "./format.js";
+import { roundUp } from "../policy/composer";
+import { suggestTarget } from "../policy/suggestions";
+import { parseMemory, serializeMemory } from "./format";
 
 describe("memory format", () => {
   it("round-trips a rule memory with bigint amounts", () => {

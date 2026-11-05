@@ -14,7 +14,7 @@ import { AlertCircle, CheckCircle2, ExternalLink, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "@mysten/dapp-kit/dist/index.css";
 import { buildState } from "@/lib/adapt";
-import { api, ApiFailure, API_URL, demoToken, setDemoToken, type LiveActivity, type LiveClock, type LiveHealth, type LiveInsights, type LiveMemory, type LiveRecall, type LiveRequest, type LiveRule, type LiveSession, type LiveState, type LiveSuggestion } from "@/lib/live";
+import { api, ApiFailure, demoToken, setDemoToken, type LiveActivity, type LiveClock, type LiveHealth, type LiveInsights, type LiveMemory, type LiveRecall, type LiveRequest, type LiveRule, type LiveSession, type LiveState, type LiveSuggestion } from "@/lib/live";
 import type { Action, DemoState, Outcome } from "@/lib/types";
 import { Spinner } from "./ui";
 
@@ -156,10 +156,12 @@ function LiveProvider({ children }: { children: ReactNode }) {
     settings: useQuery({ queryKey: ["settings"], queryFn: () => api<{ defaultThreshold: string }>("/api/settings") }),
   };
 
-  // --- one SSE connection ------------------------------------------------------------
+  // --- live events: poll the server's stored event feed (works on serverless) ----------
   useEffect(() => {
-    let es: EventSource | null = null;
+    let stopped = false;
+    let poll: ReturnType<typeof setTimeout> | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let after: number | null = null;
     const pending = new Set<string>();
     const flush = () => {
       for (const k of pending) void qc.invalidateQueries({ queryKey: [k] });
@@ -170,46 +172,50 @@ function LiveProvider({ children }: { children: ReactNode }) {
       clearTimeout(timer);
       timer = setTimeout(flush, 250);
     };
-    const onEvent = (type: string, raw: string) => {
+    const onEvent = (type: string, d: { id?: string } | null) => {
       for (const [re, keys] of EVENT_KEYS) if (re.test(type)) queue(keys);
-      if (type.startsWith("x402.") || type === "request.created") {
-        try {
-          const d = JSON.parse(raw) as { id?: string };
-          if (!d.id) return;
-          if (type === "request.created") {
-            setNewRequestIds((s) => new Set(s).add(d.id!));
-            setTimeout(() => setNewRequestIds((s) => {
-              const n = new Set(s);
-              n.delete(d.id!);
-              return n;
-            }), 4000);
-            return;
-          }
-          const step = type.replace("x402.", "") as X402Step;
-          if (step === ("settled" as X402Step)) return;
-          setX402Steps((m) => ({ ...m, [d.id!]: [...new Set([...(m[d.id!] ?? []), step])] }));
-        } catch {
-          /* ignore malformed event */
-        }
+      if (!(type.startsWith("x402.") || type === "request.created") || !d?.id) return;
+      const id = d.id;
+      if (type === "request.created") {
+        setNewRequestIds((s) => new Set(s).add(id));
+        setTimeout(() => setNewRequestIds((s) => {
+          const n = new Set(s);
+          n.delete(id);
+          return n;
+        }), 4000);
+        return;
       }
+      const step = type.replace("x402.", "") as X402Step;
+      if (step === ("settled" as X402Step)) return;
+      setX402Steps((m) => ({ ...m, [id]: [...new Set([...(m[id] ?? []), step])] }));
     };
-    const types = [
-      "request.created", "request.updated", "request.payment", "request.recall", "request.recall_failed",
-      "x402.invoice_received", "x402.funds_released", "x402.payment_sent", "x402.settled", "x402.settle_verified", "x402.failed",
-      "memory.writing", "memory.stored", "memory.failed", "tx.pending", "tx.confirmed", "tx.failed",
-      "state.changed", "state.verified", "state.error", "state.lagging", "suggestion.created", "suggestion.accepted", "suggestion.rejected",
-      "rule.created", "session.starting", "session.started", "demo.cycle_done", "demo.reset_done", "demo.reset_progress",
-    ];
-    const connect = () => {
-      es = new EventSource(`${API_URL}/api/events`);
-      es.onopen = () => setSseConnected(true);
-      es.onerror = () => setSseConnected(false);
-      for (const t of types) es.addEventListener(t, (e) => onEvent(t, (e as MessageEvent).data));
+    const tick = async () => {
+      try {
+        const res = await api<{ events: { id: number; type: string; data: unknown }[]; latest: number }>(
+          after === null ? "/api/events" : `/api/events?after=${after}`,
+        );
+        if (after !== null) for (const ev of res.events) onEvent(ev.type, ev.data as { id?: string } | null);
+        after = res.latest;
+        setSseConnected(true);
+      } catch {
+        setSseConnected(false);
+      }
+      if (stopped) return;
+      // Fast while the tab is visible; slow in the background.
+      poll = setTimeout(tick, typeof document !== "undefined" && document.hidden ? 10_000 : 1_500);
     };
-    connect();
+    void tick();
+    const onVisible = () => {
+      if (document.hidden) return;
+      clearTimeout(poll);
+      void tick();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
+      stopped = true;
+      clearTimeout(poll);
       clearTimeout(timer);
-      es?.close();
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [qc]);
 

@@ -9,8 +9,8 @@ import type { ClientSuiSigner } from "@tentaclepay/sui-x402";
 import { ExactSuiScheme as ExactSuiClientScheme } from "@tentaclepay/sui-x402/exact/client";
 import { x402Client, x402HTTPClient } from "@x402/core/client";
 import type { PaymentRequired } from "@x402/core/types";
-import { keypair } from "../lib/wallets.js";
-import { tatumRegistry, x402Network } from "./facilitator.js";
+import { keypair } from "../lib/wallets";
+import { tatumRegistry, x402Network } from "./facilitator";
 
 let http: x402HTTPClient | undefined;
 function client(): x402HTTPClient {

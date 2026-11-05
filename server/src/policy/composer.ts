@@ -2,9 +2,9 @@
  * Rule composer. No LLM: structured fields are prefilled from the request, and the sentence
  * is generated from those fields, so the rule the owner sees is exactly the rule applied.
  */
-import { formatUsdc } from "../lib/env.js";
-import type { Category, PaymentRequestInput } from "../domain/types.js";
-import { CATEGORY_LABEL } from "../merchants/registry.js";
+import { formatUsdc } from "../lib/env";
+import type { Category, PaymentRequestInput } from "../domain/types";
+import { CATEGORY_LABEL } from "../merchants/registry";
 
 export const RULE_STEP = 500_000n; // round max amounts up to the next 0.50 USDC
 export const DEFAULT_RULE_DAYS = 30;

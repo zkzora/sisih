@@ -14,8 +14,8 @@
  *   7 merchant never seen -> hold "new merchant"
  *   8 otherwise -> hold "above learned rules"
  */
-import { formatUsdc } from "../lib/env.js";
-import type { Category, ObligationState, PaymentRequestInput, RecalledMemory, Rule, VaultState } from "../domain/types.js";
+import { formatUsdc } from "../lib/env";
+import type { Category, ObligationState, PaymentRequestInput, RecalledMemory, Rule, VaultState } from "../domain/types";
 
 export const DAY_MS = 86_400_000;
 

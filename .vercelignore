@@ -1,0 +1,9 @@
+# Never upload secrets or local state to Vercel (env vars live in the project settings).
+.env
+.env.*
+!.env.example
+server/data/
+**/node_modules
+**/.next
+.git
+contracts/sisih/build/

@@ -1,5 +1,5 @@
 /** Move call targets and ids for the sisih::vault package, all from env (CLAUDE.md rule 7). */
-import { requireEnv } from "../lib/env.js";
+import { requireEnv } from "../lib/env";
 
 export const CLOCK_ID = "0x6";
 

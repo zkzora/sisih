@@ -4,9 +4,9 @@
  * paid, exactly as in the SPEC balance table.
  */
 import { describe, expect, it } from "vitest";
-import type { ObligationState, PaymentRequestInput, Rule, VaultState } from "../domain/types.js";
-import { draftRule, ruleSentence } from "./composer.js";
-import { DAY_MS, decide, merchantKey, type EngineInput } from "./engine.js";
+import type { ObligationState, PaymentRequestInput, Rule, VaultState } from "../domain/types";
+import { draftRule, ruleSentence } from "./composer";
+import { DAY_MS, decide, merchantKey, type EngineInput } from "./engine";
 
 const U = 1_000_000n;
 const NOW = Date.UTC(2026, 10, 5, 12, 0, 0);

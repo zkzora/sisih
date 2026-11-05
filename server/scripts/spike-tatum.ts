@@ -3,9 +3,9 @@
  * 1. latest checkpoint  2. agent USDC balance  3. operator SUI self-transfer  4. read it back
  */
 import { Transaction } from "@mysten/sui/transactions";
-import { formatUsdc, requireEnv, suiNetwork } from "../src/lib/env.js";
-import { setGas, signAndExecute, suiClient, tatumGrpcHost, verifyTransaction } from "../src/lib/tatum.js";
-import { address, keypair } from "../src/lib/wallets.js";
+import { formatUsdc, requireEnv, suiNetwork } from "../src/lib/env";
+import { setGas, signAndExecute, suiClient, tatumGrpcHost, verifyTransaction } from "../src/lib/tatum";
+import { address, keypair } from "../src/lib/wallets";
 
 const network = suiNetwork();
 const client = suiClient(network);

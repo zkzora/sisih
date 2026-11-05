@@ -2,17 +2,20 @@
  * Learning impact: per-session metrics for the 5 charts, computed only from real rows
  * (requests, memories, rules) and Tatum-verified vault events in tx_log. Never invented.
  */
-import { db, schema } from "../db/index.js";
-import type { TxEvent } from "../lib/tatum.js";
-import { cachedRules } from "./state.js";
+import { db, schema } from "../db/index";
+import type { TxEvent } from "../lib/tatum";
+import { cachedRules } from "./state";
 
 const CATEGORIES = ["data", "search", "inference", "research"] as const;
 
-export function insights() {
-  const requests = db().select().from(schema.requests).all();
-  const sessions = db().select().from(schema.sessions).orderBy(schema.sessions.n).all();
-  const memories = db().select().from(schema.memories).all();
-  const txs = db().select().from(schema.txLog).all();
+export async function insights() {
+  const [requests, sessions, memories, txs, rules] = await Promise.all([
+    db().select().from(schema.requests),
+    db().select().from(schema.sessions).orderBy(schema.sessions.n),
+    db().select().from(schema.memories),
+    db().select().from(schema.txLog),
+    cachedRules(),
+  ]);
 
   let protectedCumulative = 0n;
   const perSession = sessions.map((s) => {
@@ -53,7 +56,7 @@ export function insights() {
     cards: {
       memoriesStored: memories.filter((m) => m.status === "stored").length,
       memoriesWriting: memories.filter((m) => m.status === "writing").length,
-      activeRules: cachedRules().filter((r) => r.active).length,
+      activeRules: rules.filter((r) => r.active).length,
       automaticPctLastSession: last?.automaticPct ?? null,
       moneyProtectedTotal: protectedCumulative.toString(),
     },

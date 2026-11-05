@@ -5,11 +5,11 @@
  */
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { coinWithBalance } from "@mysten/sui/transactions";
-import { CLOCK_ID, KIND, PRIORITY, target, usdc, usdcType, vaultId } from "../chain/sisih.js";
-import { cachedVault, signedWrite, vaultState, type WriteResult } from "../chain/vault.js";
-import { env } from "../lib/env.js";
-import { upsertEnv } from "../lib/env-file.js";
-import { address, keypair } from "../lib/wallets.js";
+import { CLOCK_ID, KIND, PRIORITY, target, usdc, usdcType, vaultId } from "../chain/sisih";
+import { cachedVault, signedWrite, vaultState, type WriteResult } from "../chain/vault";
+import { env } from "../lib/env";
+import { upsertEnv } from "../lib/env-file";
+import { address, keypair } from "../lib/wallets";
 
 export const SEED_DEPOSIT = usdc("20.00");
 
@@ -53,7 +53,7 @@ export async function seedVault(opts: { firstDueInMs?: bigint } = {}): Promise<W
   const now = BigInt(Date.now());
   const cycle = demoCycleMs();
   const firstDue = now + (opts.firstDueInMs ?? cycle);
-  const hadPolicy = (cachedVault() ?? (await vaultState())).policy !== null;
+  const hadPolicy = ((await cachedVault()) ?? (await vaultState())).policy !== null;
   return signedWrite(
     owner(),
     "Seed vault (demo)",

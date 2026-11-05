@@ -1,20 +1,23 @@
 /**
- * App state in SQLite. Amounts are stored as base-unit strings (bigint-safe).
- * Chain state is never stored as truth here: the vault is read through Tatum; tx_log keeps
- * the digests we know about plus what Tatum returned for them.
+ * App state in Postgres (Supabase in production, embedded PGlite for local dev and tests).
+ * Amounts are base-unit strings (bigint-safe); millisecond timestamps are bigint (mode number).
+ * Chain state is never stored as truth here: the vault is read through Tatum; tx_log keeps the
+ * digests we know about plus what Tatum returned for them.
  */
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { bigint, bigserial, boolean, integer, pgTable, text } from "drizzle-orm/pg-core";
 
-export const sessions = sqliteTable("sessions", {
+const ms = (name: string) => bigint(name, { mode: "number" });
+
+export const sessions = pgTable("sessions", {
   n: integer("n").primaryKey(),
-  startedAt: integer("started_at").notNull(),
-  endedAt: integer("ended_at"),
+  startedAt: ms("started_at").notNull(),
+  endedAt: ms("ended_at"),
   summaryMemoryId: text("summary_memory_id"),
   rulesLoaded: integer("rules_loaded"),
   rulesLoadMs: integer("rules_load_ms"),
 });
 
-export const requests = sqliteTable("requests", {
+export const requests = pgTable("requests", {
   id: text("id").primaryKey(),
   session: integer("session").notNull(),
   merchant: text("merchant").notNull(),
@@ -29,31 +32,33 @@ export const requests = sqliteTable("requests", {
   status: text("status").notNull(),
   reasons: text("reasons").notNull(), // JSON string[]
   cutsReserveBy: text("cuts_reserve_by").notNull(),
-  allowDisabled: integer("allow_disabled", { mode: "boolean" }).notNull(),
+  allowDisabled: boolean("allow_disabled").notNull(),
   matchedRuleIds: text("matched_rule_ids").notNull(), // JSON string[]
   simulation: text("simulation").notNull(), // JSON
   recallResults: text("recall_results"), // JSON RecalledMemory[] once recall returns
   recallQuery: text("recall_query"),
   recallMs: integer("recall_ms"),
   recallError: text("recall_error"),
+  /** The merchant's x402 invoice (JSON), kept so a held request can be paid later. */
+  invoice: text("invoice"),
   /** none | stub | pending | paid | failed */
   paymentStatus: text("payment_status").notNull(),
   paymentDigests: text("payment_digests"), // JSON
-  decidedAt: integer("decided_at"),
-  createdAt: integer("created_at").notNull(),
+  decidedAt: ms("decided_at"),
+  createdAt: ms("created_at").notNull(),
 });
 
-export const decisions = sqliteTable("decisions", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
+export const decisions = pgTable("decisions", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   requestId: text("request_id").notNull(),
   /** auto_allow | auto_deny | approve_once | approve_and_remember | deny | deny_and_remember */
   kind: text("kind").notNull(),
   ruleId: text("rule_id"),
   memoryId: text("memory_id"),
-  at: integer("at").notNull(),
+  at: ms("at").notNull(),
 });
 
-export const rulesCache = sqliteTable("rules_cache", {
+export const rulesCache = pgTable("rules_cache", {
   id: text("id").primaryKey(),
   sourceMemoryId: text("source_memory_id"),
   sourceBlobId: text("source_blob_id"),
@@ -61,17 +66,17 @@ export const rulesCache = sqliteTable("rules_cache", {
   category: text("category").notNull(),
   maxAmount: text("max_amount").notNull(),
   action: text("action").notNull(),
-  expiresMs: integer("expires_ms").notNull(),
-  active: integer("active", { mode: "boolean" }).notNull(),
+  expiresMs: ms("expires_ms").notNull(),
+  active: boolean("active").notNull(),
   sentence: text("sentence").notNull(),
   timesUsed: integer("times_used").notNull(),
-  lastUsedAt: integer("last_used_at"),
+  lastUsedAt: ms("last_used_at"),
   /** local = created this session; walrus = rebuilt from Walrus recall at session start */
   origin: text("origin").notNull(),
-  createdAt: integer("created_at").notNull(),
+  createdAt: ms("created_at").notNull(),
 });
 
-export const memories = sqliteTable("memories", {
+export const memories = pgTable("memories", {
   id: text("id").primaryKey(),
   type: text("type").notNull(),
   text: text("text").notNull(),
@@ -84,11 +89,11 @@ export const memories = sqliteTable("memories", {
   namespace: text("namespace").notNull(),
   error: text("error"),
   usedInDecisions: text("used_in_decisions").notNull(), // JSON string[] (request ids)
-  createdAt: integer("created_at").notNull(),
-  storedAt: integer("stored_at"),
+  createdAt: ms("created_at").notNull(),
+  storedAt: ms("stored_at"),
 });
 
-export const suggestions = sqliteTable("suggestions", {
+export const suggestions = pgTable("suggestions", {
   id: text("id").primaryKey(),
   obligationId: integer("obligation_id").notNull(),
   obligationName: text("obligation_name").notNull(),
@@ -100,28 +105,36 @@ export const suggestions = sqliteTable("suggestions", {
   /** open | accepted | rejected */
   status: text("status").notNull(),
   digest: text("digest"),
-  createdAt: integer("created_at").notNull(),
+  createdAt: ms("created_at").notNull(),
 });
 
-export const txLog = sqliteTable("tx_log", {
+export const txLog = pgTable("tx_log", {
   digest: text("digest").primaryKey(),
   /** our = signed by the server; owner = posted by the browser/scripts; import = backfill */
   source: text("source").notNull(),
   label: text("label"),
   /** pending | verified | failed (executed but aborted) | error (could not read) */
   status: text("status").notNull(),
-  success: integer("success", { mode: "boolean" }),
+  success: boolean("success"),
   checkpoint: text("checkpoint"),
-  timestampMs: integer("timestamp_ms"),
+  timestampMs: ms("timestamp_ms"),
   events: text("events"), // JSON TxEvent[]
   gasMist: text("gas_mist"),
   error: text("error"),
   requestId: text("request_id"),
   memoryId: text("memory_id"),
-  recordedAt: integer("recorded_at").notNull(),
+  recordedAt: ms("recorded_at").notNull(),
 });
 
-export const kv = sqliteTable("kv", {
+/** The live event feed (replaces in-process SSE so every serverless instance shares it). */
+export const events = pgTable("events", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  type: text("type").notNull(),
+  at: ms("at").notNull(),
+  data: text("data").notNull(), // JSON
+});
+
+export const kv = pgTable("kv", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });

@@ -2,9 +2,65 @@
 
 ## Current phase
 
-Phase 3 done (gate passed 2026-11-05). Next: Phase 4 (wire the dashboard, host it), see docs/BUILD_PLAN.md.
+Phase 4 in progress (wire the dashboard, host it). Live testnet demo at https://sisih-azure.vercel.app
+(Vercel + Supabase), full flow passed there from the UI on 2026-11-06. Gate item still open: walk the
+SPEC feature checklist.
 
 ## Done
+
+### Phase 4: wire the dashboard and host it (in progress, 2026-11-05 to 2026-11-06)
+
+Gate so far:
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| Full demo flow runs from the UI alone, on the public URL | pass (hosted) | https://sisih-azure.vercel.app, 2026-11-06: POST /api/demo/reset in 36.8 s (seed 7UQTp63nx6AZrHWCxAoHEJsgyGkf17fz6Xgovuf9Qu4F, namespace sisih-hosted-2), then the same Playwright UI flow: 35/35 checks ok, no console errors, "PASS: full demo flow ran from the UI alone". S1 DataMart release Dc6thTdAMG2URN2dqDSPoJKcXa9tctSGdCCaSAFskjKa + x402 settle 4DGLZfQyRHjtsD1vxvQsisQMyxNjQRpPVZyGJcJwaHnp; reserve change signed in the browser wallet 7ZMUD96usoJtWWhxzTFNp6PHHamhhgvKvfNVSjvjYsYg (verified, owner-signed); 2 rules rebuilt from Walrus; owner deposit 0.10 Hp3pHU9iYMC2amhf2jrNdBQhyCunsxpjrXnFXvA9YyGt -> 16.40/16.00/0.40; manual reviews S1 2/3, S2 1/3; 13 memories stored |
+| Full demo flow runs from the UI alone, no terminal | pass (local combined app) | Playwright drives only the dashboard (dock, drawers, wallet) at 1440x900 against `next start` on 127.0.0.1:3000, after POST /api/demo/reset (seed 3Z2PyNX9WJ5UBw73zWfQg3AuoU72HBBdMdZLDcce5oNd, namespace sisih-local-5). Overview balances 20.00/16.50/3.50 -> 18.30/16.50/1.80 -> 18.00/16.00/2.00 -> 16.30/16.00/0.30, every decision as in SPEC (S2 SearchBox auto by allow_rule, 2 rules rebuilt from Walrus, ReportLab held with "denied before"), 29/29 checks ok |
+| Owner transactions from the browser wallet go through the Tatum proxy, digests verified | pass (local) | set_obligation_target DmQ1gwxCRQiz3xyTCAcaftU9ZiuJ1UJsWU8CHbxjc3UG (reserve suggestion 6.00 -> 7.00, recorded as owner-signed); deposit 0.10 CRp8ojnh1w76R8aFuUJnomWkAPTNk9mHacgtPiyiujce (1 wallet signature, built and executed via /api/sui-rpc, verified via Tatum; Overview 16.40/16.00/0.40, no console errors) |
+| All 12 UI states visible at /dev/states | pass | committed in ffae9a6 |
+| Public URL serves the live testnet stack | pass | https://sisih-azure.vercel.app (Vercel project `sisih`, root web/, iad1; Supabase `sisih-db` iad1). No login wall; /api/health: Tatum testnet green, Walrus relayer ok; demo merchants answer 402 |
+| Every SPEC feature checklist item done | open | walk after the hosted run |
+
+Built (uncommitted, hosting move):
+
+- Hosting moved from Railway (Dockerfile) to one Vercel project: the Hono server (server/src) is
+  mounted inside Next.js route handlers (web/src/app/api/[...path], web/src/app/merchants/[...path],
+  web/src/server/hosted-api.ts), so /api/* and the demo x402 merchants share one origin.
+  maxDuration 300 s for reset / advance-cycle / new-session.
+- Database: SQLite -> Postgres via drizzle pg-core. Hosted: DATABASE_URL or POSTGRES_URL (Vercel x
+  Supabase integration, transaction pooler 6543) through node-postgres (pg 8.23.1). Local and tests:
+  embedded PGlite (DATABASE_URL=pglite:./server/data/pglite, tests use pglite::memory:).
+- initDb skips DDL when all 10 schema objects exist (catalog read, no locks).
+- Root package.json pins pnpm 11.28.6 (11.13.0 is marked broken on npm; Vercel refused to install it).
+- .vercelignore keeps .env*, server/data/ and build output out of CLI uploads.
+- Background work (Walrus remember jobs, event inserts, recall) is tracked by lib/background.ts and
+  drained with Next's after(), so a serverless function stays alive until it settles.
+- Live updates: events are stored in Postgres; the dashboard polls our own GET /api/events?after=<id>
+  (1.5 s visible, 10 s hidden) instead of holding an SSE connection. It still never calls Tatum.
+- Demo reset names namespaces <MEMWAL_NAMESPACE_PREFIX>-<n> so local and hosted runs never share one
+  (local sisih-local, hosted sisih-hosted).
+- server/src/demo/bills.json -> bills.ts. New test server/src/lib/bus.test.ts (event feed order,
+  bigint as base-unit strings, kv upsert on PGlite, schema check). Server suite 39/39.
+
+Findings:
+
+- The first hosted deploy hung on every API call (300 s function timeouts, Postgres statement
+  timeouts on trivial selects). pg_stat_activity showed pooler backends stuck "active / ClientRead"
+  for minutes, one of them a `delete from events` holding a RowExclusiveLock. Three causes, all fixed:
+  1. postgres-js with prepare: false sends each parameterized query in two round trips
+     (Parse/Describe/Flush, then Bind/Execute/Sync; `describeFirst`). Through Supavisor's transaction
+     pooler on Vercel, backends got stuck between the halves. Replaced with node-postgres, which sends
+     an unnamed statement in one round trip.
+  2. housekeeping() (reconcile memories, prune events) ran untracked, so Vercel could suspend the
+     instance mid-query. It now runs through background(), drained by after().
+  3. initDb ran CREATE INDEX IF NOT EXISTS on every cold start; it needs a ShareLock on events, queued
+     behind the stuck writer, and every later events query queued behind it.
+  The session pooler (5432) was tried and rejected: it caps clients at 15 and filled up at once
+  (EMAXCONNSESSION). After the fix: 90 sustained requests with 0 non-200, no backends left active.
+
+- After a reset the owner wallet holds 0.00 USDC (all 20.00 is seeded into the vault), so an owner
+  Deposit from the UI cannot be built until the owner is topped up. The local run topped it up with
+  0.50 from the operator (see Wallets), and so did the hosted run.
 
 ### Prep (2026-11-05)
 
@@ -126,7 +182,7 @@ Built:
 - src/agent/runner.ts: scenarios cheap_data, new_merchant_search, expensive_report.
 - src/demo/: owner.ts (seed, emergency withdraw, set target; owner key = demo plumbing), recycle.ts
   (sponsored gasless USDC sweeps, operator top-ups, waitForBalance), controls.ts (clock,
-  advanceCycle, resetDemo), bills.json (cycle 1 Inference API 6.80).
+  advanceCycle, resetDemo), bills.ts (cycle 1 Inference API 6.80).
 - API: POST /api/demo/run-task | advance-cycle | new-session | reset, GET /api/demo/clock; merchant
   routes /merchants/datamart/token-history, /merchants/searchbox/premium-search,
   /merchants/reportlab/onchain-report.
@@ -376,6 +432,11 @@ verified through Tatum. Agent coin 0xeb20712f2afc79dd7093ad883b949aea2147108c4db
 facilitator 0.00 USDC.
 Phase 0: operator -> agent 0.01 into the agent's address balance
 (Aff8dr5wAT85dpDj2qbiy77srUmGhBahLS77aB9geo9g) for the second Spike C run.
+Phase 4 (2026-11-06): operator -> owner 0.50 USDC as a Coin object for the browser-wallet deposit
+test (HfaxE2pKxmXpAgxgFr5mxhvrhenTZRuWwZRKUstBEj7e). Balances before it: owner 0.00, operator 4.70,
+agent 0.00, facilitator 0.00 USDC.
+Phase 4 (2026-11-06, hosted run): operator -> owner 0.50 USDC after the hosted reset
+(45Jop8go3LnRvc2qnAjHzquoVQzF1c5j3bznTdHi8xGR). Before it: owner 0.00, operator 20.00 USDC.
 
 | Role | Address |
 | --- | --- |
@@ -393,8 +454,12 @@ Phase 0: operator -> agent 0.01 into the agent's address balance
   rejected; the lockfile was pinned to 5.104.5 (2026-10-19) instead of adding an
   exclusion. Re-check this if pnpm complains about lockfile entries.
 - The repo has no root README yet (the dashboard README is web/README.md). Phase 6 writes it.
-- Hosting provider for the public demo is not chosen yet (needs a long-running Node
-  server for SSE + SQLite, plus the Next.js app).
+- Hosting: Vercel (project `sisih`, root web/) + Supabase Postgres `sisih-db` (iad1) through the
+  Vercel Marketplace, provisioned and connected 2026-11-06 (POSTGRES_URL set by the integration).
+  Live at https://sisih-azure.vercel.app; deployed with `vercel deploy --prod` from the working tree.
+- Hosted judges cannot sign owner actions (deposit, accept suggestion) unless the owner wallet has
+  USDC and is the connected wallet; decide how the hosted demo shows owner signing.
+- CLAUDE.md still describes SQLite and SSE; update it to Postgres/PGlite and the polled event feed.
 
 ## Env vars
 
@@ -407,6 +472,9 @@ PAYEE_INFERENCE_PRIVATE_KEY, PAYEE_HOSTING_PRIVATE_KEY, PAYEE_SAVINGS_PRIVATE_KE
 PAYEE_DOMAIN_PRIVATE_KEY (written by seed-vault.ts).
 New in Phase 2 (optional): PORT (default 8787), HOST (default 127.0.0.1).
 New in Phase 3 (optional): PUBLIC_BASE_URL (merchant URLs the agent calls; default http://127.0.0.1:PORT).
+New in Phase 4: DEMO_TOKEN (unlocks the demo dock), WEB_ORIGIN (CORS), MEMWAL_NAMESPACE_PREFIX;
+DATABASE_URL is now pglite:... locally or a Postgres URL hosted (POSTGRES_URL from the Supabase
+integration also works); NEXT_PUBLIC_SUI_NETWORK, NEXT_PUBLIC_DEV_STATES (web).
 
 ## Later
 

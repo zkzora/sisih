@@ -6,10 +6,10 @@
  *   auto_deny  -> logged, nothing is paid
  * The category always comes from the merchant registry, never from the agent.
  */
-import { findMerchant } from "../merchants/registry.js";
-import { submitRequest } from "../services/requests.js";
-import { fetchInvoice } from "../x402/agentPay.js";
-import { baseUrl } from "../x402/merchants.js";
+import { findMerchant } from "../merchants/registry";
+import { submitRequest } from "../services/requests";
+import { fetchInvoice } from "../x402/agentPay";
+import { baseUrl } from "../x402/merchants";
 
 export const SCENARIOS = {
   cheap_data: { merchant: "datamart", task: "Research SUI token price: fetch historical prices" },

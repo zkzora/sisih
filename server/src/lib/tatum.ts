@@ -14,7 +14,7 @@ import type { Keypair } from "@mysten/sui/cryptography";
 import type { Transaction } from "@mysten/sui/transactions";
 import { GrpcTransport } from "@protobuf-ts/grpc-transport";
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
-import { env, suiNetwork, type SuiNetwork } from "./env.js";
+import { env, suiNetwork, type SuiNetwork } from "./env";
 
 const MIN_INTERVAL_MS = Number(process.env.TATUM_MIN_INTERVAL_MS ?? 400);
 const MAX_RETRIES = 5;

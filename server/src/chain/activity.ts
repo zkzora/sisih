@@ -3,10 +3,10 @@
  * Tatum blocks ListEvents, so nothing here queries the chain; it only reads tx_log.
  */
 import { desc } from "drizzle-orm";
-import { db, schema } from "../db/index.js";
-import { suiNetwork } from "../lib/env.js";
-import type { TxEvent } from "../lib/tatum.js";
-import { vaultAbortName } from "./sisih.js";
+import { db, schema } from "../db/index";
+import { suiNetwork } from "../lib/env";
+import type { TxEvent } from "../lib/tatum";
+import { vaultAbortName } from "./sisih";
 
 export type ActivityKind =
   | "Deposit"
@@ -100,8 +100,8 @@ function kindFromLabel(label: string | null): ActivityKind {
   return "Other";
 }
 
-export function activityRows(limit = 200): ActivityRow[] {
-  const rows = db().select().from(schema.txLog).orderBy(desc(schema.txLog.timestampMs), desc(schema.txLog.recordedAt)).limit(limit).all();
+export async function activityRows(limit = 200): Promise<ActivityRow[]> {
+  const rows = await db().select().from(schema.txLog).orderBy(desc(schema.txLog.timestampMs), desc(schema.txLog.recordedAt)).limit(limit);
   const out: ActivityRow[] = [];
   for (const r of rows) {
     const events = (r.events ? JSON.parse(r.events) : []) as TxEvent[];

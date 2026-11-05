@@ -1,6 +1,6 @@
 import type { RpcTransport, UnaryCall } from "@protobuf-ts/runtime-rpc";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { throttleTransport } from "./tatum.js";
+import { throttleTransport } from "./tatum";
 
 /** Minimal fake of a protobuf-ts unary call whose outcome we script per attempt. */
 function fakeCall(outcome: { ok: unknown } | { err: Error }): UnaryCall<object, object> {

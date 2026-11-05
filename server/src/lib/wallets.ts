@@ -1,5 +1,5 @@
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
-import { requireEnv } from "./env.js";
+import { requireEnv } from "./env";
 
 export type WalletRole = "owner" | "operator" | "agent" | "facilitator";
 

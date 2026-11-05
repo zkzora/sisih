@@ -8,18 +8,19 @@
  *      still find every rule memory when plain recall cannot return everything
  * Run with its own DB:  DATABASE_URL=file:./server/data/scale-test.db npx tsx scripts/scale-rules.ts
  */
-import { db, schema } from "../src/db/index.js";
-import { formatUsdc } from "../src/lib/env.js";
-import { serializeMemory, type MemoryType } from "../src/memory/format.js";
-import { loadRules, memwalClient } from "../src/memory/memwal.js";
-import { startSession } from "../src/services/sessions.js";
-import { cachedRules, currentSession, kvSet } from "../src/services/state.js";
+import { db, initDb, schema } from "../src/db/index";
+import { formatUsdc } from "../src/lib/env";
+import { serializeMemory, type MemoryType } from "../src/memory/format";
+import { loadRules, memwalClient } from "../src/memory/memwal";
+import { startSession } from "../src/services/sessions";
+import { cachedRules, currentSession, kvSet } from "../src/services/state";
 
 if (!(process.env.DATABASE_URL ?? "").includes("scale-test")) {
-  console.error("Run with DATABASE_URL=file:./server/data/scale-test.db so the demo database is untouched.");
+  console.error("Run with DATABASE_URL=pglite:./server/data/scale-test so the demo database is untouched.");
   process.exit(1);
 }
 
+await initDb();
 const ns = process.argv[2] ?? `sisih-scale-${Date.now()}`;
 const writeNew = !process.argv[2];
 const day = 86_400_000;
@@ -78,14 +79,14 @@ if (writeNew) {
 
 // Fresh local state pointed at the scale namespace: no rules in the cache.
 const d = db();
-for (const t of [schema.rulesCache, schema.sessions, schema.memories, schema.requests]) d.delete(t).run();
-kvSet("memwal_namespace", ns);
-console.log(`cache wiped: ${cachedRules().length} rules; session ${currentSession()}`);
+for (const t of [schema.rulesCache, schema.sessions, schema.memories, schema.requests]) await d.delete(t);
+await kvSet("memwal_namespace", ns);
+console.log(`cache wiped: ${(await cachedRules()).length} rules; session ${await currentSession()}`);
 
 const started = await startSession();
 console.log(`start_session -> session ${started.session}: loaded ${started.rules.loaded} rules (${started.rules.active} active) from ${started.rules.ruleMemories} rule memories; broad recall ${started.rules.recalled} of ${started.rules.inventory} in namespace; ${started.rules.ms} ms${started.rules.warning ? `; ${started.rules.warning}` : ""}`);
 
-const got = cachedRules().map((r) => ({ id: r.id, active: r.active, merchant: r.merchant, category: r.category, max: formatUsdc(r.maxAmount), action: r.action, origin: r.origin }));
+const got = (await cachedRules()).map((r) => ({ id: r.id, active: r.active, merchant: r.merchant, category: r.category, max: formatUsdc(r.maxAmount), action: r.action, origin: r.origin }));
 for (const r of got) console.log(`  ${r.id} ${r.active ? "active  " : "disabled"} ${r.action} ${r.category} from ${r.merchant} up to ${r.max} (origin ${r.origin})`);
 const expected = [
   { id: "scale-r1", active: true, merchant: "SearchBox", category: "search", max: "1.50", action: "allow", origin: "walrus" },

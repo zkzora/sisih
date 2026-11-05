@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { mapVaultEvent } from "./activity.js";
-import { parseVault } from "./vault.js";
+import { mapVaultEvent } from "./activity";
+import { parseVault } from "./vault";
 
 /** Shape of the gRPC getObject JSON for Vault<USDC>, as returned by Tatum on testnet. */
 const RAW = {

@@ -6,10 +6,10 @@
  *   through Tatum. Usage: server running (pnpm dev), then npx tsx scripts/demo-run.ts
  */
 import { Transaction } from "@mysten/sui/transactions";
-import { target, usdcType, vaultId } from "../src/chain/sisih.js";
-import { formatUsdc } from "../src/lib/env.js";
-import { setGas, signAndExecute } from "../src/lib/tatum.js";
-import { keypair } from "../src/lib/wallets.js";
+import { target, usdcType, vaultId } from "../src/chain/sisih";
+import { formatUsdc } from "../src/lib/env";
+import { setGas, signAndExecute } from "../src/lib/tatum";
+import { keypair } from "../src/lib/wallets";
 
 const API = process.env.API_URL ?? "http://127.0.0.1:8787";
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
