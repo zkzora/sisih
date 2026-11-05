@@ -55,7 +55,14 @@ Progress log: docs/PROGRESS.md
    The browser reaches Sui only through the web proxy route /api/sui-rpc (server side),
    which forwards to Tatum. Never expose the Tatum key to the browser.
    No other RPC provider anywhere. Free plan: 3 requests/second, so throttle.
-2. Set gas price and gas budget explicitly. Throttle and retry Tatum calls.
+2. Set gas price and gas budget explicitly. lib/tatum.ts throttles every call (one in
+   flight, at least 400 ms apart) and retries 429/UNAVAILABLE with backoff; without it the
+   free plan (3 req/s) fails on ordinary transactions.
+   The dashboard never polls Tatum. The server caches vault state, refreshes it on vault
+   events and after our own transactions, and pushes changes over SSE (state.changed).
+   Browser reads come from the server's cache, not from Tatum.
+   USDC may sit in address balances instead of coin objects: build payments and deposits
+   with coinWithBalance, never assume coin objects exist.
 3. Walrus Memory is always mainnet: SDK @mysten-incubation/memwal,
    relayer https://relayer.memory.walrus.xyz, one namespace per owner.
    Never write secrets, keys, or raw addresses of third parties into memory.

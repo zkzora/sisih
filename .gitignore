@@ -6,3 +6,7 @@ out/
 *.tsbuildinfo
 coverage/
 .DS_Store
+server/data/
+*.db
+*.db-journal
+contracts/**/build/

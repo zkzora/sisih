@@ -88,6 +88,10 @@ Do not build product features yet.
    Run a local merchant route that answers 402 for 0.01 USDC, a facilitator built with the
    package, and a client paying from AGENT_PRIVATE_KEY. All Sui calls go through Tatum.
    Print the settlement digest and verify it through Tatum.
+   The agent's 0.01 USDC is a Coin object (sent from the operator with coinWithBalance +
+   transferObjects). Check whether the x402 library pays from coin objects, address
+   balances, or both, and log the answer in PROGRESS.md: release_to_agent sends the agent a
+   Coin, and faucet or settled funds may land in address balances.
    If the package cannot settle USDC on Sui testnet within about 2 hours, stop and build a
    minimal custom x402 "exact" flow instead: 402 JSON payment requirements -> client builds
    and signs a USDC transfer -> X-PAYMENT header carries base64 tx bytes and signature ->
@@ -318,7 +322,14 @@ Read CLAUDE.md, docs/SPEC.md (demo flow and sample data), docs/PROGRESS.md
    Phase 1. Do not change the Obligation struct: Sui upgrades cannot change
    struct layouts.
 
-6. scripts/demo-run.ts: run the whole recorded flow from docs/SPEC.md headless
+6. scripts/recycle.ts: sweep USDC from the demo payee and merchant addresses back to
+   the operator, so simulated income in advance-cycle reuses the same funds on testnet
+   (and later on mainnet). Read balances through Tatum, sweep with coinWithBalance (faucet
+   and settled funds may sit in address balances, not coin objects), throttled.
+   advance-cycle calls it before depositing income. Label it as demo plumbing in code,
+   API responses and README.
+
+7. scripts/demo-run.ts: run the whole recorded flow from docs/SPEC.md headless
    (session 1 three requests with scripted owner decisions, advance cycle, accept the
    reserve suggestion, new session, session 2 three requests) and print a summary.
 ```
@@ -326,6 +337,7 @@ Read CLAUDE.md, docs/SPEC.md (demo flow and sample data), docs/PROGRESS.md
 Gate:
 
 - [ ] `demo-run.ts` passes end to end on testnet with no intervention
+- [ ] `recycle.ts` returns payee and merchant USDC to the operator, digests verified through Tatum
 - [ ] Every x402 settlement has a Tatum-verified digest, and the 4 steps appear on SSE
 - [ ] Advance cycle: Inference API is 0.80 short, a 7.00 suggestion appears
 - [ ] Session 2: SearchBox 1.20 is auto-approved because of the rule from Walrus
@@ -345,7 +357,8 @@ API endpoint and SSE event, and list anything the API is missing before writing 
 1. Keep the existing layout, tokens, colors, type and copy. Do not redesign.
 2. All UI copy stays English. Dot decimals, e.g. "20.00 USDC".
 3. Data: TanStack Query for REST, one SSE connection in a provider that patches or
-   invalidates queries on request.*, tx.*, memory.*, state.changed. Remove the
+   invalidates queries on request.*, tx.*, memory.*, state.changed. The dashboard never
+   polls Tatum: it reads the server's cached state and reacts to SSE. Remove the
    localStorage state and the "simulation" disclaimers that no longer apply.
 4. Owner wallet with @mysten/dapp-kit. All browser RPC goes through the Next.js route
    /api/sui-rpc, which forwards to Tatum with the key on the server side.
@@ -394,9 +407,8 @@ Phase 5: mainnet and recording prep. Read CLAUDE.md and docs/PROGRESS.md.
    Tatum mainnet gateway with the mainnet USDC coin type. Seed with seed-vault.ts.
    Confirm every read and write goes through Tatum mainnet. Point the hosted deployment
    at mainnet.
-2. scripts/recycle.ts: sweep USDC from the demo payee and merchant addresses back to
-   the operator before each advance-cycle, so simulated income reuses the same funds.
-   Label it as demo plumbing in code and README.
+2. Run scripts/recycle.ts (built in Phase 3) against the mainnet payee and merchant
+   addresses before each advance-cycle, so simulated income reuses the same funds.
 3. Fresh memory namespace for the final run (sisih-final). Never fake data: every
    number in Learning impact must come from real requests, memories and events.
 4. demo-run.ts --sessions 3-5: scripted owner decisions that are realistic (some new

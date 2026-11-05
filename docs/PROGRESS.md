@@ -13,6 +13,14 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
   simulation; no chain, Tatum, Walrus or x402 connection yet.
 - Spec translated to English in docs/SPEC.md; build plan in docs/BUILD_PLAN.md.
 - CLAUDE.md written for Sisih.
+- Repo restructured: dashboard in web/ (@sisih/web), brand kit in docs/design/, pnpm
+  workspace at the root (web, server). Dependencies pinned to exact versions.
+  next.config.ts no longer forces turbopack.root (it broke resolution under pnpm;
+  Next.js detects the root from pnpm-lock.yaml). `pnpm test` 12/12, `pnpm typecheck`
+  and `pnpm build` pass.
+- Plan updates: scripts/recycle.ts moved from Phase 5 to Phase 3 so testnet demo cycles
+  reuse funds; Spike C must report whether the x402 library pays from coin objects,
+  address balances, or both; the dashboard never polls Tatum (server cache + SSE).
 
 ## Decisions
 
@@ -93,7 +101,11 @@ The agent has no USDC now; Spike C needs 0.01 (faucet once, or send from owner a
 
 ## Open issues
 
-- web/ move blocked while a next dev server runs from the repo root.
+- Owner stays at exactly 20.00 USDC for seeding. The user is funding the operator from the
+  Circle faucet; then send the agent 0.01 USDC from the operator as a Coin object
+  (coinWithBalance + transferObjects) for Spike C. Script ready in the session scratchpad
+  (fund-agent.mjs); rebuild it as a Phase 0 script if the scratchpad is gone.
+- The repo has no root README yet (the dashboard README is web/README.md). Phase 6 writes it.
 - Hosting provider for the public demo is not chosen yet (needs a long-running Node
   server for SSE + SQLite, plus the Next.js app).
 
