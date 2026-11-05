@@ -32,15 +32,28 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
   with or without a key. Sui deprecated JSON-RPC.
 - gRPC at https://sui-{testnet,mainnet}-grpc.gateway.tatum.io works:
   `sui.rpc.v2.LedgerService/GetServiceInfo` returned chain `testnet` (sui-node 1.83.1) and
-  `mainnet` (sui-node 1.82.4). It answers gRPC-web over plain HTTP/1.1 fetch as well as
-  native HTTP/2 gRPC, so SuiGrpcClient with a fetch transport should work in Node and
-  behind the Next.js proxy.
+  `mainnet` (sui-node 1.82.4).
+- Working client (verified): @mysten/sui 2.39.0 `SuiGrpcClient` with
+  `transport: new GrpcTransport({ host: "sui-testnet-grpc.gateway.tatum.io:443",
+  channelCredentials: ChannelCredentials.createSsl(), meta: { "x-api-key": key } })`
+  from @protobuf-ts/grpc-transport + @grpc/grpc-js. getChainIdentifier and getBalance work.
+- The default gRPC-web fetch transport fails ("unexpected response content type:
+  application/grpc", then "missing status"): Tatum replies with native gRPC framing and no
+  trailers over HTTP/1.1. So the browser cannot talk gRPC-web to Tatum directly; the
+  Next.js /api/sui-rpc route must call Tatum server side with the native transport.
 - Consequence: no event-query RPC. Activity is built from digests we record in tx_log,
   each read back with GetTransaction (which returns its events).
 
 ## Wallets (testnet, generated 2026-11-05)
 
-Private keys are only in .env (gitignored).
+Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 2026-11-05:
+
+| Role | SUI | USDC |
+| --- | --- | --- |
+| owner | 1.0000 | 2.00 |
+| operator | 1.0000 | 2.00 |
+| agent | 0.5000 | 2.00 |
+| facilitator | 1.0000 | 2.00 |
 
 | Role | Address |
 | --- | --- |
@@ -51,10 +64,14 @@ Private keys are only in .env (gitignored).
 
 ## Open issues
 
-- Fund the 4 wallets with testnet SUI (the scripted faucet is disabled: "CI compatibility
-  is disabled", use https://faucet.sui.io in a browser) and the agent and owner with
-  testnet USDC from https://faucet.circle.com.
-- Walrus Memory account ID + delegate key from memory.walrus.xyz still needed.
+- Owner needs at least 20.00 testnet USDC for seed-vault.ts (has 2.00; all 4 wallets hold
+  8.00 total). Use https://faucet.circle.com for the owner address, or sweep the others
+  to the owner in Phase 1.
+- Walrus Memory: delegate key is in .env as MEMWAL_KEY (public key / MEMWAL_AGENT_ID
+  9bd012e3a1c0e9eff2deb03910a6190e10a7c1e38a1ca03413290b9ccccc2ecf). Relayer health is
+  ok. MEMWAL_ACCOUNT_ID (the account object ID from memory.walrus.xyz, not a wallet
+  address) is still missing; authenticated calls return 401 without it.
+- web/ move blocked while a next dev server runs from the repo root.
 - Hosting provider for the public demo is not chosen yet (needs a long-running Node
   server for SSE + SQLite, plus the Next.js app).
 

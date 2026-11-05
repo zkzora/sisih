@@ -46,10 +46,13 @@ Progress log: docs/PROGRESS.md
    gateway: https://sui-testnet-grpc.gateway.tatum.io or
    https://sui-mainnet-grpc.gateway.tatum.io, API key in the x-api-key header.
    Tatum's JSON-RPC route (sui-*.gateway.tatum.io) returns 404 as of 2026-11-05 because Sui
-   deprecated JSON-RPC; do not use it. The gateway accepts gRPC-web over plain fetch
-   (verified), so use SuiGrpcClient from @mysten/sui with a fetch transport that adds the
-   header. One chokepoint: server/src/lib/tatum.ts.
-   The browser reaches Sui only through the web proxy route /api/sui-rpc,
+   deprecated JSON-RPC; do not use it. Use native gRPC over HTTP/2:
+   SuiGrpcClient from @mysten/sui with transport = new GrpcTransport (from
+   @protobuf-ts/grpc-transport + @grpc/grpc-js) { host: "sui-<net>-grpc.gateway.tatum.io:443",
+   channelCredentials: ChannelCredentials.createSsl(), meta: { "x-api-key": key } }.
+   Verified 2026-11-05. The gRPC-web fetch transport does NOT work: Tatum answers with
+   application/grpc and no status trailers. One chokepoint: server/src/lib/tatum.ts.
+   The browser reaches Sui only through the web proxy route /api/sui-rpc (server side),
    which forwards to Tatum. Never expose the Tatum key to the browser.
    No other RPC provider anywhere. Free plan: 3 requests/second, so throttle.
 2. Set gas price and gas budget explicitly. Throttle and retry Tatum calls.
