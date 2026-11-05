@@ -77,7 +77,7 @@ const vaultId = find(createdVault.created, (c) => c.type.includes("::vault::Vaul
 const operatorCapId = find(createdVault.created, (c) => c.type.endsWith("::vault::OperatorCap"), "OperatorCap");
 console.log(`create_vault ${createdVault.digest} vault ${vaultId} operator cap ${operatorCapId} gas ${sui(createdVault.gasUsedMist)} SUI`);
 const vaultCheck = await verifyTransaction(createdVault.digest, { network });
-console.log(`  verified through Tatum: success=${vaultCheck.success} checkpoint=${vaultCheck.checkpoint} events=${vaultCheck.events}`);
+console.log(`  verified through Tatum: success=${vaultCheck.success} checkpoint=${vaultCheck.checkpoint} events=${vaultCheck.events.length}`);
 
 upsertEnv({ SISIH_PACKAGE_ID: packageId, VAULT_ID: vaultId, OPERATOR_CAP_ID: operatorCapId, UPGRADE_CAP_ID: upgradeCapId });
 console.log("wrote SISIH_PACKAGE_ID, VAULT_ID, OPERATOR_CAP_ID, UPGRADE_CAP_ID to .env");

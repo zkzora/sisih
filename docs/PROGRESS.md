@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 1 done (gate passed 2026-11-05). Next: Phase 2 (server, policy engine, Tatum, Walrus Memory), see docs/BUILD_PLAN.md.
+Phase 2 done (gate passed 2026-11-05). Next: Phase 3 (agent, demo merchants, x402, demo controls), see docs/BUILD_PLAN.md.
 
 ## Done
 
@@ -82,6 +82,54 @@ Walrus Memory fields (what the UI can show):
   owner is the MemWal account owner wallet; no need to show it.
 - Writes take ~20 s, so the "Writing" chip state is real and must be designed for.
 
+### Phase 2: server core (2026-11-05)
+
+Gate:
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| Policy engine unit tests pass for the 6 SPEC requests | pass | server/src/policy/engine.test.ts replays session 1 (20.00/16.50/3.50) and session 2 (18.00/16.00/2.00) from SPEC fixtures: auto / held new merchant / held cut 1.20 / auto by rule / auto / held cut 2.70 + "denied before". Server suite 29/29 |
+| `GET /api/state` equals the chain, read through Tatum | pass | scripts/gate-state.ts: 20/20 fields equal an independent Tatum getObject (free 3.00, committed 16.50, every obligation, policy). Explorer: https://suiscan.xyz/testnet/object/0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962 |
+| "Approve & remember" writes to Walrus mainnet, writing -> stored on SSE | pass | SearchBox 1.20 held (new merchant) -> approve_and_remember. SSE: memory.writing then memory.stored for the rule (blob pLRApww36bxb5gbirEcHCWjfYEpaKOor5g9hsCgbPvY, job ac57ac1f-a79e-4274-b4ac-0dffaf73323c, 22.5 s) and the decision (blob sM6oQbKKuUWmSgUmVsnOMEgGgRutf9qGYfovec4RtEw, 24.5 s) |
+| Restart + new session rebuilds rules from Walrus recall | pass | server stopped, rules_cache wiped, restarted (0 rules), POST /api/sessions -> 1 rule loaded, origin `walrus`, source blob pLRApww3..., recall 2 of 2 namespace memories in 2.9 s. A new SearchBox 1.20 request in session 2 was auto_allowed by rule-0677970a |
+| `GET /api/activity` shows vault events with Tatum verification | pass | scripts/gate-activity.ts imported 6 digests via POST /api/tx; 11 rows (deposit, 4 reserves, policy, vault created, publish, release 0.50 verified, release 5.00 failed with EExceedsFree, x402 settle). Each digest cost exactly 2 Tatum calls: 1 GetTransaction + 1 BatchGetObjects |
+
+Measurements:
+
+- Recall latency (Walrus mainnet, recall limit 5): 1769 ms on an empty namespace,
+  1436 ms with 2 memories. Session-start rule rebuild (recall limit 100 + listMemories):
+  2915 ms. Remember jobs: 22.5 s and 24.5 s to stored.
+- Decisions are made before recall returns: the held SearchBox response came back with
+  `recall.pending: true`; recall landed later as SSE request.recall.
+- Tatum: server boot = 1 call (vault getObject). Recording a transaction = 2 calls.
+  The API serves everything else from SQLite and the cached VaultState.
+
+Built (server/src):
+
+- policy/engine.ts (pure decide + shared hardLimit used as the pre-send check),
+  composer.ts (rule draft + sentence, max rounded up to 0.50, 30-day expiry),
+  suggestions.ts (bill rounded up to 0.50, raised by past bills).
+- chain/vault.ts: parseVault, cached readVault, recordTx (GetTransaction effects+events,
+  then 1 vault read), operator writes releaseToAgent / payObligation / fundReserves /
+  depositIncome (pre-check from cache -> SDK dry-run -> execute -> recordTx; dry-run aborts
+  return a readable reason via vaultAbortName and spend no gas). chain/activity.ts maps
+  tx_log events to feed rows with explorer links.
+- memory/format.ts (`[sisih:v1:<type>] sentence {json}`), memory/memwal.ts (remember as
+  tracked background job + retry + waitForPendingMemories, timed recall, loadRules with
+  listMemories cross-check, cached health).
+- services: state (sessions, rules cache, settings, known merchants), requests (submit,
+  owner decisions, rule draft, parallel recall), sessions (start_session), chainEvents
+  (obligation_outcome + suggestions, accept via owner digest, reject), insights, payments
+  (PaymentExecutor; Phase 2 stub sets payment_status=stub).
+- db: drizzle schema + startup DDL; DATABASE_URL default file:./server/data/sisih.db.
+- api/app.ts: every endpoint in the build plan plus POST /api/requests, POST /api/tx,
+  GET /api/requests/:id/rule-draft, POST /api/state/refresh, POST /api/memories/:id/retry,
+  GET /api/sessions; SSE at /api/events with Last-Event-ID replay and 15 s pings.
+- Scripts: gate-state.ts, gate-activity.ts. Walrus links use https://walruscan.com/mainnet/blob/<blobId>.
+
+Live state after the gate: session 2, 1 rule (SearchBox <= 1.50) in namespace sisih-demo-1,
+4 memories stored, 2 requests (both with payment_status=stub: no funds moved).
+
 ### Phase 1: Move vault (2026-11-05)
 
 Gate:
@@ -138,6 +186,18 @@ Findings for Phase 2+:
   Testnet sample 13836185948054749199 = code 4 (EExceedsFree), line 464. Unit tested.
 - Vault JSON from gRPC getObject: `free` and `reserve` are Balance JSON, obligations are
   `obligations.contents[{ key, value }]`, agent_policy is an Option. See show-vault.ts.
+
+## Notes for Phase 3 (recorded in Phase 2)
+
+- Reset must sweep the agent to 0 USDC (it holds 0.50 from the Phase 1 gate release).
+- The agent must pay with the exact coin from release_to_agent. The x402 client builds
+  `tx.balance({ useGasCoin: false })`, which may draw from any coin or the address balance;
+  either keep the agent at 0 between payments or build send_funds from that exact coin.
+- Replace stubPaymentExecutor (services/payments.ts) via setPaymentExecutor: releaseToAgent
+  -> x402 pay -> recordTx of both digests (request_id links them) -> payment_status paid/failed.
+- Call onVaultEvents(rec) after payObligation so the 6.80 Inference bill creates the 7.00
+  suggestion (it already runs for digests posted to POST /api/tx).
+- The server must run with only one process per DATABASE_URL.
 
 ## Notes for Phase 2 (recorded at the start of Phase 1)
 
@@ -266,6 +326,7 @@ See CLAUDE.md and .env.example. New in Phase 0:
 New in Phase 1: OPERATOR_CAP_ID, UPGRADE_CAP_ID (written by publish.ts);
 PAYEE_INFERENCE_PRIVATE_KEY, PAYEE_HOSTING_PRIVATE_KEY, PAYEE_SAVINGS_PRIVATE_KEY,
 PAYEE_DOMAIN_PRIVATE_KEY (written by seed-vault.ts).
+New in Phase 2 (optional): PORT (default 8787), HOST (default 127.0.0.1).
 
 ## Later
 

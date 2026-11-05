@@ -40,6 +40,23 @@ function isRetryable(err: unknown): boolean {
   return /429|UNAVAILABLE|RESOURCE_EXHAUSTED/.test(`${e?.code ?? ""} ${e?.message ?? ""}`);
 }
 
+/** Live counters for /api/health and the per-transaction call budget. */
+export interface TatumStats {
+  calls: number;
+  failures: number;
+  retries: number;
+  byMethod: Record<string, number>;
+  lastLatencyMs: number | null;
+  lastOkAt: number | null;
+  lastError: { at: number; code: string; message: string } | null;
+}
+export const tatumStats: TatumStats = { calls: 0, failures: 0, retries: 0, byMethod: {}, lastLatencyMs: null, lastOkAt: null, lastError: null };
+
+/** Snapshot of per-method counts, for measuring how many calls a code path makes. */
+export function tatumCallCounts(): Record<string, number> {
+  return { ...tatumStats.byMethod };
+}
+
 /** Serialize and space out unary calls, retrying rate-limit errors. */
 export function throttleTransport<T extends RpcTransport>(transport: T, minIntervalMs = MIN_INTERVAL_MS): T {
   let gate: Promise<void> = Promise.resolve();
@@ -60,13 +77,23 @@ export function throttleTransport<T extends RpcTransport>(transport: T, minInter
     const run = async (): Promise<{ call: Call; response: unknown }> => {
       for (let attempt = 0; ; attempt++) {
         await turn();
+        const started = Date.now();
+        tatumStats.calls++;
+        tatumStats.byMethod[method.name] = (tatumStats.byMethod[method.name] ?? 0) + 1;
+        if (attempt > 0) tatumStats.retries++;
         const call = unary(method, input, options);
         // A failed call also rejects its headers/status/trailers promises; nobody awaits
         // them on a retried attempt, so mark them handled or Node crashes the process.
         for (const p of [call.headers, call.status, call.trailers]) Promise.resolve(p).catch(() => {});
         try {
-          return { call, response: await call.response };
+          const response = await call.response;
+          tatumStats.lastLatencyMs = Date.now() - started;
+          tatumStats.lastOkAt = Date.now();
+          return { call, response };
         } catch (err) {
+          const e = err as { code?: string; message?: string };
+          tatumStats.failures++;
+          tatumStats.lastError = { at: Date.now(), code: String(e?.code ?? "unknown"), message: String(e?.message ?? err).slice(0, 200) };
           if (attempt < MAX_RETRIES && isRetryable(err)) {
             await sleep(BACKOFF_BASE_MS * 2 ** attempt);
             continue;
@@ -117,10 +144,22 @@ export function suiClient(network: SuiNetwork = suiNetwork()): SuiGrpcClient {
   return client;
 }
 
+const GAS_PRICE_TTL_MS = 10 * 60_000;
+const gasPriceCache = new Map<SuiNetwork, { price: bigint; at: number }>();
+
+/** Reference gas price, cached for 10 minutes (it changes per epoch, about daily). */
+export async function referenceGasPrice(network: SuiNetwork = suiNetwork()): Promise<bigint> {
+  const hit = gasPriceCache.get(network);
+  if (hit && Date.now() - hit.at < GAS_PRICE_TTL_MS) return hit.price;
+  const { referenceGasPrice } = await suiClient(network).core.getReferenceGasPrice();
+  const price = BigInt(referenceGasPrice);
+  gasPriceCache.set(network, { price, at: Date.now() });
+  return price;
+}
+
 /** Set gas price (reference price) and gas budget explicitly on a transaction. */
 export async function setGas(tx: Transaction, opts: { budget?: bigint; network?: SuiNetwork } = {}): Promise<void> {
-  const { referenceGasPrice } = await suiClient(opts.network).core.getReferenceGasPrice();
-  tx.setGasPrice(BigInt(referenceGasPrice));
+  tx.setGasPrice(await referenceGasPrice(opts.network));
   tx.setGasBudget(opts.budget ?? DEFAULT_GAS_BUDGET);
 }
 
@@ -175,31 +214,44 @@ export async function signAndExecuteDetailed(tx: Transaction, signer: Keypair, n
   };
 }
 
+export interface TxEvent {
+  /** Full Move type, e.g. 0xpkg::vault::Deposited */
+  type: string;
+  sender: string;
+  json: Record<string, unknown> | null;
+}
+
 export interface VerifiedTx {
   digest: string;
   success: boolean;
+  error: string | null;
   checkpoint: string | null;
   timestampMs: number | null;
-  events: number;
+  events: TxEvent[];
+  gasMist: bigint;
   attempts: number;
 }
 
 /**
- * Read a transaction back through Tatum. Retries NOT_FOUND, because the gateway can
- * route the read to a node that has not seen a just-executed transaction yet.
+ * Read a transaction back through Tatum: ONE GetTransaction with effects + events (the
+ * per-transaction budget). Retries NOT_FOUND, because the gateway can route the read to a
+ * node that has not seen a just-executed transaction yet.
  */
 export async function verifyTransaction(digest: string, opts: { network?: SuiNetwork; tries?: number } = {}): Promise<VerifiedTx> {
   const tries = opts.tries ?? 8;
   for (let attempt = 1; ; attempt++) {
     try {
-      const res = await suiClient(opts.network).core.getTransaction({ digest, include: { events: true } });
+      const res = await suiClient(opts.network).core.getTransaction({ digest, include: { effects: true, events: true } });
       const t = res.Transaction ?? res.FailedTransaction;
+      const g = t.effects.gasUsed;
       return {
         digest: t.digest,
         success: t.status.success,
+        error: t.status.success ? null : JSON.stringify(t.status.error),
         checkpoint: t.checkpoint,
         timestampMs: t.timestampMs,
-        events: t.events.length,
+        events: t.events.map((e) => ({ type: e.eventType, sender: e.sender, json: e.json })),
+        gasMist: BigInt(g.computationCost) + BigInt(g.storageCost) - BigInt(g.storageRebate),
         attempts: attempt,
       };
     } catch (err) {

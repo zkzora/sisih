@@ -81,6 +81,6 @@ tx.moveCall({
 const res = await signAndExecuteDetailed(tx, owner);
 if (!res.success) throw new Error(`seed failed: ${res.error}`);
 const v = await verifyTransaction(res.digest);
-console.log(`seed ${res.digest} success=${v.success} checkpoint=${v.checkpoint} events=${v.events} (read back through Tatum)`);
+console.log(`seed ${res.digest} success=${v.success} checkpoint=${v.checkpoint} events=${v.events.length} (read back through Tatum)`);
 for (const p of resolved) console.log(`  ${p.name.padEnd(15)} ${p.target.padStart(5)} -> payee ${p.payee}`);
 process.exit(0);

@@ -35,7 +35,7 @@ console.log(`self-transfer digest ${sent.digest} success=${sent.success}${sent.e
 const v = await verifyTransaction(sent.digest, { network });
 console.log(
   `read back through Tatum: success=${v.success} checkpoint=${v.checkpoint} ` +
-    `timestampMs=${v.timestampMs} events=${v.events} (attempt ${v.attempts})`,
+    `timestampMs=${v.timestampMs} events=${v.events.length} (attempt ${v.attempts})`,
 );
 if (!sent.success || !v.success) process.exit(1);
 process.exit(0);
