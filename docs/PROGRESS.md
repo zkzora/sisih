@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Phase 0 done (gate passed 2026-11-05). Next: Phase 1 (Move vault), see docs/BUILD_PLAN.md.
+Phase 1 done (gate passed 2026-11-05). Next: Phase 2 (server, policy engine, Tatum, Walrus Memory), see docs/BUILD_PLAN.md.
 
 ## Done
 
@@ -81,6 +81,63 @@ Walrus Memory fields (what the UI can show):
   shortened blob_id, namespace, created_at, recall distance in the Last recall tab.
   owner is the MemWal account owner wallet; no need to show it.
 - Writes take ~20 s, so the "Writing" chip state is real and must be designed for.
+
+### Phase 1: Move vault (2026-11-05)
+
+Gate:
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| `sui move test` passes, incl. agent cannot touch reserves | pass | 46/46, no warnings (contracts/sisih/tests/vault_tests.move) |
+| Package and vault published on testnet through Tatum, IDs in .env | pass | publish E1yi2YGwQKvptBFmpJ6JXgJzChKfnwFeZB7YnomnXSax (checkpoint 403085774); create_vault BPpnht7M5SKmzETvfYH11FhqkBCUsQqVxe7oZPEZPuDL (checkpoint 403085788) |
+| Seed: total 20.00, committed 16.50, free 3.50, read through Tatum | pass | seed 6CGR8T7aEwX8kRQz39XpyV7dEh8rCqjTpNjaqQmW9tma (checkpoint 403085839, 6 events); show-vault.ts printed 20.00 / 16.50 / 3.50 |
+| release_to_agent 0.50 succeeds | pass | BdvJPeHs5a9W9fHALBwHNVxtNbiSz4kxbhpmMCefWTPs; agent USDC 0.00 -> 0.50, vault free 3.50 -> 3.00 |
+| release_to_agent 5.00 fails (exceeds free funds) | pass | BQyCnzJuPWTxm5YijiSJkYduCQycqX7ex3XtDrxQiJ1w executed and failed on-chain (checkpoint 403086321) with MoveAbort EExceedsFree; reserves still 16.50 |
+
+Deployed (testnet):
+
+| Item | ID |
+| --- | --- |
+| Package (SISIH_PACKAGE_ID) | 0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9 |
+| Vault<USDC> (VAULT_ID, shared) | 0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962 |
+| OperatorCap (OPERATOR_CAP_ID, held by operator) | 0xd6c6f6fa29a22c63ae566ee30ecccc160bb81809146d441a2c2605744723b5db |
+| UpgradeCap (UPGRADE_CAP_ID, held by owner) | in .env |
+
+Demo payees (keys in .env as PAYEE_*_PRIVATE_KEY, demo plumbing for recycle.ts):
+Inference API 0x15492a0729e0de31320da8222c253f271d5c8f7e1e8b849aa264618f0e03d5d9,
+Hosting VPS 0x02b29ca85082502220a83acba4f281a35abf139d556a294522fc34e29c9c4907,
+Weekly savings 0xff7f2256fd0bb2fc3787eafa8e3890702cd264af2a1546010333953d4e06c2c5,
+Domain renewal 0xa0ae37a8edb10656b3a8e9db4d4749c7e1fe5f4b2b273b8a0aad22703f59c5d9.
+All four obligations first due 2026-11-05T09:07:29Z (one demo cycle after seeding);
+agent policy 5.00 / request, 10.00 / day, expires 2026-12-05.
+
+Contract (approved struct list, plus `name` in ObligationPaid and ObligationRemoved):
+- contracts/sisih/sources/vault.move. Every mutating entry point checks `version`;
+  release_to_agent splits only from `free` and never borrows `obligations`.
+- Vault pays payees, agent and owner as Coin objects. Errors have stable codes
+  (#[error(code = N)]), mapped in server/src/chain/sisih.ts (VAULT_ERRORS, vaultAbortName).
+- Recurring obligations skip missed cycles on late payment; one-time ones are removed
+  after payment and the event keeps their name.
+
+Scripts (server/scripts): publish.ts (refuses to republish without --force), seed-vault.ts,
+show-vault.ts (`--raw` dumps the Vault JSON), gate-release.ts (`--skip-success` runs only
+the failing case). Gas: publish 0.0766 SUI, create_vault 0.0048 SUI.
+
+Findings for Phase 2+:
+- The SDK simulates every transaction while building it and **throws** on a Move abort
+  (`SimulationError: Transaction resolution failed: MoveAbort ... 'EExceedsFree'`), so a
+  doomed transaction never reaches the chain. That is the right default for the server:
+  catch SimulationError, map it with vaultAbortName, and report it as a refusal without
+  spending gas. Only build fully resolved transactions (explicit object refs + gas payment)
+  when on-chain failure evidence is wanted, as gate-release.ts does.
+- Faucet SUI also sits in address balances (the operator has no SUI coin object big enough
+  for gas). Gas from an address balance works with `setGasPayment([])` plus a
+  `ValidDuring` expiration (chain id + current epoch); the normal build path handles this
+  automatically.
+- Clever-error abort codes: 0xT_CCC_LLLL_IIII, code in bits 48-59, line in bits 16-31.
+  Testnet sample 13836185948054749199 = code 4 (EExceedsFree), line 464. Unit tested.
+- Vault JSON from gRPC getObject: `free` and `reserve` are Balance JSON, obligations are
+  `obligations.contents[{ key, value }]`, agent_policy is an Option. See show-vault.ts.
 
 ## Notes for Phase 2 (recorded at the start of Phase 1)
 
@@ -165,9 +222,9 @@ Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 
 
 | Role | SUI | USDC |
 | --- | --- | --- |
-| owner | 1.0000 | 20.00 |
-| operator | 0.9897 | 19.98 |
-| agent | 0.4977 | 0.00 |
+| owner | 0.9181 | 0.00 (20.00 deposited into the vault) |
+| operator | 0.9864 | 19.98 |
+| agent | 0.4977 | 0.50 (from the gate release) |
 | facilitator | 0.9977 | 0.00 |
 | DataMart (demo) | 0 | 0.02 (address balance, from Spike C) |
 
@@ -206,6 +263,9 @@ See CLAUDE.md and .env.example. New in Phase 0:
 - MERCHANT_DATAMART_PRIVATE_KEY, MERCHANT_SEARCHBOX_PRIVATE_KEY, MERCHANT_REPORTLAB_PRIVATE_KEY
   (demo plumbing for recycle.ts).
 - Optional: TATUM_MIN_INTERVAL_MS (default 400), SPIKE_MEMWAL_NAMESPACE (default sisih-spike).
+New in Phase 1: OPERATOR_CAP_ID, UPGRADE_CAP_ID (written by publish.ts);
+PAYEE_INFERENCE_PRIVATE_KEY, PAYEE_HOSTING_PRIVATE_KEY, PAYEE_SAVINGS_PRIVATE_KEY,
+PAYEE_DOMAIN_PRIVATE_KEY (written by seed-vault.ts).
 
 ## Later
 
