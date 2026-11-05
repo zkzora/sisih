@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
+Phase 0 done (gate passed 2026-11-05). Next: Phase 1 (Move vault), see docs/BUILD_PLAN.md.
 
 ## Done
 
@@ -21,6 +21,66 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
 - Plan updates: scripts/recycle.ts moved from Phase 5 to Phase 3 so testnet demo cycles
   reuse funds; Spike C must report whether the x402 library pays from coin objects,
   address balances, or both; the dashboard never polls Tatum (server cache + SSE).
+
+### Phase 0: setup and 3 spikes (2026-11-05)
+
+Gate:
+
+| Item | Result | Evidence |
+| --- | --- | --- |
+| Workspace build, sui move build | pass | `pnpm build`, `pnpm typecheck` (web + server), `pnpm test` (web 12/12, server 3/3), `sui move build` in contracts/sisih |
+| Spike A: tx submitted and read back through Tatum | pass | operator SUI self-transfer 4Ed9Ppsxqw1UPMwxXXdijxU9y9eXafpFaNV4BTdxMY5A, checkpoint 403066573, read back on attempt 2 |
+| Spike B: memory stored on Walrus mainnet and recalled | pass | job 1d002dfe-2e7b-41db-a67b-c0cdd3281d61, blob LbofEH99Akbm3-H-yDlMapCQRP5cMENcd94JvDkBidU, namespace sisih-spike, recall distance 0.60 |
+| Spike C: 0.01 USDC x402 settles on testnet, digest verified | pass | from agent Coin object: 8G4cQRFVnv4KyMgnjSiVB9NYs9o7QpWfRuZkvMRXFVCv (checkpoint 403067497); from agent address balance: EUwUqwZJpQPrVXph7b8uvC58PcqNoXtn7rkrbqUJ2Tsr (checkpoint 403067648) |
+| PROGRESS records x402 path, memwal fields, Tatum issues | pass | sections below |
+
+Built:
+
+- contracts/sisih: empty Move package (`sui move new sisih`), builds.
+- server/ (@sisih/server): Hono, tsx, vitest, drizzle-orm, better-sqlite3 (native build
+  approved in pnpm-workspace.yaml allowBuilds; protobufjs postinstall denied).
+- server/src/lib/tatum.ts: the only Sui path. SuiGrpcClient over native gRPC to Tatum,
+  throttleTransport (one call in flight, >= 400 ms, retry 429/UNAVAILABLE/RESOURCE_EXHAUSTED
+  with backoff, unit tested), setGas (reference gas price + explicit budget), signAndExecute,
+  verifyTransaction (retries NOT_FOUND). server/src/lib/env.ts loads the root .env.
+- server/scripts: spike-tatum.ts, spike-memwal.ts, spike-x402.ts, fund-agent.ts
+  (testnet plumbing: operator -> agent as `coin` or `address` balance).
+- web/: added @mysten/dapp-kit 1.1.17, @tanstack/react-query 5.104.5, @mysten/sui 2.39.0
+  (not wired yet; Phase 4). Dashboard untouched otherwise.
+- Demo merchant keypairs generated into .env (DataMart, SearchBox, ReportLab). Private
+  keys exist only so recycle.ts (Phase 3) can sweep funds back.
+
+x402 path: **the package path works**, no custom flow needed.
+
+- @tentaclepay/sui-x402 2.1.12 + @x402/core 2.12.0 (x402 V2: headers PAYMENT-REQUIRED,
+  PAYMENT-SIGNATURE, PAYMENT-RESPONSE; network id `sui:testnet`).
+- Pass our Tatum SuiGrpcClient via `createSuiClientRegistry().set("sui:testnet", client)`
+  as `clientRegistry` to both the client and facilitator schemes; otherwise the library
+  uses fullnode.testnet.sui.io directly.
+- Client builds `0x2::balance::send_funds<USDC>(tx.balance({ useGasCoin: false }), payTo)`,
+  signs it as sender; the facilitator is gas owner, verifies (structure + simulate),
+  co-signs and executes.
+- **Coin objects vs address balances: both.** Paid once from a Coin object and once from
+  an address balance; both settled. The merchant always receives into its **address
+  balance** (coinBalance stays 0), so recycle.ts must sweep with coinWithBalance.
+- Testnet USDC is "gasless" in the library (TESTNET_GASLESS_TOKEN_RULES minAmount 0):
+  gas price and budget 0, no gas payment. The facilitator's SUI did not change.
+  On mainnet USDC is gasless only from 0.01 USDC (minAmount 10000); below that the
+  facilitator pays gas. Check again in Phase 5.
+- Library bug: `settle()` returns `success: true` with an empty `transaction` when
+  verify fails. Only accept a payment with a non-empty digest that verifyTransaction confirms.
+
+Walrus Memory fields (what the UI can show):
+
+- remember() -> `{ job_id, status: "running" }`.
+- getRememberStatus(job_id) -> `{ job_id, status: pending|running|uploaded|done|failed|not_found, owner, namespace, blob_id?, error? }`.
+- waitForRememberJob(job_id) -> `{ id, job_id, blob_id, owner, namespace }` (took 21.4 s).
+- recall({ query, limit, namespace }) -> `{ results: [{ blob_id, text, distance, created_at }], total }`.
+- Persist per memory in SQLite: job_id, status, blob_id, namespace, created_at. Show in UI:
+  type chip, text, status (Writing = pending/running/uploaded, Stored = done, Failed),
+  shortened blob_id, namespace, created_at, recall distance in the Last recall tab.
+  owner is the MemWal account owner wallet; no need to show it.
+- Writes take ~20 s, so the "Writing" chip state is real and must be designed for.
 
 ## Decisions
 
@@ -59,8 +119,13 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
 - Read-after-write lag: GetTransaction right after ExecuteTransaction returned NOT_FOUND
   (Tatum routes to nodes that may lag); a retry 2 s later succeeded. Verification in
   lib/tatum.ts must retry NOT_FOUND a few times before marking a digest failed.
-- Consequence: no event-query RPC. Activity is built from digests we record in tx_log,
-  each read back with GetTransaction (which returns its events).
+- No event queries: Tatum rejects `LedgerService/ListEvents` with PERMISSION_DENIED
+  "gRPC method not allowed" (verified 2026-11-05; a burst first showed up as 429).
+  Activity is built from digests we record in tx_log, each read back with GetTransaction
+  (include events). PERMISSION_DENIED is not retried.
+- A failed gRPC call also rejects its headers/status/trailers promises; the throttle
+  wrapper marks them handled, otherwise Node exits on an unhandled rejection before the
+  NOT_FOUND retry runs. Covered by server/src/lib/tatum.test.ts.
 
 ## Walrus Memory (mainnet, set up 2026-11-05)
 
@@ -76,7 +141,7 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
   tx DxQTmMGkm7BTu3pQXDqx5aaAnwHWSLBxLf2oUYCXo8Wf. Its private key is MEMWAL_KEY in .env.
 - MEMWAL_AGENT_ID for the submission form (public key of the "Sisih server" key):
   2bd5ef9fe819eb9fc39de0b6d37b341ec8cf9dc091f82bdea74b5560c785e3b3.
-- Authenticated listNamespaces works (0 namespaces). No memory written yet (Spike B).
+- Authenticated listNamespaces works. Spike B wrote 1 memory to namespace sisih-spike; the demo namespace sisih-demo-1 is still empty.
 - Transactions on the account need no SUI: the relayer sponsors gas
   (sign personal message -> POST /sponsor -> sign tx -> POST /sponsor/execute).
 
@@ -87,9 +152,10 @@ Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 
 | Role | SUI | USDC |
 | --- | --- | --- |
 | owner | 1.0000 | 20.00 |
-| operator | 0.9954 | 19.99 |
-| agent | 0.4977 | 0.01 (Coin object) |
+| operator | 0.9897 | 19.98 |
+| agent | 0.4977 | 0.00 |
 | facilitator | 0.9977 | 0.00 |
+| DataMart (demo) | 0 | 0.02 (address balance, from Spike C) |
 
 USDC sweep to owner (testnet, through Tatum): operator 4f2M4VGZnbHwLBAbA4cPUrZEe5AjqJw1GPPf7d9RbEtE,
 agent FnrQ4bRp7F7bRRJMkhQXFcuahzFDKKiSd6rGZzRowGpe, facilitator 6g8tr7bErvyGdZb3bMDGMWHkeDSSDzjtB9rkcHqj1Mud.
@@ -98,6 +164,8 @@ object (coinWithBalance + transferObjects): tx aHKicFhFqP6r88fkgALZreqfR7Pj8XRyT
 verified through Tatum. Agent coin 0xeb20712f2afc79dd7093ad883b949aea2147108c4dbe3075c236ad5b9a1ba922
 (coinBalance 10000, addressBalance 0). Balances now: owner 20.00, operator 19.99, agent 0.01,
 facilitator 0.00 USDC.
+Phase 0: operator -> agent 0.01 into the agent's address balance
+(Aff8dr5wAT85dpDj2qbiy77srUmGhBahLS77aB9geo9g) for the second Spike C run.
 
 | Role | Address |
 | --- | --- |
@@ -105,16 +173,25 @@ facilitator 0.00 USDC.
 | operator | 0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de |
 | agent | 0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba |
 | facilitator | 0xb9d27e53ee9856dc7e15a57e7c119fadd3ea1b939664591ce0279c5e352079f6 |
+| DataMart (demo) | 0xc121cd758d3437bd426a77f6b83d88c39c38c67de719a8d686b69bb49d960065 |
+| SearchBox (demo) | 0xfa2c4aa7f28b0eaef1185c25b3351a4b87a134d10178692083682bdf3b85b808 |
+| ReportLab (demo) | 0x5fbfeab33761c7094a42325ee3373ab8f171a3b8e90576779aa1006ff75614a1 |
 
 ## Open issues
 
+- pnpm 11 enforces a minimum release age. @tanstack/react-query 5.106.0 (1 day old) was
+  rejected; the lockfile was pinned to 5.104.5 (2026-10-19) instead of adding an
+  exclusion. Re-check this if pnpm complains about lockfile entries.
 - The repo has no root README yet (the dashboard README is web/README.md). Phase 6 writes it.
 - Hosting provider for the public demo is not chosen yet (needs a long-running Node
   server for SSE + SQLite, plus the Next.js app).
 
 ## Env vars
 
-See CLAUDE.md. .env.example is created in Phase 0.
+See CLAUDE.md and .env.example. New in Phase 0:
+- MERCHANT_DATAMART_PRIVATE_KEY, MERCHANT_SEARCHBOX_PRIVATE_KEY, MERCHANT_REPORTLAB_PRIVATE_KEY
+  (demo plumbing for recycle.ts).
+- Optional: TATUM_MIN_INTERVAL_MS (default 400), SPIKE_MEMWAL_NAMESPACE (default sisih-spike).
 
 ## Later
 
