@@ -41,6 +41,13 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
   application/grpc", then "missing status"): Tatum replies with native gRPC framing and no
   trailers over HTTP/1.1. So the browser cannot talk gRPC-web to Tatum directly; the
   Next.js /api/sui-rpc route must call Tatum server side with the native transport.
+- Faucet USDC lands in Sui **address balances** (getBalance: coinBalance 0,
+  addressBalance 2000000), so listCoins returns nothing. Build payments and vault
+  deposits with `coinWithBalance({ type, balance })` from @mysten/sui/transactions, which
+  draws from the address balance; never assume coin objects exist.
+- Rate limit is real: coinWithBalance + execute hits 429 without throttling. A wrapper
+  on the transport's unary() (one call in flight, >= 400 ms apart, retry 429/UNAVAILABLE
+  with backoff) made all three sweep transactions pass. Build lib/tatum.ts the same way.
 - Consequence: no event-query RPC. Activity is built from digests we record in tx_log,
   each read back with GetTransaction (which returns its events).
 
@@ -68,10 +75,14 @@ Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 
 
 | Role | SUI | USDC |
 | --- | --- | --- |
-| owner | 1.0000 | 2.00 |
-| operator | 1.0000 | 2.00 |
-| agent | 0.5000 | 2.00 |
-| facilitator | 1.0000 | 2.00 |
+| owner | 1.0000 | 20.00 |
+| operator | 0.9977 | 0.00 |
+| agent | 0.4977 | 0.00 |
+| facilitator | 0.9977 | 0.00 |
+
+USDC sweep to owner (testnet, through Tatum): operator 4f2M4VGZnbHwLBAbA4cPUrZEe5AjqJw1GPPf7d9RbEtE,
+agent FnrQ4bRp7F7bRRJMkhQXFcuahzFDKKiSd6rGZzRowGpe, facilitator 6g8tr7bErvyGdZb3bMDGMWHkeDSSDzjtB9rkcHqj1Mud.
+The agent has no USDC now; Spike C needs 0.01 (faucet once, or send from owner after seeding).
 
 | Role | Address |
 | --- | --- |
@@ -82,9 +93,6 @@ Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 
 
 ## Open issues
 
-- Owner needs at least 20.00 testnet USDC for seed-vault.ts (has 2.00; all 4 wallets hold
-  8.00 total). Use https://faucet.circle.com for the owner address, or sweep the others
-  to the owner in Phase 1.
 - web/ move blocked while a next dev server runs from the repo root.
 - Hosting provider for the public demo is not chosen yet (needs a long-running Node
   server for SSE + SQLite, plus the Next.js app).
