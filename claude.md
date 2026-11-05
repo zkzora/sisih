@@ -42,12 +42,16 @@ Progress log: docs/PROGRESS.md
 
 ## Non-negotiable rules
 
-1. Every Sui JSON-RPC call, reads and transaction submission, goes through Tatum:
-   https://sui-testnet.gateway.tatum.io or https://sui-mainnet.gateway.tatum.io,
-   API key in the x-api-key header. One chokepoint: server/src/lib/tatum.ts.
+1. Every Sui call, reads and transaction submission, goes through Tatum's Sui gRPC
+   gateway: https://sui-testnet-grpc.gateway.tatum.io or
+   https://sui-mainnet-grpc.gateway.tatum.io, API key in the x-api-key header.
+   Tatum's JSON-RPC route (sui-*.gateway.tatum.io) returns 404 as of 2026-11-05 because Sui
+   deprecated JSON-RPC; do not use it. The gateway accepts gRPC-web over plain fetch
+   (verified), so use SuiGrpcClient from @mysten/sui with a fetch transport that adds the
+   header. One chokepoint: server/src/lib/tatum.ts.
    The browser reaches Sui only through the web proxy route /api/sui-rpc,
    which forwards to Tatum. Never expose the Tatum key to the browser.
-   No other RPC provider anywhere.
+   No other RPC provider anywhere. Free plan: 3 requests/second, so throttle.
 2. Set gas price and gas budget explicitly. Throttle and retry Tatum calls.
 3. Walrus Memory is always mainnet: SDK @mysten-incubation/memwal,
    relayer https://relayer.memory.walrus.xyz, one namespace per owner.

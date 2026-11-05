@@ -63,16 +63,17 @@ Do not build product features yet.
    - root: .env.example with every var in CLAUDE.md, .gitignore, docs/PROGRESS.md
 
 2. server/src/lib/tatum.ts: the only Sui RPC chokepoint.
-   - URL from SUI_NETWORK: https://sui-testnet.gateway.tatum.io or https://sui-mainnet.gateway.tatum.io
+   - gRPC gateway URL from SUI_NETWORK: https://sui-testnet-grpc.gateway.tatum.io or
+     https://sui-mainnet-grpc.gateway.tatum.io (Tatum JSON-RPC returns 404; see CLAUDE.md rule 1)
    - x-api-key header from TATUM_API_KEY_TESTNET / TATUM_API_KEY_MAINNET
    - throttle requests, retry with backoff on 429 and 5xx
-   - expose a Sui client built on this transport (check the installed @mysten/sui version
-     for how to pass custom headers to its HTTP transport)
+   - expose a SuiGrpcClient built on a gRPC-web fetch transport that adds the header
+     (check the installed @mysten/sui version for the exact transport API)
    - always set gas price and gas budget explicitly when building transactions
 
 3. Spike A, scripts/spike-tatum.ts (testnet), all through Tatum:
    latest checkpoint, USDC balance of the agent address, then sign and submit a tiny SUI
-   self-transfer with OPERATOR_PRIVATE_KEY and read it back with sui_getTransactionBlock.
+   self-transfer with OPERATOR_PRIVATE_KEY and read it back with the gRPC GetTransaction call.
    Print the digest.
 
 4. Spike B, scripts/spike-memwal.ts (Walrus Memory mainnet):
@@ -200,9 +201,10 @@ Payment execution is a stub interface in this phase; Phase 3 implements it with 
 1. chain/vault.ts (through lib/tatum.ts only)
    - readVault(): parse the Vault object into VaultState (total, free, reserved per
      obligation, target, status funded/underfunded, agent policy)
-   - listActivity(): query package events, map to activity rows
+   - listActivity(): map vault events to activity rows. gRPC has no event query, so record
+     every digest we submit or receive in tx_log and read its events with GetTransaction
      (Deposit, Reserve, Pay obligation, Release to agent, x402 settle, Change reserve,
-     Withdraw), each with digest and verification status from sui_getTransactionBlock
+     Withdraw), each with digest and verification status from GetTransaction through Tatum
    - operator writes with OPERATOR_PRIVATE_KEY + OperatorCap: release_to_agent,
      pay_obligation, fund_reserves, deposit (simulated income)
 
