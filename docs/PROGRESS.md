@@ -44,6 +44,24 @@ Prep done. Next: Phase 0 (setup and 3 spikes), see docs/BUILD_PLAN.md.
 - Consequence: no event-query RPC. Activity is built from digests we record in tx_log,
   each read back with GetTransaction (which returns its events).
 
+## Walrus Memory (mainnet, set up 2026-11-05)
+
+- Relayer https://relayer.memory.walrus.xyz, /config: package
+  0xe7c16fbea0560e7057e2bf7422feaa4fb313749fc69c9e9092fac7a33b81d7f5, registry
+  0x8bf82c9e09e36b8d1c38298f68b7cb68e7b8762887e7592add9986d5e9cf199f.
+- Account owner wallet (user's own, separate from the 4 project wallets):
+  0xd89f04e5fd0c4d46c506ee7641d99d47b866517db0308c53706ec1c7deb5ae32.
+- MEMWAL_ACCOUNT_ID = 0xc6408ac06d2e4ba3c4df92a47646cc7e4051ebdf20765a7ae63f572d2d8523ba (in .env).
+- The account already had one delegate key ("Web App", pubkey 3e7479…4700). The value first
+  given as MEMWAL_KEY was that public key, not a private key, so a new delegate key was
+  generated locally and registered with a sponsored add_delegate_key, label "Sisih server",
+  tx DxQTmMGkm7BTu3pQXDqx5aaAnwHWSLBxLf2oUYCXo8Wf. Its private key is MEMWAL_KEY in .env.
+- MEMWAL_AGENT_ID for the submission form (public key of the "Sisih server" key):
+  2bd5ef9fe819eb9fc39de0b6d37b341ec8cf9dc091f82bdea74b5560c785e3b3.
+- Authenticated listNamespaces works (0 namespaces). No memory written yet (Spike B).
+- Transactions on the account need no SUI: the relayer sponsors gas
+  (sign personal message -> POST /sponsor -> sign tx -> POST /sponsor/execute).
+
 ## Wallets (testnet, generated 2026-11-05)
 
 Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 2026-11-05:
@@ -67,10 +85,6 @@ Private keys are only in .env (gitignored). Balances read through Tatum gRPC on 
 - Owner needs at least 20.00 testnet USDC for seed-vault.ts (has 2.00; all 4 wallets hold
   8.00 total). Use https://faucet.circle.com for the owner address, or sweep the others
   to the owner in Phase 1.
-- Walrus Memory: delegate key is in .env as MEMWAL_KEY (public key / MEMWAL_AGENT_ID
-  9bd012e3a1c0e9eff2deb03910a6190e10a7c1e38a1ca03413290b9ccccc2ecf). Relayer health is
-  ok. MEMWAL_ACCOUNT_ID (the account object ID from memory.walrus.xyz, not a wallet
-  address) is still missing; authenticated calls return 401 without it.
 - web/ move blocked while a next dev server runs from the repo root.
 - Hosting provider for the public demo is not chosen yet (needs a long-running Node
   server for SSE + SQLite, plus the Next.js app).
