@@ -158,7 +158,8 @@ workspace, not users or a measure of production effectiveness.
 
 ## Run it from a fresh clone
 
-Requirements: Node 24, pnpm 11 (`corepack enable`), the Sui CLI for contract work, a Tatum API key
+Requirements: Node 24, pnpm 11 (`corepack enable`, which needs admin rights on Windows, or any pnpm 11
+install), the Sui CLI for contract work, a Tatum API key
 (testnet), a Walrus Memory account with a delegate key (memory.walrus.xyz), testnet SUI and testnet
 USDC.
 

@@ -28,4 +28,82 @@ address landed on testnet and is untouched.
 
 ## Status
 
-See docs/PROGRESS.md (Phase 5: testnet demo finalization) for the evidence of this run.
+Phase 5 (testnet demo finalization) is done; evidence in docs/PROGRESS.md. Phase 6 documents are
+written and checked (2026-11-06); nothing has been pushed, published or submitted.
+
+## Done (Phase 6 prep, 2026-11-06)
+
+| Deliverable | File |
+| --- | --- |
+| Root README: target user and problem, live demo link, Mermaid flow, hard vs soft rules, networks, Tatum / Walrus / x402 code paths, evidence with links, demo boundaries, fresh-clone setup | README.md |
+| MIT license (copyright line "zkzora", the git author; change it if you want another name) | LICENSE |
+| Blog draft, 1,199 words, reviews per session reported as 2, 1, 1, 2, 2 | docs/BLOG.md |
+| Form answers per field, mandatory vs bonus, private judge-access text | docs/SUBMISSION.md |
+| X thread draft, 3 posts within 280 characters, no dashes, only existing links | docs/SOCIAL.md |
+| Recording guide: keep evidence before a reset, leave the run in place after, voiceover script | docs/RECORDING.md |
+| Public API snapshot of the documented run (namespace sisih-hosted-6) | docs/evidence/sisih-hosted-6/ |
+
+Checks:
+
+- Secret scan of the full Git history (24 commits, all refs, 198 paths ever committed): every secret
+  value in `.env` and `.env.mainnet` (Tatum keys, all private keys, MEMWAL_KEY, DEMO_TOKEN) searched
+  as an exact string: none found. Patterns (Sui private keys, PEM keys, Postgres URLs with a password,
+  GitHub / Slack / AWS / sk- tokens): none. No `.env`, database, dump or key file was ever committed;
+  only `.env.example` is tracked. The one archive (docs/design/sisih-brand/sisih-brand-kit.zip) holds
+  brand files only. Positive control: the scan finds the public vault and package IDs, so it works.
+  No dedicated scanner (gitleaks, trufflehog) is installed; this was a scripted scan.
+- Ignored and never tracked: `.env`, `.env.mainnet`, `.vercel/`, `server/data/` (PGlite),
+  `contracts/sisih/build/`.
+- Links in README, blog, submission, X draft, recording and web README: all pages answer 200. The
+  relayer base URL answers 404 at its root (it is an API, linked as an endpoint, not a page).
+  Suiscan answers 200 for any path, so every cited digest was also read back through Tatum testnet:
+  9 of 9 exist, 8 succeeded and the contract check failed with EExceedsFree as documented. All 6
+  cited blob IDs are listed in sisih-hosted-6 by the Walrus Memory SDK on mainnet (35 memories).
+- Every number in the docs matches the snapshot: manual reviews 2, 1, 1, 2, 2; 35 memories stored
+  (decision 14, obligation_outcome 13, session_summary 4, reserve_change 2, rule 2); money protected
+  13.40.
+- Fresh clone (no .env): `pnpm install --frozen-lockfile`, `pnpm test` (web 18, server 44),
+  `pnpm typecheck`, `sui move test` 46/46 all pass. `corepack enable` needs admin rights on Windows
+  (README says so).
+
+Public but personal: docs/PROGRESS.md names your own Walrus Memory account owner wallet
+(0xd89f…ae32). It is not a secret; remove it before publishing if you prefer.
+
+## Missing inputs (only you can provide them)
+
+- Video URL (after recording and uploading).
+- Published blog URL.
+- Public GitHub repo URL.
+- Form: email, Discord handle, LinkedIn, how you heard about the event, first Web3 project, Tatum
+  dashboard account ID, SUI address, "Account ID (SUI)" (undefined on the page; see SUBMISSION.md).
+- Your own answer to "How was your experience building with Walrus?" (notes in SUBMISSION.md).
+- The demo token, pasted only into the private form field.
+
+## Your steps, in order
+
+1. Record (docs/RECORDING.md). The evidence of sisih-hosted-6 is already saved in
+   docs/evidence/; then Reset demo, wait 2 minutes, record Part A, click Lock, run sessions 3 to 5:
+   `API_URL=https://sisih-azure.vercel.app pnpm demo:continue`, record Part B. Do not reset after the
+   final take.
+2. Write the new run into docs/PROGRESS.md: namespace, stored memories (at least 10 stored),
+   reviews per session. If the numbers differ from sisih-hosted-6, update README, BLOG, SUBMISSION
+   and SOCIAL to the run the video shows, or keep citing sisih-hosted-6 and say the video is a
+   later run.
+3. Upload the video; add its URL near the top of README.md and in SUBMISSION.md.
+4. Review README.md and docs/BLOG.md, then publish the blog; add its URL to README.md and
+   SUBMISSION.md.
+5. Create the GitHub repo and push (private first, check it, then public):
+   `gh repo create sisih --private --source . --push`, then
+   `gh repo edit --visibility public --accept-visibility-change-consequences`.
+6. Post the thread from docs/SOCIAL.md (optional bonus).
+7. Fill in and submit the form from docs/SUBMISSION.md before 10 Nov 2026 17:00 UTC; the demo token
+   goes only into a private field.
+
+## Skipped or risky
+
+- The submission form itself was not opened (it sits behind "Submit Project"); fields come from the
+  walrussessions page. Check the live form for extra fields.
+- Learning impact does not trend down over five sessions; the docs say why. Do not rewrite it as an
+  improvement.
+- A reset before recording replaces what the dashboard shows; the snapshot in docs/evidence keeps
+  sisih-hosted-6 inspectable.

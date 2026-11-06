@@ -2,12 +2,29 @@
 
 ## Current phase
 
-Phase 5 (testnet demo finalization) done on 2026-11-06, except the human step: record the video
-(docs/RECORDING.md). Networks are final: vault, reserves, agent releases and x402 on **Sui Testnet**
-through Tatum testnet; Walrus Memory on **Mainnet**. The mainnet migration is cancelled (no mainnet
-funds, deployment or transactions). Next: Phase 6 (README, blog, submission docs).
+Phase 6 documents prepared on 2026-11-06 (README, blog draft, submission answers, X draft,
+recording guide, evidence snapshot). Remaining steps are the user's: record the video, publish the
+blog, make the repo public, post, submit (docs/HANDOFF.md). Networks are final: vault, reserves, agent
+releases and x402 on **Sui Testnet** through Tatum testnet; Walrus Memory on **Mainnet**. The mainnet
+migration is cancelled (no mainnet funds, deployment or transactions).
 
 ## Done
+
+### Phase 6: submission documents (2026-11-06, nothing pushed, published or submitted)
+
+- Written: README.md, LICENSE (MIT), docs/BLOG.md (1,199 words), docs/SUBMISSION.md, docs/SOCIAL.md,
+  docs/RECORDING.md (evidence before resets, leave the final run in place, voiceover script),
+  docs/evidence/sisih-hosted-6/ (public API snapshot of the documented run, taken read-only).
+- Facts in the docs come from the Phase 5 run below. Newly checked on 2026-11-06 without any new
+  transaction: all 9 cited digests read back through Tatum testnet (8 success, the contract check
+  failed with EExceedsFree), all 6 cited blob IDs listed in sisih-hosted-6 by the Walrus Memory SDK
+  (35 memories), all doc links answer 200 (relayer root is an API and answers 404 at /), numbers
+  match the snapshot.
+- Secret scan of the full history (24 commits, 198 paths): no secret value from .env or .env.mainnet,
+  no secret pattern, no env, database, dump or key file ever committed; details in docs/HANDOFF.md.
+- Fresh clone without .env: install, `pnpm test` (web 18, server 44), `pnpm typecheck`,
+  `sui move test` 46/46 pass.
+- Missing user inputs and the remaining steps: docs/HANDOFF.md.
 
 ### Phase 5: testnet demo finalization (2026-11-06)
 
@@ -636,7 +653,6 @@ Phase 4 (2026-11-06, hosted run): operator -> owner 0.50 USDC after the hosted r
 - pnpm 11 enforces a minimum release age. @tanstack/react-query 5.106.0 (1 day old) was
   rejected; the lockfile was pinned to 5.104.5 (2026-10-19) instead of adding an
   exclusion. Re-check this if pnpm complains about lockfile entries.
-- The repo has no root README yet (the dashboard README is web/README.md). Phase 6 writes it.
 - Hosting: Vercel (project `sisih`, root web/) + Supabase Postgres `sisih-db` (iad1) through the
   Vercel Marketplace, provisioned and connected 2026-11-06 (POSTGRES_URL set by the integration).
   Live at https://sisih-azure.vercel.app; deployed with `vercel deploy --prod` from the working tree.
