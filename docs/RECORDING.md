@@ -21,9 +21,28 @@ does: "Sui Testnet · Walrus Memory Mainnet".
      Sui Wallet on **Testnet**, then Connect wallet. The wallet signs, Sisih submits through Tatum.
      Never use a mainnet key here.
 
+## Before the first reset: keep the evidence of the current run
+
+The hosted demo currently shows the documented 5-session run (namespace `sisih-hosted-6`, 35 stored
+memories, recorded in docs/PROGRESS.md, Phase 5). **A reset switches the dashboard to a new Walrus
+namespace (`sisih-hosted-<n+1>`) and clears the app database** (requests, activity rows, memory
+rows, sessions). The memories stay on Walrus Mainnet and the transactions stay on Sui Testnet, but
+the dashboard no longer shows them. Before you reset, save a snapshot of the public API (no secrets
+in it):
+
+```sh
+mkdir -p docs/evidence/sisih-hosted-6
+for p in state memories activity insights sessions requests rules; do
+  curl -s https://sisih-azure.vercel.app/api/$p > docs/evidence/sisih-hosted-6/$p.json
+done
+```
+
+Check `docs/evidence/sisih-hosted-6/state.json` shows namespace `sisih-hosted-6` before you continue.
+The snapshot of the documented run was saved on 2026-11-06 and is committed in `docs/evidence/sisih-hosted-6/`; save a new one for any later run before resetting it.
+
 ## Before each take: clean state
 
-1. Unlock the dock with the token. Dock > **Reset demo**, confirm. It takes about 15 to 40 s
+1. Unlock the dock with the token. Dock > **Reset demo**, confirm. It took 13 to 40 s in our runs
    (emergency withdraw, sweeps, reseed, fresh Walrus namespace).
 2. Check Overview: **20.00 / 16.50 / 3.50**, Session 1, Walrus badge "0 memories".
 3. **Wait 2 minutes** before you start recording: bills fall due one demo cycle (2 minutes) after the
@@ -81,8 +100,68 @@ Join A and B with a title card "After 3 more sessions".
 - **Too many reset requests** (429, 3 per 10 minutes): wait, or use a local `next start`.
 - Anything else: Reset demo, wait 2 minutes, start the take again.
 
-## Back to the clean state after recording
+## After recording: leave the run in place
 
-Dock > **Reset demo**, then **Lock demo controls**. The site is then at 20.00 / 16.50 / 3.50 with an
-empty namespace and free for judges. The evidence of the recorded run stays on Sui Testnet and on
-Walrus Mainnet; note its namespace and digests in docs/PROGRESS.md before you reset.
+Do **not** reset after the final take. Judges should find the recorded run: five sessions, the
+Learning impact charts and the memories behind them.
+
+1. Click **Lock demo controls** so the next visitor is not blocked.
+2. Check the result on the live site, then write it into docs/PROGRESS.md:
+   ```sh
+   curl -s https://sisih-azure.vercel.app/api/state | node -e 'const s=JSON.parse(require("fs").readFileSync(0)); console.log(s.memory, "session", s.session)'
+   ```
+   The namespace must show at least 10 **stored** memories (writing and failed do not count; wait
+   about 30 s for the last writes). Record the namespace, the stored count, and the manual reviews
+   per session from Learning impact.
+3. Only call the video recorded once the file or its uploaded URL exists; put the URL in
+   docs/SUBMISSION.md and the README at that point, not before.
+
+A clean state (20.00 / 16.50 / 3.50, empty namespace) is only for starting a new take.
+
+## Voiceover script (about 3 minutes)
+
+Timings follow Part A and Part B above. Lines in brackets are what you do; read the rest. Pauses
+note waits we measured in our runs.
+
+**0:00 Overview.** This is Sisih. My research agent pays for data and search with USDC, from the
+same money that has to cover my inference bill, my server, my savings and a domain renewal. The
+vault holds 20 USDC, but 16.50 is already promised. Only 3.50 is free, and that is all the agent can
+spend. The vault is a Move contract on Sui Testnet, every number is read through Tatum, and Sisih's
+memory lives on Walrus Mainnet.
+
+**0:20 DataMart.** [Buy market data.] Half a USDC for price history. That is under my automatic
+threshold, so it goes through: paid over x402, settled on Sui, verified through Tatum.
+
+**0:35 SearchBox.** [Search the web, open the request.] Now 1.20 for a premium search from a
+merchant Sisih has never seen. It waits for me. I approve, and I tell Sisih to remember: allow
+SearchBox up to 1.50 for thirty days. [Approve & remember, save.] Watch the four x402 steps. The
+rule is written to Walrus Memory; that takes about twenty seconds. [Wait for "Memory stored on
+Walrus mainnet."]
+
+**1:05 ReportLab.** [Get a research report, open it.] A 3 USDC report. Only 1.80 is free, so paying
+would eat 1.20 of my reserved money. Sisih will not even let me approve it: the contract would
+refuse. I deny it and remember that too. [Deny & remember, save.]
+
+**1:25 Billing cycle.** [Advance billing cycle.] Simulated income arrives and the bills are paid
+from their reserves. The inference bill came in at 6.80, but I only reserved 6.00. The vault covered
+the gap from free money, and Sisih remembers that. [Open Commitments.] So it suggests raising the
+reserve to 7. Reserves are mine to change, so I sign it. [Accept 7.00.]
+
+**1:50 New session.** [Start new session; wait about 25 seconds.] A new session starts the way an
+agent's next day would: Sisih rebuilds its rules from Walrus. [Search the web.] The same SearchBox
+request now goes through on its own, and the reason is the memory I created. [Buy market data, Get a
+research report.] ReportLab is held again, and Sisih reminds me I said no before.
+
+**2:15 Cut to Part B.** [Title card "After 3 more sessions".] Off camera, a script ran three more
+sessions with one fixed rule for my decisions: approve when the vault allows it, deny when it would
+touch reserves. Nothing was tuned. [Memory screen.] Every decision, rule and bill outcome is a
+memory on Walrus Mainnet, each with its blob ID. [Active rules, Last recall.] These are the rules
+rebuilt every session, and what recall returned for the last request.
+
+**2:35 Learning impact.** [Learning impact.] Manual reviews per session. In our documented run
+they went 2, 1, 1, 2, 2: memory took SearchBox off my plate, and later my own higher reserves left
+too little free money, so the vault's limits took over again. Memory makes Sisih ask less. It never
+makes the vault pay more. [Read your own run's numbers here if they differ.]
+
+**2:50 Onchain activity.** [Onchain activity, open one row.] Every transaction, checked through
+Tatum, with a link to the Sui explorer. Demo merchants, testnet money, real contract. That is Sisih.
