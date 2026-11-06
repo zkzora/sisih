@@ -5,7 +5,9 @@ export type View =
   | "memory"
   | "learning"
   | "activity"
-  | "settings";
+  | "settings"
+  | "tour"
+  | "connect";
 import type { LiveClock, LiveHealth, LiveInsights, LivePolicy, LiveRecall, LiveRequest, LiveSession, LiveSuggestion, TatumStatus } from "./live";
 export type Category = "Data" | "Search" | "Inference" | "Research";
 export type RequestStatus = "held" | "approved" | "rejected" | "paying";

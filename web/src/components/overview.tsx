@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -43,6 +43,7 @@ export function Overview() {
           </Button>
         }
       />
+      <IntroCard />
       <section className="balance-card" aria-label="Vault balance">
         <div className="balance-card-heading">
           <span>
@@ -340,4 +341,51 @@ export function Overview() {
 }
 function FlaskLabel() {
   return <span className="status-dot" />;
+}
+
+const INTRO_KEY = "sisih-intro-dismissed";
+
+/** First-visit introduction with the two ways to try Sisih. Dismissal is a per-viewer convenience. */
+function IntroCard() {
+  const [hidden, setHidden] = useState(true);
+  useEffect(() => {
+    try {
+      setHidden(localStorage.getItem(INTRO_KEY) === "1");
+    } catch {
+      setHidden(false);
+    }
+  }, []);
+  if (hidden) return null;
+  return (
+    <section className="intro-card" aria-label="Try Sisih">
+      <div>
+        <h2>An AI agent that can only spend money you haven&apos;t promised.</h2>
+        <p>
+          Your commitments are reserved in a vault on Sui Testnet first. The agent buys from what is left, you approve anything new, and Sisih remembers your
+          decisions on Walrus Memory Mainnet.
+        </p>
+      </div>
+      <div className="intro-actions">
+        <Link className="button button-primary" href="/tour">
+          Explore demo
+        </Link>
+        <Link className="button button-secondary" href="/connect">
+          Connect your agent
+        </Link>
+        <button
+          className="text-button"
+          onClick={() => {
+            setHidden(true);
+            try {
+              localStorage.setItem(INTRO_KEY, "1");
+            } catch {
+              /* storage unavailable: hide for this page view */
+            }
+          }}
+        >
+          Hide
+        </button>
+      </div>
+    </section>
+  );
 }

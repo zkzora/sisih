@@ -336,3 +336,172 @@
 .topbar-right:has(.demo-owner-badge) .walrus-net {
   display: none;
 }
+
+/* Second sidebar group ("Try Sisih"). */
+.sidebar nav + .nav-heading {
+  margin-top: 22px;
+}
+
+/* --- Try Sisih: intro card, Explore demo (recorded replay), Connect your agent --- */
+.intro-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+.intro-card h2 {
+  font-size: 17px;
+  margin: 0 0 6px;
+}
+.intro-card p {
+  margin: 0;
+  color: var(--muted-foreground);
+  max-width: 680px;
+}
+.intro-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.tour-recorded {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+  border-radius: 12px;
+  border: 1px dashed var(--border);
+  color: var(--muted-foreground);
+  font-size: 13.5px;
+}
+.tour-steps {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 0 0 18px;
+}
+.tour-steps button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tour-steps button.selected {
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.tour-step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--muted);
+  font-size: 12px;
+}
+.tour-body {
+  display: grid;
+  gap: 14px;
+}
+.tour-lead {
+  font-size: 15.5px;
+  line-height: 1.6;
+  margin: 0;
+  max-width: 860px;
+}
+.tour-facts {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  color: var(--muted-foreground);
+}
+.tour-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  align-items: center;
+  font-size: 13px;
+}
+.tour-evidence a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tour-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+}
+.connect-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+  gap: 18px;
+}
+.connect-body {
+  display: grid;
+  gap: 10px;
+  font-size: 14px;
+}
+.connect-body p {
+  margin: 0;
+}
+.connect-code {
+  position: relative;
+}
+.connect-code pre {
+  margin: 0;
+  padding: 12px 44px 12px 14px;
+  border-radius: 10px;
+  background: var(--muted);
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.connect-code .copy-button {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.connect-cred {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.connect-secret {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 12.5px;
+  word-break: break-all;
+}
+@media (max-width: 1050px) {
+  .intro-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .connect-grid {
+    grid-template-columns: 1fr;
+  }
+}

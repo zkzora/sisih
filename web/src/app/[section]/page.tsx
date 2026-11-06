@@ -10,6 +10,8 @@ const sections = [
   "learning",
   "activity",
   "settings",
+  "tour",
+  "connect",
 ];
 export function generateStaticParams() {
   return sections.map((section) => ({ section }));

@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
+  Compass,
+  PlugZap,
   CalendarRange,
   Bot,
   Brain,
@@ -39,6 +41,11 @@ const navigation = [
   { href: "/activity", label: "Onchain activity", icon: ArrowLeftRight },
   { href: "/settings", label: "Settings", icon: Settings2 },
 ];
+// First-time visitors: a labeled replay of a recorded run, and the MCP setup for a real agent.
+const tryNavigation = [
+  { href: "/tour", label: "Explore demo", icon: Compass },
+  { href: "/connect", label: "Connect your agent", icon: PlugZap },
+];
 export function Shell({ children }: { children: ReactNode }) {
   const { state, ready, act, storageError, retryStorage, loadError, refreshVault, ownerSigner } = useSisih();
   const now = useNow(5000);
@@ -47,7 +54,7 @@ export function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [mobile, setMobile] = useState(false);
   const [help, setHelp] = useState(false);
-  const current = navigation.find((n) => n.href === pathname) || navigation[0];
+  const current = [...navigation, ...tryNavigation].find((n) => n.href === pathname) || navigation[0];
   const held = state.requests.filter((r) => r.status === "held").length;
   return (
     <div className="app-shell">
@@ -105,6 +112,21 @@ export function Shell({ children }: { children: ReactNode }) {
               {n.href === "/agent" && held > 0 && (
                 <span className="nav-count">{held}</span>
               )}
+            </Link>
+          ))}
+        </nav>
+        <div className="nav-heading">TRY SISIH</div>
+        <nav aria-label="Try Sisih">
+          {tryNavigation.map((n) => (
+            <Link
+              href={n.href}
+              key={n.href}
+              className={`nav-link ${pathname === n.href ? "active" : ""}`}
+              aria-current={pathname === n.href ? "page" : undefined}
+              onClick={() => setMobile(false)}
+            >
+              <n.icon size={18} strokeWidth={1.7} />
+              <span>{n.label}</span>
             </Link>
           ))}
         </nav>
