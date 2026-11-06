@@ -41,10 +41,42 @@ function paymentRequired(m: Merchant): PaymentRequired {
   };
 }
 
+/**
+ * Fixed demo content. It is the same for every buyer and is NOT real-world or current market
+ * data; every payload says so, so an agent quoting it can tell the user.
+ */
+const DEMO_NOTICE = "Demo service content from Sisih's demo merchant. Fixed sample data, not real-world or current market data.";
 const DEMO_PAYLOADS: Record<Merchant["slug"], unknown> = {
-  datamart: { series: "SUI/USD daily close", points: [1.12, 1.18, 1.15, 1.21], note: "demo data" },
-  searchbox: { query: "SUI token price drivers", results: ["demo result 1", "demo result 2"] },
-  reportlab: { title: "Onchain activity report (demo)", sections: 3 },
+  datamart: {
+    notice: DEMO_NOTICE,
+    series: "SUI/USD daily close (demo sample)",
+    unit: "USD",
+    points: [
+      { day: 1, close: 1.12 },
+      { day: 2, close: 1.18 },
+      { day: 3, close: 1.15 },
+      { day: 4, close: 1.21 },
+    ],
+    summary: "In this 4-day demo sample the close rose from 1.12 to 1.21 (+8.0%), with one dip on day 3.",
+  },
+  searchbox: {
+    notice: DEMO_NOTICE,
+    query: "SUI token price drivers",
+    results: [
+      { title: "Demo result: network activity and transaction fees", snippet: "Sample text: higher onchain activity is often cited as a driver of token demand." },
+      { title: "Demo result: token unlock schedules", snippet: "Sample text: scheduled unlocks can add supply and are commonly tracked by analysts." },
+      { title: "Demo result: stablecoin liquidity on the network", snippet: "Sample text: stablecoin supply on a chain is a common proxy for available liquidity." },
+    ],
+  },
+  reportlab: {
+    notice: DEMO_NOTICE,
+    title: "Onchain activity report (demo)",
+    sections: [
+      { heading: "Activity", text: "Sample text: daily transactions trended up over the sample period." },
+      { heading: "Liquidity", text: "Sample text: stablecoin balances were stable." },
+      { heading: "Risks", text: "Sample text: supply unlocks are the main tracked risk." },
+    ],
+  },
 };
 
 export function merchantRoutes(): Hono {

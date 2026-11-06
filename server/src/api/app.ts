@@ -13,7 +13,7 @@ import { operatorCapId, usdcType } from "../chain/sisih";
 import { cachedVault, readVault, recordTx, vaultReadError, vaultState } from "../chain/vault";
 import { db, initDb, schema } from "../db/index";
 import { jsonSafe, latestEventId, pruneEvents, since } from "../lib/bus";
-import { suiNetwork } from "../lib/env";
+import { env, suiNetwork } from "../lib/env";
 import { suiClient, tatumGrpcHost, tatumStats } from "../lib/tatum";
 import { address as walletAddress } from "../lib/wallets";
 import { delegatePublicKey, memwalHealth, namespace, pendingMemoryCount, reconcilePendingMemories, remember, retryMemory, RELAYER_URL } from "../memory/memwal";
@@ -27,7 +27,9 @@ import { addLocalRule, cachedRule, cachedRules, currentSession, defaultThreshold
 import { isScenario, runTask, SCENARIOS } from "../agent/runner";
 import { advanceCycle, clock, resetDemo } from "../demo/controls";
 import { merchantRoutes } from "../x402/merchants";
-import { actionLock, allowedOrigins, DEMO_CLIENT_HEADER, DEMO_TOKEN_HEADER, demoGuard, demoRunStatus, releaseDemoRun } from "./guard";
+import { actionLock, allowedOrigins, clientIp, DEMO_CLIENT_HEADER, DEMO_TOKEN_HEADER, demoGuard, demoRunStatus, MCP_PATH, releaseDemoRun } from "./guard";
+import { handleMcp } from "../mcp/server";
+import { baseUrl } from "../x402/merchants";
 import { background } from "../lib/background";
 import { demoOwnerAction, isDemoOwnerAction } from "../demo/owner";
 
@@ -370,6 +372,14 @@ export function createApp() {
   app.get("/api/demo/clock", async (c) => ok(c, await clock()));
   /** The guard already checked x-demo-token; this confirms it and says whether another visitor holds the demo. */
   app.post("/api/demo/token-check", async (c) => ok(c, { ok: true, ...(await demoRunStatus((n) => c.req.header(n))) }));
+  /**
+   * Owner-only (DEMO_TOKEN): the MCP endpoint and the demo agent credential, so a judge who has the
+   * demo token can connect an agent without the credential ever appearing on a public page.
+   */
+  app.post("/api/demo/agent-credential", (c) => {
+    c.header("cache-control", "no-store");
+    return ok(c, { endpoint: `${baseUrl()}${MCP_PATH}`, token: env("SISIH_AGENT_TOKEN") ?? null, header: "Authorization: Bearer <token>" });
+  });
   /** The dock's Lock button: free the demo-run lease held by this caller only. */
   app.post("/api/demo/release", async (c) => {
     await releaseDemoRun((n) => c.req.header(n));
@@ -397,6 +407,9 @@ export function createApp() {
     const events = await since(Number(after));
     return ok(c, { events, latest: events.at(-1)?.id ?? Number(after) });
   });
+
+  // MCP for external agents (agent credential, not DEMO_TOKEN; see mcp/server.ts).
+  app.all(MCP_PATH, (c) => handleMcp(c.req.raw, clientIp(c)));
 
   // Demo merchants (x402): /merchants/datamart/token-history, /merchants/searchbox/premium-search,
   // /merchants/reportlab/onchain-report

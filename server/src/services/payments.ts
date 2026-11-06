@@ -16,6 +16,20 @@ import { publish } from "../lib/bus";
 import { address } from "../lib/wallets";
 import { findMerchant, merchantAddress } from "../merchants/registry";
 import { payInvoice, type Invoice } from "../x402/agentPay";
+import { kvRead, kvSet } from "./state";
+
+export const purchaseResultKey = (requestId: string) => `purchase_result:${requestId}`;
+export const paymentErrorKey = (requestId: string) => `payment_error:${requestId}`;
+
+export async function paymentError(requestId: string): Promise<string | null> {
+  return (await kvRead(paymentErrorKey(requestId))) ?? null;
+}
+
+/** The merchant's response for a settled request, or null if there is none (yet). */
+export async function purchaseResult(requestId: string): Promise<unknown | null> {
+  const raw = await kvRead(purchaseResultKey(requestId));
+  return raw === null || raw === undefined ? null : JSON.parse(raw);
+}
 
 export interface PaymentTarget {
   requestId: string;
@@ -62,6 +76,7 @@ export const x402PaymentExecutor: PaymentExecutor = {
   name: "x402",
   async execute(t) {
     const fail = async (reason: string, digests: Digest[] = []) => {
+      await kvSet(paymentErrorKey(t.requestId), reason); // shown to the owner and to the agent (MCP)
       await setPayment(t.requestId, "failed", digests, reason);
       publish("x402.failed", { id: t.requestId, reason, digests });
     };
@@ -95,6 +110,9 @@ export const x402PaymentExecutor: PaymentExecutor = {
       digests.push({ step: "x402_settle", digest: paid.settleDigest, verified });
       if (!verified) return fail("Settlement digest could not be verified through Tatum.", digests);
       publish("x402.settle_verified", { id: t.requestId, digest: paid.settleDigest });
+      // Keep what the merchant returned for this request (the agent reads it through MCP). Written
+      // before "paid", so a settled request always has its purchased content.
+      await kvSet(purchaseResultKey(t.requestId), JSON.stringify(paid.resource ?? null));
       await setPayment(t.requestId, "paid", digests);
     } catch (err) {
       await fail(`x402 payment failed: ${(err as Error).message.slice(0, 200)}. Released funds stay with the agent until the next recycle.`, digests);

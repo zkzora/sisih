@@ -3,7 +3,7 @@
  * The decision never waits on Walrus; recall runs in the background and is attached when it lands.
  */
 import { randomUUID } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { vaultState } from "../chain/vault";
 import { db, schema } from "../db/index";
 import type { Category, PaymentRequestInput } from "../domain/types";
@@ -112,6 +112,11 @@ export interface SubmitInput {
   taskContext?: string;
   /** The merchant's 402 invoice (agent runner). Required for a real x402 payment. */
   invoice?: Invoice;
+  /**
+   * Called once the request row exists and before any payment starts (MCP stores its idempotency
+   * mapping here, so a retry after a lost response finds this request instead of paying again).
+   */
+  onCreated?: (id: string) => Promise<void>;
 }
 
 export async function submitRequest(input: SubmitInput) {
@@ -148,6 +153,7 @@ export async function submitRequest(input: SubmitInput) {
     createdAt: nowMs,
   });
   if (input.invoice) invoiceReceived(id, input.invoice);
+  if (input.onCreated) await input.onCreated(id);
   attachRecall(id, req); // background, never awaited by the decision
 
   const row = await getRequest(id);
@@ -196,11 +202,12 @@ export async function ownerDecision(id: string, kind: OwnerDecision, ruleInput?:
     if (blocked) throw new ApiError(409, blocked.reason, blocked.code === "would_cut_reserve" ? "reserves_locked" : blocked.code);
   }
 
-  let ruleId: string | undefined;
-  let ruleMemoryId: string | undefined;
-  if (kind === "approve_and_remember" || kind === "deny_and_remember") {
+  // Validate the rule first (no side effects), so a bad rule never leaves a half-made decision.
+  const remembers = kind === "approve_and_remember" || kind === "deny_and_remember";
+  let fields: RuleFields | undefined;
+  if (remembers) {
     const draft = draftRule(rowInput(r), approve ? "allow" : "deny", nowMs);
-    const fields: RuleFields = {
+    fields = {
       merchant: ruleInput?.merchant ?? draft.merchant,
       category: ruleInput?.category ?? draft.category,
       maxAmount: ruleInput?.maxAmount !== undefined ? BigInt(ruleInput.maxAmount) : draft.maxAmount,
@@ -209,6 +216,20 @@ export async function ownerDecision(id: string, kind: OwnerDecision, ruleInput?:
     };
     if (!findMerchant(fields.merchant)) throw new ApiError(400, `Unknown merchant ${fields.merchant}`);
     if (fields.maxAmount <= 0n) throw new ApiError(400, "Rule max amount must be positive");
+  }
+
+  // Only one decision can leave "held": a second concurrent decision finds no held row and stops
+  // here, before any rule memory or payment, so it can never write a duplicate rule or pay twice.
+  const moved = await db()
+    .update(schema.requests)
+    .set({ status: approve ? "approved" : "denied", decidedAt: nowMs })
+    .where(and(eq(schema.requests.id, id), eq(schema.requests.status, "held")))
+    .returning({ id: schema.requests.id });
+  if (!moved.length) throw new ApiError(409, "This request was already decided.", "not_held");
+
+  let ruleId: string | undefined;
+  let ruleMemoryId: string | undefined;
+  if (fields) {
     const sentence = ruleSentence(fields);
     ruleId = `rule-${randomUUID().slice(0, 8)}`;
     const mem = await remember(
@@ -222,7 +243,6 @@ export async function ownerDecision(id: string, kind: OwnerDecision, ruleInput?:
     publish("rule.created", jsonSafe(rule));
   }
 
-  await db().update(schema.requests).set({ status: approve ? "approved" : "denied", decidedAt: nowMs }).where(eq(schema.requests.id, id));
   await db().insert(schema.decisions).values({ requestId: id, kind, ruleId: ruleId ?? null, memoryId: ruleMemoryId ?? null, at: nowMs });
   const updated = await getRequest(id);
   await writeDecisionMemory(updated, kind, approve ? "approved" : "denied", "by the owner", JSON.parse(r.reasons)[0] ?? "", ruleId);

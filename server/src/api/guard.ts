@@ -63,9 +63,45 @@ export interface Denied {
   body: { error: string; code: string; retryAfterSeconds?: number };
 }
 
+// --- agent credential (MCP) -------------------------------------------------------------
+/**
+ * The external agent (for example Claude Code over MCP) authenticates with its own credential,
+ * SISIH_AGENT_TOKEN, sent as `Authorization: Bearer <token>`. It is distinct from DEMO_TOKEN (owner
+ * demo controls) and from every signing key, and it only reaches /api/mcp: every other mutating
+ * route still checks DEMO_TOKEN, so an agent credential cannot approve, reset, withdraw or change
+ * reserves. One configured demo agent; the lease holder below identifies its run.
+ */
+export const AGENT_HOLDER = "agent:demo";
+export const MCP_PATH = "/api/mcp";
+
+export type AgentAuth = { ok: true } | { ok: false; status: 401 | 503; error: string };
+
+export function agentAuth(header: (name: string) => string | undefined | null): AgentAuth {
+  const expected = env("SISIH_AGENT_TOKEN");
+  if (!expected) {
+    if (env("VERCEL")) return { ok: false, status: 503, error: "The agent endpoint is not configured on this deployment." };
+    return { ok: true }; // local development without a token
+  }
+  const given = (header("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!given || !tokenMatches(given, expected)) {
+    return { ok: false, status: 401, error: "Missing or invalid agent credential. Send Authorization: Bearer <SISIH_AGENT_TOKEN>." };
+  }
+  return { ok: true };
+}
+
+/**
+ * While the demo agent holds the demo run, a demo-token owner may still decide that agent's
+ * requests and start a new session (the dashboard is the owner's approval interface). Every other
+ * mutation stays blocked, so two visitors' runs never mix.
+ */
+const OWNER_PATHS_DURING_AGENT_RUN = [/^\/api\/requests\/[^/]+\/decision$/, /^\/api\/demo\/new-session$/];
+
 /** The checks every mutating request passes, wherever it is served. null = allowed. */
 export async function demoAccess(req: { method: string; path: string; header: (name: string) => string | undefined | null }): Promise<Denied | null> {
   if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return null;
+  // /api/mcp authenticates the agent credential itself (agentAuth); it never accepts DEMO_TOKEN as
+  // a substitute and exposes no owner operation.
+  if (req.path === MCP_PATH) return null;
   const expected = env("DEMO_TOKEN");
   if (!expected && env("VERCEL")) return { status: 503, body: { error: "Demo controls are not configured on this deployment.", code: "demo_unconfigured" } };
   if (!tokenMatches(req.header(DEMO_TOKEN_HEADER), expected)) {
@@ -77,14 +113,23 @@ export async function demoAccess(req: { method: string; path: string; header: (n
     const r = await rateHit(`${l.name}:${ip}`, l.max, l.windowMs);
     if (!r.allowed) return { status: 429, body: { error: `Too many ${l.name} requests. Try again shortly.`, code: "rate_limited", retryAfterSeconds: r.retryAfterSeconds } };
   }
-  // token-check reports the lease and release gives it back; neither takes it.
-  if (req.path === "/api/demo/token-check" || req.path === "/api/demo/release") return null;
+  // token-check reports the lease, release gives it back, agent-credential only reads; none takes it.
+  if (req.path === "/api/demo/token-check" || req.path === "/api/demo/release" || req.path === "/api/demo/agent-credential") return null;
   const lease = await acquireLease(DEMO_RUN_LEASE, demoHolder(req.header), DEMO_RUN_IDLE_MS);
   if (!lease.acquired) {
+    if (lease.holder === AGENT_HOLDER && OWNER_PATHS_DURING_AGENT_RUN.some((re) => re.test(req.path))) return null;
     const retryAfterSeconds = Math.max(1, Math.ceil((lease.until - Date.now()) / 1000));
+    const minutes = Math.ceil(retryAfterSeconds / 60);
     return {
       status: 423,
-      body: { error: `Another visitor is running the demo. It frees up within ${Math.ceil(retryAfterSeconds / 60)} min.`, code: "demo_busy", retryAfterSeconds },
+      body: {
+        error:
+          lease.holder === AGENT_HOLDER
+            ? `A connected agent is running the demo. You can approve or deny its requests in Agent & requests; other actions free up within ${minutes} min or when the agent ends its session.`
+            : `Another visitor is running the demo. It frees up within ${minutes} min.`,
+        code: lease.holder === AGENT_HOLDER ? "agent_run_active" : "demo_busy",
+        retryAfterSeconds,
+      },
     };
   }
   return null;
