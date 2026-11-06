@@ -292,9 +292,14 @@
 .topbar-session .session-short {
   display: none;
 }
-@media (max-width: 1599px) {
-  .tatum-detail,
+@media (max-width: 1279px) {
   .walrus-net {
+    display: none;
+  }
+}
+@media (max-width: 1599px) {
+  /* Keep "Walrus Memory · Mainnet" visible: the networks differ (Sui Testnet, Walrus Mainnet). */
+  .tatum-detail {
     display: none;
   }
   /* Keep the session indicator (SPEC top bar), compact: "S2" with a "Session 2" tooltip. */

@@ -19,6 +19,19 @@ Progress log: docs/PROGRESS.md
   per-merchant thresholds. Memory can never unlock reserved funds.
 - Tatum Sui RPC is how we read and prove every onchain state and transaction.
 
+## Networks (decided 2026-11-06, final)
+
+- Sui **Testnet** for the vault, reserves, agent releases, bill payments and x402 settlement;
+  every Sui read and write through Tatum's Sui **testnet** gRPC gateway.
+- Walrus Memory on **Mainnet** (relayer https://relayer.memory.walrus.xyz), written by the server
+  with its delegate key; nobody switches a wallet network to write memory.
+- The UI says "Sui Testnet · Walrus Memory Mainnet". Never claim Sui mainnet anywhere.
+- The mainnet migration is cancelled: no mainnet funding, deployment or transactions.
+  `.env.mainnet` (fresh, unused mainnet keys) stays gitignored and untouched; never delete it.
+- Rules basis: https://thewalrussessions.wal.app/tatum-total-recall and
+  https://recall-tatum-walrus.vercel.app/ (Walrus Memory mainnet, at least 10 memories). Claim no
+  eligibility or bonus beyond what those pages say.
+
 ## Repo layout
 
 - contracts/sisih : Move package, module sisih::vault
@@ -56,7 +69,8 @@ Progress log: docs/PROGRESS.md
 - Code and contract say "obligation"; the UI says "Commitments".
 - Agent display name: "Research Agent".
 - Memory tag prefix: [sisih:v1:<type>]. Demo namespaces: <MEMWAL_NAMESPACE_PREFIX>-<n>, one
-  prefix per deployment (sisih-hosted on Vercel, sisih-local locally), final: sisih-final.
+  prefix per deployment (sisih-hosted on Vercel, sisih-local locally). The final demo namespace
+  is the hosted one recorded in docs/PROGRESS.md (Phase 5).
 
 ## Non-negotiable rules
 

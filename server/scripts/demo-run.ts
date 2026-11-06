@@ -7,17 +7,22 @@
  */
 import { Transaction } from "@mysten/sui/transactions";
 import { target, usdcType, vaultId } from "../src/chain/sisih";
-import { formatUsdc } from "../src/lib/env";
+import { env, formatUsdc } from "../src/lib/env";
 import { setGas, signAndExecute } from "../src/lib/tatum";
 import { keypair } from "../src/lib/wallets";
 
 const API = process.env.API_URL ?? "http://127.0.0.1:8787";
+const DEMO_TOKEN = env("DEMO_TOKEN");
+const DEMO_CLIENT = `demo-run-${Date.now().toString(36)}`;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const failures: string[] = [];
 const digests: { what: string; digest: string }[] = [];
 
 async function call<T = any>(method: "GET" | "POST", path: string, body?: unknown, expect: number[] = [200, 201]): Promise<T> {
-  const res = await fetch(`${API}${path}`, { method, headers: { "content-type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
+  // Hosted servers lock mutations behind DEMO_TOKEN and the demo-run lease (one client id per run).
+  const headers: Record<string, string> = { "content-type": "application/json" };
+  if (method !== "GET" && DEMO_TOKEN) Object.assign(headers, { "x-demo-token": DEMO_TOKEN, "x-demo-client": DEMO_CLIENT });
+  const res = await fetch(`${API}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
   const json = (await res.json()) as T;
   if (!expect.includes(res.status)) throw new Error(`${method} ${path} -> ${res.status} ${JSON.stringify(json).slice(0, 300)}`);
   return json;
@@ -166,4 +171,5 @@ console.log(`\nmanual reviews: session 1 ${insights.sessions[0]?.manualReviews} 
 console.log("\n== digests");
 for (const d of digests) console.log(`  ${d.what.padEnd(44)} ${d.digest}`);
 console.log(failures.length ? `\nFAIL (${failures.length}):\n  ${failures.join("\n  ")}` : "\nPASS: demo flow reproduced the SPEC tables end to end");
+await call("POST", "/api/demo/release").catch(() => {}); // hand the demo-run lease back
 process.exit(failures.length ? 1 : 0);

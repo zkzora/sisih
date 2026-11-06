@@ -74,7 +74,7 @@ Requests that fit in free funds and match the rules go through without the owner
 
 Hard rules (contract, memory cannot override): obligation reserves, per-request cap, daily cap, permission expiry. Soft rules (memory): which merchants are trusted, which categories are automatic, per-merchant thresholds.
 
-Network: build on Sui testnet, record the final demo on Sui mainnet with total funds under 25 USDC. That way x402 settlement, Tatum verification, and Walrus Memory ownership are all on the same network.
+Network (decided 2026-11-06): the vault, agent releases, bill payments and x402 settlement run on **Sui Testnet**, every Sui read and write through Tatum's Sui Testnet gateway. **Walrus Memory runs on Mainnet** (relayer https://relayer.memory.walrus.xyz), as the hackathon requires. The UI labels this as "Sui Testnet · Walrus Memory Mainnet". The earlier plan to record on Sui mainnet was cancelled.
 
 ## Memory loop
 

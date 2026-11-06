@@ -181,9 +181,9 @@ export function Shell({ children }: { children: ReactNode }) {
             <div className="demo-banner">
               <FlaskConical size={13} />
               <span>
-                Demo workspace{" "}
+                Demo workspace · <strong className="demo-banner-networks">Sui {state.preferences.network} · Walrus Memory Mainnet</strong>{" "}
                 <span className="demo-banner-detail">
-                  · DataMart, SearchBox and ReportLab are demo merchants run by the Sisih team. Sui {state.preferences.network}; income is simulated and demo funds are recycled.
+                  · DataMart, SearchBox and ReportLab are demo merchants run by the Sisih team. Income is simulated and demo funds are recycled.
                 </span>
               </span>
               <button onClick={() => setHelp(true)}>

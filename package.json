@@ -6,6 +6,8 @@
     "dev": "pnpm --filter @sisih/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "demo:run": "pnpm --filter @sisih/server exec tsx scripts/demo-run.ts",
+    "demo:continue": "pnpm --filter @sisih/server exec tsx scripts/demo-continue.ts"
   }
 }

@@ -53,16 +53,16 @@ Railway, the build uses the following instead:
 | Sat Nov 7 | Phase 3: agent, demo merchants, x402, demo controls |
 | Sat Nov 7 evening to Sun Nov 8 | Phase 4: wire the dashboard, host it |
 | Sun Nov 8 12:00 WIB | Checkpoint: cut scope if the Phase 3 gate has not passed |
-| Mon Nov 9 | Phase 5: mainnet, 5 sessions, recording |
+| Mon Nov 9 | Phase 5: testnet demo finalization, 5 sessions, recording prep |
 | Tue Nov 10 | Phase 6: docs and submission (by 20:00 WIB) |
 
-Phase 4 is the longest because every screen and state must be wired. Monday is entirely for mainnet and recording, so Tuesday is only documents.
+Phase 4 is the longest because every screen and state must be wired. Monday is for finishing the testnet demo and recording, so Tuesday is only documents.
 
 ## Adjustments from past hackathon lessons
 
 These were added on top of the original plan (see the "Submission rules" in CLAUDE.md):
 
-- **Hosted demo by the midpoint.** Phase 4 ends with the server and web deployed to a public URL on testnet; Phase 5 switches that same deployment to mainnet. Judges open a link, not a localhost.
+- **Hosted demo by the midpoint.** Phase 4 ends with the server and web deployed to a public URL on testnet, and that deployment stays the final demo (Sui Testnet, Walrus Memory Mainnet). Judges open a link, not a localhost.
 - **Real user conversations.** Talk to 3 to 5 builders who give agents a wallet during the week and log each one in `docs/USER_LOG.md`.
 - **No placeholders.** Phase 6 links the real uploaded video, not a placeholder.
 
@@ -345,8 +345,8 @@ Read CLAUDE.md, docs/SPEC.md (demo flow and sample data), docs/PROGRESS.md
    struct layouts.
 
 6. scripts/recycle.ts: sweep USDC from the demo payee and merchant addresses back to
-   the operator, so simulated income in advance-cycle reuses the same funds on testnet
-   (and later on mainnet). Read balances through Tatum, sweep with coinWithBalance (faucet
+   the operator, so simulated income in advance-cycle reuses the same testnet funds.
+   Read balances through Tatum, sweep with coinWithBalance (faucet
    and settled funds may sit in address balances, not coin objects), throttled.
    advance-cycle calls it before depositing income. Label it as demo plumbing in code,
    API responses and README.
@@ -415,43 +415,47 @@ Gate:
 - [ ] All UI copy in English
 - [ ] Public URL serves the live testnet stack
 
-## Phase 5: Mainnet, 5 sessions, recording
+## Phase 5: Testnet demo finalization, 5 sessions, recording prep
 
-Mon Nov 9. Switch to Sui mainnet, run 5 sessions with real data, then record. Budget is about 25 USDC plus a little SUI for gas, because the demo payees and merchants are your own addresses and the funds are recycled.
+Mon Nov 9. The network decision of 2026-11-06 replaces the old mainnet migration: the vault,
+reserves, agent releases and x402 settlement stay on **Sui Testnet** (all through Tatum testnet),
+Walrus Memory stays on **Mainnet**. No mainnet funds, deployment or transactions.
 
 The recording is split in two so the "first session with no memory" story stays intact:
 
 1. Part A, live: Session 1 and Session 2 following the spec's demo flow (through the "What changed" card).
-2. Run Sessions 3 to 5 off camera via script.
+2. Run Sessions 3 to 5 off camera with `pnpm demo:continue`.
 3. Part B, live: the Memory, Learning impact, and Onchain activity screens with 5 sessions of data.
 4. Join A and B with a title card "After 3 more sessions".
 
 ```text
-Phase 5: mainnet and recording prep. Read CLAUDE.md and docs/PROGRESS.md.
+Phase 5: testnet demo finalization. Read CLAUDE.md, docs/PROGRESS.md and docs/HANDOFF.md.
 
-1. Switch to SUI_NETWORK=mainnet. Publish the package and create the vault through the
-   Tatum mainnet gateway with the mainnet USDC coin type. Seed with seed-vault.ts.
-   Confirm every read and write goes through Tatum mainnet. Point the hosted deployment
-   at mainnet.
-2. Run scripts/recycle.ts (built in Phase 3) against the mainnet payee and merchant
-   addresses before each advance-cycle, so simulated income reuses the same funds.
-3. Fresh memory namespace for the final run (sisih-final). Never fake data: every
-   number in Learning impact must come from real requests, memories and events.
-4. demo-run.ts --sessions 3-5: scripted owner decisions that are realistic (some new
-   approvals, occasional denials) so the trend is real, not tuned.
-5. Full click-through of the recorded flow on mainnet. Fix every bug, console error,
-   missing loading or error state, and slow call you find. Log fixes in PROGRESS.md.
-6. Write docs/RECORDING.md: browser at 1440x900 and 100% zoom, demo banner on, dock
-   visible, the exact click order for part A and part B, and reset steps if a take fails.
+1. Check the config end to end: backend, frontend, wallet, Tatum testnet gateway, package and
+   vault IDs, USDC coin type, facilitator and explorer links are testnet; Walrus Memory uses
+   the mainnet relayer. The UI says "Sui Testnet · Walrus Memory Mainnet".
+2. Run the recorded flow on the hosted deployment from a reset, through the UI: deposit and
+   reserves, DataMart automatic, SearchBox held then Approve & remember, memory stored on
+   Walrus mainnet, next session recall changes the SearchBox decision, ReportLab blocked by
+   the contract, billing outcome -> reserve suggestion -> owner decision.
+3. pnpm demo:continue: sessions 3 to 5 headless with one fixed owner rule (approve once when
+   the vault allows it, deny when it would cut reserves). Never fake data: every number in
+   Learning impact must come from real requests, memories and events.
+4. Prove memory cannot beat reserves, caps or permission expiry: engine tests, Move tests,
+   and a fresh onchain abort for a release the contract refuses.
+5. At least 10 memories stored (not writing or failed) in the final namespace on Walrus
+   mainnet; record namespace, blob IDs, a recall example and the testnet digests.
+6. Write docs/RECORDING.md: browser at 1440x900 and 100% zoom, demo banner on, dock visible,
+   the exact click order for part A and part B, and reset steps if a take fails.
 ```
 
 Gate:
 
-- [ ] Package and vault on mainnet, all RPC through Tatum mainnet
-- [ ] At least 10 memories in the final namespace on Walrus mainnet (realistically about 30)
+- [ ] Every Sui call on testnet through Tatum testnet; Walrus Memory on mainnet
+- [ ] At least 10 stored memories in the final namespace on Walrus mainnet
 - [ ] 5 sessions complete, Learning impact charts filled with real data
-- [ ] Video parts A and B recorded, about 3 minutes total
 - [ ] No console errors throughout the demo flow
+- [ ] docs/RECORDING.md ready; video parts A and B recorded, about 3 minutes total (HUMAN)
 
 ## Phase 6: Docs and submission
 
@@ -469,7 +473,8 @@ Phase 6: submission docs. Read CLAUDE.md, every file in docs/, and the code.
      how memory changes decisions (session 1 vs session 2 example)
    - x402 on Sui: flow, which library or custom path, sample settlement digests
    - Move vault: functions and the guarantee that the agent can never touch reserves
-   - mainnet package ID, vault ID, explorer links, memory count
+   - testnet package ID, vault ID and explorer links; Walrus Memory mainnet namespace,
+     stored memory count and Walrus links; say plainly which part runs on which network
    - run locally from a fresh clone, env vars, scripts
    - honest limitations: demo merchants, simulated income, recycled funds,
      2-minute demo cycles
@@ -500,7 +505,7 @@ Cut order, top item first:
 2. Learning impact goes from 5 charts to 3: manual reviews, money protected, obligations on time
 3. The Last recall tab merges into the request drawer
 4. Emergency withdraw exists only in the contract, with no UI
-5. Vault and x402 stay on testnet. Walrus Memory stays on mainnet because it is required. Say so honestly in the README
+5. (Adopted as the plan on 2026-11-06, no longer a cut.) Vault and x402 stay on testnet. Walrus Memory stays on mainnet because it is required. Say so honestly in the README
 
 Never cut: the contract that protects reserves, memory that changes decisions across sessions, Tatum verification of every transaction, and the end-to-end demo. Those four are what gets judged.
 
