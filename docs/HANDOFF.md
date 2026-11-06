@@ -2,14 +2,18 @@
 
 ## HUMAN: fund these addresses
 
-Send everything to **one** address, the mainnet operator. Claude distributes from there to the
-other demo addresses (budget for those moves: 30 USDC and 3 SUI, every digest logged in
-docs/PROGRESS.md).
+Send everything to **one** address, the mainnet **owner**, with your wallet set to **Sui Mainnet**.
+Claude distributes from there to the other demo addresses (budget for those moves: 30 USDC and
+3 SUI, every digest logged in docs/PROGRESS.md).
 
-| Send | Amount | To (mainnet operator) |
+| Send (on Sui **mainnet**) | Amount | To (mainnet owner) |
 | --- | --- | --- |
-| USDC (native Circle USDC on Sui) | **23.50 USDC** | `0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc` |
-| SUI (gas) | **1.50 SUI** | `0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc` |
+| USDC (native Circle USDC on Sui) | **23.50 USDC** | `0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990` |
+| SUI (gas) | **1.50 SUI** | `0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990` |
+
+Note (2026-11-06): a first transfer of 20.00 USDC to this address landed on **testnet** (testnet
+USDC, checked through Tatum: testnet balance 20.00, mainnet balance 0.00). It cannot be used on
+mainnet; it stays on testnet untouched.
 
 USDC coin type: `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`
 (checked through Tatum mainnet on 2026-11-06: decimals 6, symbol USDC).
