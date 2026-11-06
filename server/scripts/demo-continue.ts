@@ -16,7 +16,8 @@ import { env, formatUsdc } from "../src/lib/env";
 
 const API = (process.env.API_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
 const TOKEN = env("DEMO_TOKEN");
-const CLIENT = `demo-continue-${randomUUID().slice(0, 8)}`;
+// DEMO_CLIENT: reuse the lease of a run that is still going (for example the UI flow before this).
+const CLIENT = process.env.DEMO_CLIENT ?? `demo-continue-${randomUUID().slice(0, 8)}`;
 const SESSIONS = (process.env.SESSIONS ?? "3,4,5").split(",").map(Number);
 const SCENARIOS = ["cheap_data", "new_merchant_search", "expensive_report"] as const;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

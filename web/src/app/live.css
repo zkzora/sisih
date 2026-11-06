@@ -330,3 +330,9 @@
 .request-task {
   white-space: normal;
 }
+
+/* Judge mode adds the "Demo owner (server-signed, testnet)" badge; the banner already states
+   "Sui Testnet · Walrus Memory Mainnet", so the Walrus badge drops its suffix to keep the bar on one line. */
+.topbar-right:has(.demo-owner-badge) .walrus-net {
+  display: none;
+}

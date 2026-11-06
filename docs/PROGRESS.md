@@ -2,14 +2,106 @@
 
 ## Current phase
 
-Phase 4 gate passed (2026-11-06). Live testnet demo at https://sisih-azure.vercel.app (Vercel +
-Supabase): full flow passes from the UI with the owner wallet and as a judge without one (demo owner,
-testnet), and every SPEC feature checklist item is done (table below). Next: Phase 5 (mainnet,
-5 sessions, recording), see docs/BUILD_PLAN.md.
+Phase 5 (testnet demo finalization) done on 2026-11-06, except the human step: record the video
+(docs/RECORDING.md). Networks are final: vault, reserves, agent releases and x402 on **Sui Testnet**
+through Tatum testnet; Walrus Memory on **Mainnet**. The mainnet migration is cancelled (no mainnet
+funds, deployment or transactions). Next: Phase 6 (README, blog, submission docs).
 
 ## Done
 
-### Phase 4: wire the dashboard and host it (in progress, 2026-11-05 to 2026-11-06)
+### Phase 5: testnet demo finalization (2026-11-06)
+
+Network check (verified on the live deployment, 2026-11-06):
+
+| Integration | Network | Evidence |
+| --- | --- | --- |
+| Vault + reserves + agent policy | Sui Testnet | /api/state network testnet, vault 0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962, https://suiscan.xyz/testnet/object/0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962 |
+| Every Sui read and write | Tatum Sui Testnet gRPC | /api/health tatum host sui-testnet-grpc.gateway.tatum.io:443, level green |
+| x402 settlement | Sui Testnet | settle digests below, all verified through Tatum testnet |
+| Walrus Memory | Walrus Mainnet | /api/health relayer https://relayer.memory.walrus.xyz, status ok; SDK listMemories on Walrus returns 35 for the final namespace |
+| Vercel env | testnet only | no variable with MAINNET in the production env; .env.mainnet stays local and unused |
+
+UI: the demo banner reads "Sui Testnet · Walrus Memory Mainnet" on every screen (checked at 1440 and
+1280, public and judge mode, no top-bar overflow, no console errors). The Walrus badge keeps
+"· Mainnet" except in judge mode, where the "Demo owner (server-signed, testnet)" badge needs the room.
+
+Final demo run (all newly verified on 2026-11-06, hosted, namespace **sisih-hosted-6**):
+
+- Reset: emergency withdraw AAMQquvszSDDievVWFznf58nUte5bTKpXQDCJWPecVDc, seed
+  8dQKZDKAAbQ5Lx5d3eU7WQFpmX4mDip3KubfmzoHL1sZ -> 20.00 / 16.50 / 3.50 (20.00 deposited, 16.50 reserved:
+  Inference API 6.00, Hosting VPS 5.00, Weekly savings 4.00, Domain renewal 1.50).
+- Sessions 1 and 2 through the UI (Playwright, judge path, no wallet): every SPEC balance and decision
+  ok, no console errors.
+  - DataMart 0.50 auto (default threshold): release 2Ju96fSrg2qk1iJcy41x4LsYTd6cSeSo59Lcu2zVSy3A, x402
+    settle EC38SWXoisFLojvYwkuD4xckwHkVTnvG8m2JwkNJvjMC.
+  - SearchBox 1.20 held (new merchant) -> Approve & remember: release
+    BPQsJKfz6YTwU7kuq1gYi7FfoKiPYLas8jzZ4jh4578f, settle 5SwM31dV71TcmdA9kT1MJfqKD3nveSKo9sAuTecoVvNz; rule
+    memory stored, blob pzgbmXXnEEVdL1ApgYfg0zdvc-SOZUWKzLMvzyBGneA ("Always allow search from SearchBox
+    up to 1.50 USDC").
+  - ReportLab 3.00 held, would cut reserves by 1.20, Approve disabled -> Deny & remember (rule blob
+    ZVIl3B9YMpjjsWn3N4OmOc9D8MlAF5jvCihHTM5gZO0). End of session 1: 18.30 / 16.50 / 1.80.
+  - Advance cycle: Inference API bill 6.80 against a 6.00 reserve (outcome blob
+    UMqAuiVX1Yoxcqc2ebS2PJp8NpObkOEADrw75nV7Ds8) -> suggestion 6.00 -> 7.00 -> owner accepted (demo
+    owner) 6DaXxdwoEotRTRzT3Mqio9sMDKL7NCwimDpDQxPa7veL. Start of session 2: 18.00 / 16.00 / 2.00.
+  - Session 2: 2 rules rebuilt from Walrus recall; SearchBox 1.20 auto by allow_rule (release
+    nYxWRpJk31MyFQYAiQD6ffRiou7c1UrDZgJBKm5o436, settle 5jqPJmRqi4QjayKn1RfhCdoJDeLBv8UuG95pGVAY1UmK);
+    ReportLab held, cuts 2.70, "You denied this before". End of session 2: 16.30 / 16.00 / 0.30.
+  - Owner deposit 0.10 4Y1aQm3FAnU2uXoU7brY6Q4KwveDY4DGa8SpHnacXJy3, pause
+    3ccB4rsFtqkUqwZ4JDPmfTacJdAkSha3FCBQx5DPkYcg, resume AAiZXrAMTEGc57YjMYRGRk9XgSbM4J53TgdNMXhFttk (demo
+    owner, all verified).
+- Sessions 3 to 5 with `pnpm demo:continue` (one fixed owner rule: approve once if the vault allows
+  it, deny if it would cut reserves; nothing tuned):
+
+| Session | Before the session | DataMart 0.50 | SearchBox 1.20 | ReportLab 3.00 | End balance |
+| --- | --- | --- | --- | --- | --- |
+| 3 | bills 6.40 + 5.00 + 4.00, income 17.00 | auto | auto, allow_rule | held, cuts 2.70 -> deny | 16.30 / 16.00 / 0.30 |
+| 4 | bills 7.20 (0.20 short) + 5.00 + 4.00; owner accepted Inference 7.00 -> 7.50 (A1TBFm9nTHgrxzxjuxTGDyTGjsRQ3Ytfi7VNZXAqXB61) | auto | held, cuts 1.10 -> deny | held, cuts 2.90 -> deny | 16.60 / 16.50 / 0.10 |
+| 5 | bills 6.90 + 5.00 + 4.00 | auto | held, cuts 0.50 -> deny | held, cuts 2.30 -> deny | 17.20 / 16.50 / 0.70 |
+
+Real outcome, reported as is: manual reviews per session 2, 1, 1, 2, 2. Sessions 4 and 5 rose again
+because the owner raised the Inference reserve to 7.50, which left 0.10 to 0.70 free. SearchBox 1.20
+would have cut reserves, so the engine held it on the reserve check, which runs before any remembered
+rule, while the SearchBox allow rule stayed active (2 active rules rebuilt from Walrus every session).
+That is the hard-rules-first design, not a learning failure.
+
+Memory evidence (newly verified 2026-11-06):
+
+- Namespace sisih-hosted-6: **35 stored** memories (0 writing, 0 failed) in the app database, and 35
+  returned by the Walrus Memory SDK listMemories from the mainnet relayer. By type: decision 14,
+  obligation_outcome 13, session_summary 4, reserve_change 2, rule 2.
+- Recall on Walrus mainnet for "SearchBox premium search 1.20 USDC search merchant" (limit 3, 4.6 s):
+  distance 0.252 blob jjwBY4VbUj0Q_et-I0XGsLerI-NzNnAjzfnDZc4_0yA (session 1 owner approval), 0.299
+  kxqkFTnSNW0u5RY0lK2NL6hUZSNMsyx-C88097mHzyI and D5fHBAaPHl-lMZ10YGWeLPu1cy1UhBAHelD0DNv73lc (sessions 3
+  and 2 automatic approvals). Session starts rebuilt the rules from 16, 24 and 31 recalled memories
+  (sessions 3, 4, 5).
+- Walrus links: https://walruscan.com/mainnet/blob/<blob id> (the Memory screen links every row).
+
+Memory cannot beat hard limits:
+
+- Onchain, newly verified: the operator released 1.20 (the SearchBox amount, allowed by the
+  remembered rule up to 1.50) with 0.70 free, bypassing the server: aborted with EExceedsFree,
+  https://suiscan.xyz/testnet/tx/3QcakorFNa8YhAaXHdv8wHU39kYXnis4EdJA6mLhRGeM (in the hosted activity feed as
+  a contract check). Command: `scripts/gate-release.ts --skip-success --amount=1.20`.
+- Live, newly verified: SearchBox held in sessions 4 and 5 with its allow rule active (table above).
+- Engine tests ("hard rules come before memory"): an allow rule cannot unlock reserves; paused,
+  revoked, expired permission, over the per-request cap and over the daily window are auto-denied
+  even with an allow rule.
+- Move tests (46/46): release_takes_only_free_never_reserves, release_one_unit_over_free_aborts,
+  release_over_per_request_aborts, release_over_daily_window_aborts, release_after_expiry_aborts,
+  release_when_paused_aborts, release_after_revoke_aborts, owner_cannot_withdraw_reserves.
+
+UI check of the final state (read-only Playwright walk, hosted): 55 checks ok, no console errors;
+Learning impact shows "Data from 5 demo sessions". The one open miss is a selector artifact (the
+composition legend shows "Available 0.70" in the screenshot).
+
+Checks: `pnpm test` (web 18, server 44), `pnpm typecheck`, `pnpm build`, `sui move test` 46/46, all
+pass. The hosted demo is left in this final 5-session state (namespace sisih-hosted-6) with the
+demo-run lease released; docs/RECORDING.md explains the reset to the clean state before recording.
+
+Built: server/scripts/demo-continue.ts (`pnpm demo:continue`), demo-run.ts sends the demo token,
+gate-release.ts --amount, docs/RECORDING.md, server vitest hookTimeout 30 s, judge-mode top-bar fit.
+
+### Phase 4: wire the dashboard and host it (2026-11-05 to 2026-11-06)
 
 Gate so far:
 
@@ -213,7 +305,7 @@ x402 path: **the package path works**, no custom flow needed.
 - Testnet USDC is "gasless" in the library (TESTNET_GASLESS_TOKEN_RULES minAmount 0):
   gas price and budget 0, no gas payment. The facilitator's SUI did not change.
   On mainnet USDC is gasless only from 0.01 USDC (minAmount 10000); below that the
-  facilitator pays gas. Check again in Phase 5.
+  facilitator pays gas. (Moot since 2026-11-06: x402 stays on testnet.)
 - Library bug: `settle()` returns `success: true` with an empty `transaction` when
   verify fails. Only accept a payment with a non-empty digest that verifyTransaction confirms.
 
@@ -553,6 +645,11 @@ Phase 4 (2026-11-06, hosted run): operator -> owner 0.50 USDC after the hosted r
   demo" with the wait time. Test scripts must click Lock at the end (toast.mjs did not, 2026-11-06).
 - Demo owner signing covers deposit, reserve suggestions, pause and resume only. Withdraw, add /
   edit / remove commitments, hard limits and revoke still need the owner wallet.
+- Learning impact over the 5 real sessions does not trend down (manual reviews 2, 1, 1, 2, 2): the
+  sessions 4 and 5 holds come from low free funds after a reserve raise, not from memory. Phase 6
+  docs must describe this as it is.
+- Before recording, reset the hosted demo (docs/RECORDING.md); that replaces the sisih-hosted-6
+  state on the dashboard. Its evidence stays on Sui Testnet, on Walrus Mainnet and in this file.
 
 ## Env vars
 

@@ -167,7 +167,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </span>
             {ownerSigner === "demo" && (
               <span title="No owner wallet connected: deposits, reserve suggestions, pause and resume are signed on the server with the demo owner key. Testnet only.">
-                <Badge tone="warning">{DEMO_OWNER_LABEL}</Badge>
+                <span className="demo-owner-badge"><Badge tone="warning">{DEMO_OWNER_LABEL}</Badge></span>
               </span>
             )}
             <span className="wallet-connect">

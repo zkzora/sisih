@@ -73,9 +73,11 @@ if (!process.argv.includes("--skip-success")) {
   okPass = ok.success && okV.success && after - before === usdc("0.50");
 }
 
-const bad = await release(usdc("5.00"), "gate-5.00", true);
+// --amount=1.20: the refused release (default 5.00). Use an amount above the vault's free funds.
+const badAmount = process.argv.find((a) => a.startsWith("--amount="))?.slice(9) ?? "5.00";
+const bad = await release(usdc(badAmount), `gate-${badAmount}`, true);
 const badV = await verifyTransaction(bad.digest);
-console.log(`release 5.00: ${bad.digest} success=${bad.success} verified-on-chain=${!badV.success ? "failed as expected" : "UNEXPECTED SUCCESS"}`);
+console.log(`release ${badAmount}: ${bad.digest} success=${bad.success} verified-on-chain=${!badV.success ? "failed as expected" : "UNEXPECTED SUCCESS"}`);
 console.log(`  abort: ${abortName(bad.error)}  raw: ${bad.error?.slice(0, 300)}`);
 
 const pass = okPass && !bad.success && !badV.success && abortName(bad.error) === "EExceedsFree";
