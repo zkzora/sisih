@@ -19,7 +19,7 @@ import { invoiceReceived, paymentExecutor, serializeInvoice } from "./payments";
 import { addLocalRule, cachedRules, currentSession, defaultThreshold, knownMerchants, kvSet, markRulesUsed } from "./state";
 
 export class ApiError extends Error {
-  constructor(public status: 400 | 404 | 409, message: string, public code = "bad_request") {
+  constructor(public status: 400 | 404 | 409 | 422, message: string, public code = "bad_request") {
     super(message);
   }
 }

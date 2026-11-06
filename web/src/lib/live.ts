@@ -23,6 +23,33 @@ export function setDemoToken(token: string | null): void {
   }
 }
 
+const CLIENT_KEY = "sisih-demo-client";
+let memoryClientId: string | null = null;
+
+/**
+ * Random id for this browser tab. The server's demo-run lease is held per client id, so one
+ * visitor runs the demo at a time and a second one sees "busy" instead of mixing runs.
+ */
+export function demoClientId(): string {
+  try {
+    let id = sessionStorage.getItem(CLIENT_KEY);
+    if (!id) {
+      id = crypto.randomUUID();
+      sessionStorage.setItem(CLIENT_KEY, id);
+    }
+    return id;
+  } catch {
+    memoryClientId ??= crypto.randomUUID();
+    return memoryClientId;
+  }
+}
+
+/** Headers every mutating call carries: the demo token and this tab's client id. */
+export function demoHeaders(): Record<string, string> {
+  const t = demoToken();
+  return t ? { "x-demo-token": t, "x-demo-client": demoClientId() } : {};
+}
+
 /** Base-unit string -> number of micro-USDC (safe: demo amounts are tiny). */
 export const toUnits = (v: string | number | null | undefined): number => (v === null || v === undefined || v === "" ? 0 : Number(v));
 
@@ -36,10 +63,7 @@ export async function api<T>(path: string, init: { method?: "GET" | "POST" | "PA
   const method = init.method ?? "GET";
   const headers: Record<string, string> = {};
   if (init.body !== undefined) headers["content-type"] = "application/json";
-  if (method !== "GET") {
-    const t = demoToken();
-    if (t) headers["x-demo-token"] = t;
-  }
+  if (method !== "GET") Object.assign(headers, demoHeaders());
   const res = await fetch(`${API_URL}${path}`, { method, headers, body: init.body === undefined ? undefined : JSON.stringify(init.body) });
   const text = await res.text();
   const json = text ? JSON.parse(text) : null;

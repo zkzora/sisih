@@ -6,11 +6,12 @@
  */
 import { randomUUID } from "node:crypto";
 import { MemWal, type RecallResult } from "@mysten-incubation/memwal";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db, schema } from "../db/index";
 import type { Category, RecalledMemory, Rule } from "../domain/types";
 import { background } from "../lib/background";
 import { publish } from "../lib/bus";
+import { acquireLease } from "../lib/leases";
 import { env, formatUsdc, requireEnv } from "../lib/env";
 import { parseMemory, serializeMemory, type MemoryType } from "./format";
 
@@ -76,15 +77,25 @@ export async function remember(type: MemoryType, sentence: string, payload: obje
   return { id, type, text, status: "writing", blobId: null, namespace: ns };
 }
 
+// Transitions only leave "writing": two instances finishing the same job never overwrite a result
+// or publish it twice.
 async function markStored(id: string, blobId: string, jobId: string, ns: string, startedAt: number) {
-  await db().update(schema.memories).set({ status: "stored", blobId, storedAt: Date.now(), error: null }).where(eq(schema.memories.id, id));
-  publish("memory.stored", { id, blobId, jobId, namespace: ns, ms: Date.now() - startedAt });
+  const moved = await db()
+    .update(schema.memories)
+    .set({ status: "stored", blobId, storedAt: Date.now(), error: null })
+    .where(and(eq(schema.memories.id, id), eq(schema.memories.status, "writing")))
+    .returning({ id: schema.memories.id });
+  if (moved.length) publish("memory.stored", { id, blobId, jobId, namespace: ns, ms: Date.now() - startedAt });
 }
 
 async function markFailed(id: string, err: unknown) {
   const message = ((err as Error)?.message ?? String(err)).slice(0, 300);
-  await db().update(schema.memories).set({ status: "failed", error: message }).where(eq(schema.memories.id, id));
-  publish("memory.failed", { id, error: message });
+  const moved = await db()
+    .update(schema.memories)
+    .set({ status: "failed", error: message })
+    .where(and(eq(schema.memories.id, id), eq(schema.memories.status, "writing")))
+    .returning({ id: schema.memories.id });
+  if (moved.length) publish("memory.failed", { id, error: message });
 }
 
 /** Submit (if needed) and wait for one memory job; idempotent per row. */
@@ -131,12 +142,62 @@ export async function waitForPendingMemories(): Promise<number> {
   return rows.length;
 }
 
-/** Finish writes whose instance went away (called on reads; cheap when nothing is pending). */
-export async function reconcilePendingMemories(olderThanMs = 15_000): Promise<number> {
+/** A row without a job id this old lost its function before Walrus accepted (or before we saved) the job. */
+const RESUBMIT_AFTER_MS = 60_000;
+
+export interface ReconcileReport {
+  checked: number;
+  stored: number;
+  failed: number;
+  resubmitted: number;
+  stillWriting: number;
+}
+
+/**
+ * Finish writes whose function went away. Runs on the dashboard's poll (GET /api/events ->
+ * housekeeping) and on /api/state, so no memory depends on one function staying alive:
+ * - job id saved: one status check per poll. done -> stored, failed / not_found -> failed
+ *   (retryable from the UI), otherwise left for the next poll. Never a long wait here.
+ * - no job id after RESUBMIT_AFTER_MS: one instance (lease memjob:<id>) submits the same text
+ *   again and saves the new job id. If the lost function had already been accepted by the
+ *   relayer, Walrus may hold the text twice; rules are merged by rule id, so that is harmless.
+ */
+export async function reconcilePendingMemories(olderThanMs = 15_000, now = Date.now()): Promise<ReconcileReport> {
   const rows = await db().select().from(schema.memories).where(eq(schema.memories.status, "writing"));
-  const stale = rows.filter((r) => Date.now() - r.createdAt > olderThanMs && !local.has(r.id));
-  for (const r of stale) startJob(r.id, r.text, r.namespace, r.jobId, r.createdAt);
-  return stale.length;
+  const stale = rows.filter((r) => now - r.createdAt > olderThanMs && !local.has(r.id));
+  const report: ReconcileReport = { checked: stale.length, stored: 0, failed: 0, resubmitted: 0, stillWriting: 0 };
+  for (const r of stale) {
+    try {
+      if (r.jobId) {
+        const s = await memwal().getRememberStatus(r.jobId);
+        if (s.status === "done" && s.blob_id) {
+          await markStored(r.id, s.blob_id, r.jobId, r.namespace, r.createdAt);
+          report.stored++;
+        } else if (s.status === "failed" || s.status === "not_found") {
+          await markFailed(r.id, s.error ?? `Walrus job ${s.status}`);
+          report.failed++;
+        } else report.stillWriting++;
+      } else if (now - r.createdAt > RESUBMIT_AFTER_MS) {
+        const lease = await acquireLease(`memjob:${r.id}`, randomUUID(), 5 * 60_000);
+        if (!lease.acquired) {
+          report.stillWriting++;
+          continue;
+        }
+        const accepted = await memwal().remember(r.text, r.namespace);
+        const saved = await db()
+          .update(schema.memories)
+          .set({ jobId: accepted.job_id })
+          .where(and(eq(schema.memories.id, r.id), isNull(schema.memories.jobId)))
+          .returning({ id: schema.memories.id });
+        if (saved.length) publish("memory.resubmitted", { id: r.id, jobId: accepted.job_id });
+        report.resubmitted++;
+      } else report.stillWriting++;
+    } catch (err) {
+      console.error(`reconcile ${r.id}:`, (err as Error).message);
+      report.stillWriting++;
+    }
+  }
+  return report;
 }
 
 export async function pendingMemoryCount(): Promise<number> {

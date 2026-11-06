@@ -22,6 +22,27 @@ Rhythm per phase:
 3. Check the gate yourself. If it passes, commit and tag `phase-N`.
 4. Claude Code fills in `docs/PROGRESS.md` at the end of each phase so the next session knows where things stand.
 
+## Architecture as built (updated 2026-11-06)
+
+The phase prompts below are written against this stack. Where an older draft said SQLite, SSE or
+Railway, the build uses the following instead:
+
+- One Vercel project (`sisih`, root `web/`). The Hono app in `server/src` is mounted inside Next.js
+  route handlers (`web/src/app/api/[...path]`, `web/src/app/merchants/[...path]`), so the dashboard,
+  the API and the demo x402 merchants share one origin. `/api/sui-rpc` is the browser's only path to
+  Sui (Tatum, server side).
+- App state in Postgres through Drizzle (pg-core): node-postgres against Supabase's transaction
+  pooler when hosted (POSTGRES_URL from the Vercel x Supabase integration), embedded PGlite locally
+  (`DATABASE_URL=pglite:./server/data/pglite`) and in tests (`pglite::memory:`).
+- Live updates: every event is stored in Postgres; the dashboard polls `GET /api/events?after=<id>`.
+  No SSE (serverless functions do not hold connections). The dashboard still never calls Tatum.
+- Serverless: background work (Walrus memory jobs, recall, event inserts) is tracked and drained
+  with `after()`; memory jobs are reconciled on the next poll if their function dies. Locks and
+  rate limits are shared through Postgres.
+- Access: public visitors are read-only; mutations need DEMO_TOKEN (given to judges in the
+  submission form), one demo run at a time. On testnet a judge without the owner wallet gets
+  owner actions signed by "Demo owner (server-signed, testnet)".
+
 ## Timeline
 
 | Day | Phase |
@@ -57,7 +78,7 @@ Do not build product features yet.
 
 1. Scaffold a pnpm workspace:
    - contracts/sisih: empty Move package (sui move new sisih)
-   - server/: Hono + TypeScript + tsx + vitest + drizzle + better-sqlite3
+   - server/: Hono + TypeScript + tsx + vitest + drizzle (Postgres; PGlite locally)
    - web/: already exists (Next.js App Router + Tailwind). Add @mysten/dapp-kit and
      @tanstack/react-query; keep the app working.
    - root: .env.example with every var in CLAUDE.md, .gitignore, docs/PROGRESS.md
@@ -221,7 +242,7 @@ Payment execution is a stub interface in this phase; Phase 3 implements it with 
    - recallForRequest(request): recall with merchant, category, amount, task context
    - loadRules(): recall all rule and rule_disabled memories for this namespace, parse
      payloads, apply disables. This is the source of truth for rules at session start.
-     SQLite only caches it.
+     Postgres only caches it.
 
 3. policy/engine.ts: a pure function, fully unit tested.
    Input: request, VaultState, rules, recalled memories, defaults (auto-allow up to 0.50).
@@ -255,24 +276,25 @@ Payment execution is a stub interface in this phase; Phase 3 implements it with 
 6. Sessions: start_session writes a session_summary memory for the previous session
    (requests, holds, auto decisions, new rules), reloads rules from Walrus, bumps the number.
 
-7. SQLite (drizzle): sessions, requests, decisions, rules_cache, memories (type, text,
-   payload, job id, status, identifiers, used_in_decisions), suggestions, tx_log.
+7. Postgres (drizzle pg-core; PGlite locally): sessions, requests, decisions, rules_cache,
+   memories (type, text, payload, job id, status, identifiers, used_in_decisions),
+   suggestions, tx_log, events, kv, leases, rate_limits.
 
-8. HTTP API (Hono) + SSE, shaped for the 7 dashboard screens in docs/SPEC.md:
+8. HTTP API (Hono) + stored event feed, shaped for the 7 dashboard screens in docs/SPEC.md:
    GET /api/state, /api/obligations, /api/obligations/:id, /api/requests,
    /api/requests/:id, POST /api/requests/:id/decision, GET /api/rules,
    PATCH /api/rules/:id, GET /api/memories, /api/memories/:id, /api/recall/last,
    /api/insights (per-session metrics for the 5 charts), /api/activity, /api/tx/:digest,
    POST /api/suggestions/:id/accept|reject, POST /api/sessions, GET /api/health
-   (Tatum status and latency, memwal health), GET /api/events (SSE: request.*, tx.*,
-   memory.*, state.changed).
+   (Tatum status and latency, memwal health), GET /api/events?after=<id> (stored events,
+   polled: request.*, tx.*, memory.*, state.changed).
 ```
 
 Gate:
 
 - [ ] Policy engine unit tests pass for the 6 sample requests in SPEC
 - [ ] `GET /api/state` matches the explorer numbers, read through Tatum
-- [ ] "Approve & remember" writes a memory to Walrus mainnet; writing -> stored shows on SSE
+- [ ] "Approve & remember" writes a memory to Walrus mainnet; writing -> stored shows in the event feed
 - [ ] Restart the server, start a new session: rules are rebuilt from Walrus recall
 - [ ] `GET /api/activity` shows vault events with Tatum verification status
 
@@ -299,9 +321,9 @@ Read CLAUDE.md, docs/SPEC.md (demo flow and sample data), docs/PROGRESS.md
    merchant, item, amount, task context ->
    auto_allow: operator calls release_to_agent(amount, request_id), agent pays x402 with
    exactly that coin, merchant returns the resource;
-   hold: wait for the owner decision over SSE, then continue the same way on approval;
+   hold: wait for the owner decision, then continue the same way on approval;
    auto_deny: log and stop.
-   Emit the 4 x402 steps over SSE: invoice_received, funds_released, payment_sent,
+   Emit the 4 x402 steps as events: invoice_received, funds_released, payment_sent,
    settle_verified (digest read back through Tatum). Keep the agent topped up with a
    little SUI for gas from the operator if it runs low.
 
@@ -313,8 +335,8 @@ Read CLAUDE.md, docs/SPEC.md (demo flow and sample data), docs/PROGRESS.md
      If nothing is due yet, return the seconds until the next due time.
    - POST /api/demo/new-session
    - POST /api/demo/reset (testnet only): emergency_withdraw_all, re-seed the vault,
-     clear SQLite, switch to a fresh namespace sisih-demo-<n> so a recording starts
-     with zero memories.
+     clear app state, switch to a fresh namespace <MEMWAL_NAMESPACE_PREFIX>-<n> so a recording
+     starts with zero memories, and leave the owner a 0.50 testnet USDC deposit float.
    - GET /api/demo/clock: cycle number, session number, seconds to next due.
 
 5. Demo cycles: recurring obligations use DEMO_CYCLE_MS (default 120000) as cycle_ms,
@@ -338,7 +360,7 @@ Gate:
 
 - [ ] `demo-run.ts` passes end to end on testnet with no intervention
 - [ ] `recycle.ts` returns payee and merchant USDC to the operator, digests verified through Tatum
-- [ ] Every x402 settlement has a Tatum-verified digest, and the 4 steps appear on SSE
+- [ ] Every x402 settlement has a Tatum-verified digest, and the 4 steps appear in the event feed
 - [ ] Advance cycle: Inference API is 0.80 short, a 7.00 suggestion appears
 - [ ] Session 2: SearchBox 1.20 is auto-approved because of the rule from Walrus
 - [ ] Demo reset produces a clean vault and a new memory namespace
@@ -352,14 +374,15 @@ Phase 4: wire the dashboard. The working dashboard is in web/ (local simulation 
 web/src/lib/engine.ts and localStorage); brand files are in docs/design/.
 Read CLAUDE.md, docs/SPEC.md (screens 1 to 7, UI states, feature checklist),
 docs/PROGRESS.md and web/AGENTS.md. Plan mode first: map every existing component to its
-API endpoint and SSE event, and list anything the API is missing before writing UI code.
+API endpoint and event type, and list anything the API is missing before writing UI code.
 
 1. Keep the existing layout, tokens, colors, type and copy. Do not redesign.
 2. All UI copy stays English. Dot decimals, e.g. "20.00 USDC".
-3. Data: TanStack Query for REST, one SSE connection in a provider that patches or
-   invalidates queries on request.*, tx.*, memory.*, state.changed. The dashboard never
-   polls Tatum: it reads the server's cached state and reacts to SSE. Remove the
-   localStorage state and the "simulation" disclaimers that no longer apply.
+3. Data: TanStack Query for REST, one poller in a provider that reads the stored event feed
+   (GET /api/events?after=<id>) and patches or invalidates queries on request.*, tx.*,
+   memory.*, state.changed. The dashboard never polls Tatum: it reads the server's cached
+   state and reacts to events. Remove the localStorage state and the "simulation"
+   disclaimers that no longer apply.
 4. Owner wallet with @mysten/dapp-kit. All browser RPC goes through the Next.js route
    /api/sui-rpc, which forwards to Tatum with the key on the server side.
    Owner-signed actions: deposit, withdraw free, emergency withdraw (two-step confirm),
@@ -375,8 +398,11 @@ API endpoint and SSE event, and list anything the API is missing before writing 
 8. Explorer links for digests and object IDs by network, Walrus links for memories using
    the identifiers recorded in PROGRESS.md.
 9. Target 1440x900. Nothing may break at 1280 wide.
-10. Deploy server and web to a public host on testnet (no setup for a judge: open the URL,
-    the demo dock works). Keep secrets in the host's env, never in the client bundle.
+10. Deploy the stack as one Vercel project on testnet (server mounted in Next.js route
+    handlers, Supabase Postgres): no setup for a judge, open the URL; the demo dock works
+    with the demo token from the submission form, and owner actions work without a wallet
+    as "Demo owner (server-signed, testnet)". Keep secrets in the Vercel env, never in the
+    client bundle.
 11. Finish by walking the spec's feature checklist and reporting each item done or missing.
 ```
 

@@ -2,13 +2,13 @@
 import { useEffect, useState } from "react";
 import { ConnectButton } from "@mysten/dapp-kit";
 import { Ban, Bot, Check, Download, ExternalLink, Globe2, LockKeyhole, Moon, Pause, Play, ShieldCheck, Sun, Wallet } from "lucide-react";
-import { useSisih } from "./context";
+import { DEMO_OWNER_LABEL, useSisih } from "./context";
 import { Badge, Button, Confirm, CopyButton, Field, PageHeading, Panel, Spinner } from "./ui";
 import { amountInput, freeFunds, money, parseMoney, short } from "@/lib/engine";
 import { TatumDot, useNow } from "./live-bits";
 
 export function SettingsView() {
-  const { state, act, setMoneyModal, notify, isOwner, walletAddress, refreshVault } = useSisih();
+  const { state, act, setMoneyModal, notify, isOwner, ownerSigner, canOwner, walletAddress, refreshVault } = useSisih();
   const now = useNow(5000);
   const live = state.live;
   const [perRequest, setPerRequest] = useState(amountInput(state.preferences.perRequest));
@@ -43,7 +43,7 @@ export function SettingsView() {
       <PageHeading title="Your vault. Your boundaries." description="Manage spending permissions and the preferences your agent follows." />
       <div className="settings-layout">
         <div className="settings-main">
-          <Panel title="Wallet & funds" action={<Badge tone={isOwner ? "success" : "neutral"}>{isOwner ? "Owner connected" : walletAddress ? "Not the owner" : "Read-only"}</Badge>}>
+          <Panel title="Wallet & funds" action={<Badge tone={isOwner ? "success" : ownerSigner === "demo" ? "warning" : "neutral"}>{isOwner ? "Owner connected" : ownerSigner === "demo" ? DEMO_OWNER_LABEL : walletAddress ? "Not the owner" : "Read-only"}</Badge>}>
             <div className="settings-wallet">
               <span className="wallet-icon">
                 <Wallet size={21} />
@@ -75,7 +75,7 @@ export function SettingsView() {
                 <strong>{money(freeFunds(state))} USDC</strong>
               </span>
               <div>
-                <Button variant="secondary" onClick={() => setMoneyModal("deposit")} disabled={!isOwner}>
+                <Button variant="secondary" onClick={() => setMoneyModal("deposit")} disabled={!canOwner("deposit")}>
                   Deposit
                 </Button>
                 <Button variant="secondary" onClick={() => setMoneyModal("withdraw")} disabled={!isOwner}>
@@ -83,7 +83,11 @@ export function SettingsView() {
                 </Button>
               </div>
             </div>
-            {!isOwner && <p className="detail-note">Owner actions are signed by the owner wallet. Anyone can view this workspace read-only.</p>}
+            {ownerSigner === "demo" ? (
+              <p className="detail-note">No owner wallet is connected, so deposits, reserve suggestions, pause and resume are signed on the server by the {DEMO_OWNER_LABEL}. Connect the owner wallet to sign them yourself. Never on mainnet.</p>
+            ) : (
+              !isOwner && <p className="detail-note">Owner actions are signed by the owner wallet. Anyone can view this workspace read-only.</p>
+            )}
           </Panel>
           <Panel title="Spending policy" action={<Badge><LockKeyhole size={11} /> Hard limits on chain</Badge>}>
             <form
@@ -167,7 +171,7 @@ export function SettingsView() {
                 </Button>
               ) : (
                 <>
-                  <Button variant="secondary" disabled={!isOwner} onClick={() => void act({ type: "agent-status", status: state.agentStatus === "active" ? "paused" : "active" })}>
+                  <Button variant="secondary" disabled={!canOwner(state.agentStatus === "active" ? "pause_agent" : "resume_agent")} onClick={() => void act({ type: "agent-status", status: state.agentStatus === "active" ? "paused" : "active" })}>
                     {state.agentStatus === "active" ? <Pause size={14} /> : <Play size={14} />} {state.agentStatus === "active" ? "Pause" : "Resume"}
                   </Button>
                   <Button variant="ghost" className="danger-text" disabled={!isOwner} onClick={() => setConfirm("revoke")}>

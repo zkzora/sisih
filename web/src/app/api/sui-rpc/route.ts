@@ -5,41 +5,22 @@
  * The wallet only signs; it never submits through its own RPC. Demo-token gated and
  * rate-limited, like the server's mutating endpoints.
  */
-import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { guardRequest } from "@/server/hosted-api";
 import { buildOwnerTx, executeSigned, type OwnerArgs, type OwnerKind } from "@/server/owner-tx";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const hits = new Map<string, number[]>();
-function limited(ip: string, max = 20, windowMs = 60_000): boolean {
-  const now = Date.now();
-  const h = (hits.get(ip) ?? []).filter((t) => now - t < windowMs);
-  if (h.length >= max) {
-    hits.set(ip, h);
-    return true;
-  }
-  h.push(now);
-  hits.set(ip, h);
-  return false;
-}
-
-function tokenOk(given: string | null): boolean {
-  const expected = process.env.DEMO_TOKEN;
-  if (!expected) return true; // local development
-  if (!given) return false;
-  const a = Buffer.from(given);
-  const b = Buffer.from(expected);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
+// Build resolves objects and simulates; execute waits for effects. Both go through the Tatum throttle.
+export const maxDuration = 120;
 
 export async function POST(req: NextRequest) {
-  if (!tokenOk(req.headers.get("x-demo-token"))) {
-    return NextResponse.json({ error: "Demo controls are locked. Enter the demo token to sign actions.", code: "demo_locked" }, { status: 401 });
+  // Same checks as every mutating /api/* call: token, shared rate limits, demo-run lease.
+  const denied = await guardRequest(req, "/api/sui-rpc");
+  if (denied) {
+    const headers = denied.body.retryAfterSeconds ? { "Retry-After": String(denied.body.retryAfterSeconds) } : undefined;
+    return NextResponse.json(denied.body, { status: denied.status, headers });
   }
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  if (limited(ip)) return NextResponse.json({ error: "Too many requests. Try again shortly.", code: "rate_limited" }, { status: 429 });
   let body: { op?: string; kind?: OwnerKind; args?: OwnerArgs; sender?: string; bytes?: string; signature?: string };
   try {
     body = await req.json();

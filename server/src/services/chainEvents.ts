@@ -65,19 +65,20 @@ export async function listSuggestions() {
  * The owner signed set_obligation_target in the browser and posts the digest. We prove it
  * through Tatum (the target change must match the suggestion) and remember the change.
  */
-export async function acceptSuggestion(id: string, digest: string) {
+/** Accept after the owner signed set_obligation_target: the owner wallet, or the demo owner key (testnet). */
+export async function acceptSuggestion(id: string, digest: string, signer: "owner" | "demo_owner" = "owner") {
   const [s] = await db().select().from(schema.suggestions).where(eq(schema.suggestions.id, id));
   if (!s) throw new ApiError(404, `No suggestion ${id}`, "not_found");
   if (s.status !== "open") throw new ApiError(409, `Suggestion is ${s.status}`, "not_open");
-  const rec = await recordTx(digest, { source: "owner", label: `Change reserve: ${s.obligationName}` });
+  const rec = await recordTx(digest, { source: signer, label: `Change reserve: ${s.obligationName}` });
   if (rec.status !== "verified") throw new ApiError(409, `Transaction ${digest} is ${rec.status}: ${rec.error ?? ""}`, "tx_not_verified");
   const change = rec.events.find((e) => eventName(e.type) === "ObligationTargetChanged" && Number(e.json?.id) === s.obligationId);
   if (!change) throw new ApiError(409, "That transaction did not change this obligation's target", "tx_mismatch");
   const newTarget = BigInt(String(change.json!.new_target));
   const mem = await remember(
     "reserve_change",
-    `${s.obligationName} reserve ${formatUsdc(BigInt(s.currentTarget))} to ${formatUsdc(newTarget)} USDC, approved by the owner.`,
-    { suggestionId: id, obligationId: s.obligationId, name: s.obligationName, oldTarget: s.currentTarget, newTarget: newTarget.toString(), accepted: true, digest },
+    `${s.obligationName} reserve ${formatUsdc(BigInt(s.currentTarget))} to ${formatUsdc(newTarget)} USDC, approved by the ${signer === "demo_owner" ? "demo owner (server-signed, testnet)" : "owner"}.`,
+    { suggestionId: id, obligationId: s.obligationId, name: s.obligationName, oldTarget: s.currentTarget, newTarget: newTarget.toString(), accepted: true, digest, signer },
     { session: await currentSession() },
   );
   await db().update(schema.suggestions).set({ status: "accepted", digest }).where(and(eq(schema.suggestions.id, id)));

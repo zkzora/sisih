@@ -22,15 +22,32 @@ Progress log: docs/PROGRESS.md
 ## Repo layout
 
 - contracts/sisih : Move package, module sisih::vault
-- server/ : Node + TypeScript (Hono). Policy engine, Tatum client, Walrus Memory
-  client, agent runner, demo x402 merchants, x402 facilitator, demo controls,
-  SSE event feed. SQLite + Drizzle for app state.
-- web/ : Next.js dashboard. Already built and approved as a local simulation
-  (state in web/src/lib/engine.ts + localStorage via web/src/components/context.tsx).
-  Phase 4 replaces that local engine with the server API and @mysten/dapp-kit;
-  keep the existing layout, tokens and copy. Do not redesign.
-  web/AGENTS.md: this Next.js version has breaking changes; read
+- server/ : TypeScript (Hono app). Policy engine, Tatum client, Walrus Memory client,
+  agent runner, demo x402 merchants, x402 facilitator, demo controls, stored event feed.
+  App state in Postgres through Drizzle (pg-core): node-postgres (pg) against Supabase's
+  transaction pooler when hosted, embedded PGlite locally and in tests.
+- web/ : Next.js dashboard, wired to the server API and @mysten/dapp-kit (approved layout,
+  tokens and copy: do not redesign). It also hosts the server: web/src/app/api/[...path]
+  and web/src/app/merchants/[...path] mount the Hono app (web/src/server/hosted-api.ts),
+  so the whole stack is one Vercel project on one origin. /api/sui-rpc is the browser's
+  only path to Sui. web/AGENTS.md: this Next.js version has breaking changes; read
   web/node_modules/next/dist/docs/ before writing Next.js code.
+
+## Hosting
+
+- Vercel project `sisih` (root web/, region iad1), live at https://sisih-azure.vercel.app.
+  Supabase Postgres `sisih-db` (iad1) via the Vercel Marketplace; the integration sets
+  POSTGRES_URL (transaction pooler, 6543), which the server uses when DATABASE_URL is unset.
+  Never the session pooler (5432): 15 clients max, and suspended functions keep theirs.
+- Deploy: `vercel deploy --prod` from the repo root. .vercelignore keeps .env*, server/data/
+  and build output out of uploads. Secrets live only in the Vercel project env.
+- Serverless rules: every query and every piece of follow-up work runs inside the request or
+  through background() (lib/background.ts), which hosted-api drains with after(). Nothing
+  fire-and-forget: a suspended function pins a pooler backend mid-query. maxDuration is 300 s
+  on /api/* and /merchants/* (x402 settle, reset, memory jobs), 120 s on /api/sui-rpc.
+  State that several instances share (locks, rate limits) lives in Postgres, never in memory.
+- Local: `pnpm --filter @sisih/web build` then `next start` in web/ (loads the root .env,
+  DATABASE_URL=pglite:./server/data/pglite). One process per PGlite directory.
 - docs/ : SPEC.md, BUILD_PLAN.md, design/, PROGRESS.md, USER_LOG.md, BLOG.md
 
 ## Naming
@@ -38,7 +55,8 @@ Progress log: docs/PROGRESS.md
 - Product: Sisih. Never "BillFirst" in code, UI, or docs.
 - Code and contract say "obligation"; the UI says "Commitments".
 - Agent display name: "Research Agent".
-- Memory tag prefix: [sisih:v1:<type>]. Demo namespaces: sisih-demo-<n>, final: sisih-final.
+- Memory tag prefix: [sisih:v1:<type>]. Demo namespaces: <MEMWAL_NAMESPACE_PREFIX>-<n>, one
+  prefix per deployment (sisih-hosted on Vercel, sisih-local locally), final: sisih-final.
 
 ## Non-negotiable rules
 
@@ -59,15 +77,26 @@ Progress log: docs/PROGRESS.md
    flight, at least 400 ms apart) and retries 429/UNAVAILABLE with backoff; without it the
    free plan (3 req/s) fails on ordinary transactions.
    The dashboard never polls Tatum. The server caches vault state, refreshes it on vault
-   events and after our own transactions, and pushes changes over SSE (state.changed).
-   Browser reads come from the server's cache, not from Tatum.
+   events and after our own transactions, and stores every change as an event in Postgres.
+   The dashboard polls our own GET /api/events?after=<id> (1.5 s visible, 10 s hidden); no SSE
+   on serverless. Browser reads come from the server's cache, not from Tatum.
    USDC may sit in address balances instead of coin objects: build payments and deposits
    with coinWithBalance, never assume coin objects exist.
 3. Walrus Memory is always mainnet: SDK @mysten-incubation/memwal,
    relayer https://relayer.memory.walrus.xyz, one namespace per owner.
    Never write secrets, keys, or raw addresses of third parties into memory.
-4. remember() is an async job. Track it as writing until waitForRememberJob
-   resolves, then persist whatever identifiers it returns in SQLite for the UI.
+4. remember() is an async job. Store the row as "writing" and save the job_id the moment the
+   relayer accepts it, then persist blob_id and status in Postgres for the UI. No memory may
+   depend on one function staying alive: the poll (housekeeping) checks stale rows once per
+   pass (getRememberStatus) and resubmits rows that never got a job_id (lease memjob:<id>).
+10. Public visitors are read-only. Every mutating call needs DEMO_TOKEN (judges get it in the
+   submission form, never in the README or any public doc) and passes shared rate limits, the
+   demo-run lease (one visitor at a time) and, for fund-moving routes, the action mutex
+   (server/src/api/guard.ts). On Vercel a missing DEMO_TOKEN locks every mutation.
+11. Owner actions: a connected owner wallet signs through /api/sui-rpc. On testnet only, with
+   the demo token and no wallet, deposit / accept reserve suggestion / pause / resume are
+   signed on the server by "Demo owner (server-signed, testnet)" and that label is shown in the
+   UI and recorded as tx source demo_owner. Never on mainnet (assertTestnet).
 5. USDC amounts are bigint base units (6 decimals) everywhere. Format only in the UI.
 6. Demo merchants are labeled "demo" in code, API responses, and UI.
 7. Network is config only: SUI_NETWORK=testnet|mainnet. Package IDs, object IDs,
@@ -116,4 +145,7 @@ MERCHANT_DATAMART_ADDRESS, MERCHANT_SEARCHBOX_ADDRESS, MERCHANT_REPORTLAB_ADDRES
 MERCHANT_DATAMART_PRIVATE_KEY, MERCHANT_SEARCHBOX_PRIVATE_KEY, MERCHANT_REPORTLAB_PRIVATE_KEY,
 PAYEE_INFERENCE_PRIVATE_KEY, PAYEE_HOSTING_PRIVATE_KEY, PAYEE_SAVINGS_PRIVATE_KEY,
 PAYEE_DOMAIN_PRIVATE_KEY (demo plumbing so recycle.ts can sweep funds back),
-MEMWAL_KEY, MEMWAL_ACCOUNT_ID, MEMWAL_NAMESPACE, DEMO_CYCLE_MS, DATABASE_URL
+MEMWAL_KEY, MEMWAL_ACCOUNT_ID, MEMWAL_NAMESPACE, MEMWAL_NAMESPACE_PREFIX, DEMO_CYCLE_MS,
+DEMO_TOKEN, WEB_ORIGIN, DATABASE_URL (local pglite:..., or a Postgres URL; on Vercel leave it
+unset and the Supabase integration's POSTGRES_URL is used), NEXT_PUBLIC_SUI_NETWORK,
+NEXT_PUBLIC_DEV_STATES

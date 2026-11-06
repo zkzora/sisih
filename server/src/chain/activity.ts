@@ -33,6 +33,8 @@ export interface ActivityRow {
   failureReason: string | null;
   explorerUrl: string;
   label: string | null;
+  /** Who signed: our server keys, the owner wallet, the demo owner key (testnet), or an import. */
+  source: string;
   memoryId: string | null;
   requestId: string | null;
   eventType: string | null;
@@ -114,6 +116,7 @@ export async function activityRows(limit = 200): Promise<ActivityRow[]> {
       failureReason: r.status === "failed" && r.error ? vaultAbortName(r.error) : r.status === "error" ? r.error : null,
       explorerUrl: explorerTxUrl(r.digest),
       label: r.label,
+      source: r.source,
       memoryId: r.memoryId,
       requestId: r.requestId,
     };

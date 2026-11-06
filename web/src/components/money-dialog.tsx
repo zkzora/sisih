@@ -1,12 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Wallet } from "lucide-react";
-import { useSisih } from "./context";
+import { DEMO_OWNER_LABEL, useSisih } from "./context";
 import { Button, Field, Overlay, Spinner } from "./ui";
 import { amountInput, freeFunds, money, parseMoney } from "@/lib/engine";
 import { api } from "@/lib/live";
 export function MoneyDialog() {
-  const { state, act, moneyModal, setMoneyModal, isOwner, walletAddress } = useSisih();
+  const { state, act, moneyModal, setMoneyModal, isOwner, ownerSigner, walletAddress } = useSisih();
   const [amount, setAmount] = useState("1");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -16,6 +16,7 @@ export function MoneyDialog() {
     setError("");
   };
   const withdraw = moneyModal === "withdraw";
+  const demoSigns = !withdraw && ownerSigner === "demo";
   useEffect(() => {
     if (!moneyModal || !walletAddress) return;
     api<{ usdc: string }>(`/api/wallet/${walletAddress}`)
@@ -39,7 +40,11 @@ export function MoneyDialog() {
         <p>
           {isOwner
             ? `Your wallet signs; Sisih submits through Tatum on Sui ${state.preferences.network}.${walletUsdc !== null && !withdraw ? ` Wallet balance: ${money(walletUsdc)} USDC.` : ""}`
-            : "Connect the owner wallet to sign this transaction."}
+            : demoSigns
+              ? `Signed by the ${DEMO_OWNER_LABEL}: the server signs with the demo owner key and submits through Tatum. Up to 1.00 USDC.`
+              : withdraw && ownerSigner === "demo"
+                ? "Withdrawals need the owner wallet. Connect it to sign."
+                : "Connect the owner wallet to sign this transaction."}
         </p>
       </div>
       <form
@@ -98,7 +103,7 @@ export function MoneyDialog() {
           <Button type="button" variant="secondary" onClick={close}>
             Cancel
           </Button>
-          <Button type="submit" disabled={submitting || !isOwner}>
+          <Button type="submit" disabled={submitting || !(isOwner || demoSigns)}>
             {submitting ? <Spinner label="Signing" /> : withdraw ? <ArrowUpRight size={16} /> : <ArrowDownLeft size={16} />}{" "}
             {withdraw ? "Withdraw" : "Deposit"}
           </Button>

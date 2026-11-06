@@ -2,9 +2,10 @@
 
 ## Current phase
 
-Phase 4 in progress (wire the dashboard, host it). Live testnet demo at https://sisih-azure.vercel.app
-(Vercel + Supabase), full flow passed there from the UI on 2026-11-06. Gate item still open: walk the
-SPEC feature checklist.
+Phase 4 gate passed (2026-11-06). Live testnet demo at https://sisih-azure.vercel.app (Vercel +
+Supabase): full flow passes from the UI with the owner wallet and as a judge without one (demo owner,
+testnet), and every SPEC feature checklist item is done (table below). Next: Phase 5 (mainnet,
+5 sessions, recording), see docs/BUILD_PLAN.md.
 
 ## Done
 
@@ -19,7 +20,7 @@ Gate so far:
 | Owner transactions from the browser wallet go through the Tatum proxy, digests verified | pass (local) | set_obligation_target DmQ1gwxCRQiz3xyTCAcaftU9ZiuJ1UJsWU8CHbxjc3UG (reserve suggestion 6.00 -> 7.00, recorded as owner-signed); deposit 0.10 CRp8ojnh1w76R8aFuUJnomWkAPTNk9mHacgtPiyiujce (1 wallet signature, built and executed via /api/sui-rpc, verified via Tatum; Overview 16.40/16.00/0.40, no console errors) |
 | All 12 UI states visible at /dev/states | pass | committed in ffae9a6 |
 | Public URL serves the live testnet stack | pass | https://sisih-azure.vercel.app (Vercel project `sisih`, root web/, iad1; Supabase `sisih-db` iad1). No login wall; /api/health: Tatum testnet green, Walrus relayer ok; demo merchants answer 402 |
-| Every SPEC feature checklist item done | open | walk after the hosted run |
+| Every SPEC feature checklist item done | pass | checklist table below (hosted walk, 2026-11-06) |
 
 Built (uncommitted, hosting move):
 
@@ -41,6 +42,96 @@ Built (uncommitted, hosting move):
   (local sisih-local, hosted sisih-hosted).
 - server/src/demo/bills.json -> bills.ts. New test server/src/lib/bus.test.ts (event feed order,
   bigint as base-unit strings, kv upsert on PGlite, schema check). Server suite 39/39.
+
+Built (judge access and serverless safety, 2026-11-06):
+
+- Guard (server/src/api/guard.ts), shared by every mutating /api/* call and /api/sui-rpc:
+  DEMO_TOKEN (fails closed on Vercel when unset), rate limits in Postgres (rate_limits: reset 3 /
+  10 min, run-task 10 / min, signing 20 / min, all mutations 30 / min per IP), the demo-run lease
+  (leases.demo_run: one visitor's x-demo-client id at a time, extended by each action, freed after
+  10 idle minutes or by Lock in the dock; others get 423 demo_busy), and an action mutex
+  (leases.demo_action, capped at maxDuration + 30 s) on run-task, advance-cycle, new-session,
+  reset, owner-action, decisions, suggestion accept and request submit (409 demo_action_running).
+- Demo owner for judges (testnet only): POST /api/demo/owner-action { deposit (up to 1.00) |
+  accept_suggestion | pause_agent | resume_agent }, signed with OWNER_PRIVATE_KEY, recorded as tx
+  source demo_owner, labeled "Demo owner (server-signed, testnet)" in the top bar, Settings, the
+  deposit dialog, toasts, activity labels and the transaction drawer. A connected owner wallet
+  still signs through /api/sui-rpc. assertTestnet refuses it on mainnet. Clients can no longer
+  claim a source other than owner / import on POST /api/tx.
+- Reset leaves the owner a 0.50 testnet USDC deposit float (separate operator transfer, digest in
+  the reset result as ownerFloat and in the reset log).
+- Memory jobs: reconcile on every poll does one getRememberStatus per stale row (no long waits),
+  resubmits rows that never got a job id after 60 s under lease memjob:<id>, and stored / failed
+  transitions only leave "writing" (no double publish). maxDuration: /api/* 300 s, /merchants/*
+  300 s (was 60), /api/sui-rpc 120 s.
+- Docs: CLAUDE.md and BUILD_PLAN.md describe the built stack (Vercel route handlers, node-postgres
+  on Supabase, PGlite locally and in tests, polled event feed). Railway Dockerfile and
+  .dockerignore deleted.
+
+Hosted runs after these changes (https://sisih-azure.vercel.app, 2026-11-06, Playwright, UI only):
+
+- Judge path (demo token, no wallet): reset sisih-hosted-3 (seed FPwnKkHqgWbAPvPxneA7ngvZU2BJxsR3pnduaSWLR4L8,
+  owner float BsXMKHATouaUHgxc3ACcQHJC1F7XrPxqcdBPpGJAhjHq). Top bar shows "Demo owner (server-signed,
+  testnet)"; every SPEC balance and decision ok; 0 wallet signatures; source demo_owner for the reserve
+  change A9HyChNYNy3tk18fyVcA7QTZFW2d36NS2uRb2rjudZ5Z, deposit 0.10 HmEuzZurjHgU4Y74P51fjwyUr2qgYFyvog1ueWB8tA3f
+  (the dialog names the signer), pause FoecrxRCa2U4g1Qv5xYjkzyJv7WPP9PxARuviE2MeacQ and resume
+  9b2CWZW3zEyqhs2Won4tKfhronzXXCT5jBgvt4xUyXEw; no console errors; PASS.
+- Owner wallet path (unchanged): reset sisih-hosted-4 (seed 2vWu8J8yy37gQsjgPJ3gT3Y5zr75ttwLmEQmJM2QAaru,
+  owner float HSGVHeNmN7x4EjYXAUQHtbJ95kcQ9F4RuCuiZv65ZmKP, no manual top-up); 1 wallet signature each,
+  source owner: reserve change bpfZA4AvwXAcw5nPFhoRLbxavkx8Q5AgvYjcT4Wcysw, deposit
+  8yEhMwvdGPv6hEDDuu1ZxytEqtAQdY3dUUXHwp8LFQrj; PASS.
+- Second visitor while a run holds the demo: POST /api/demo/run-task -> 423 demo_busy ("Another visitor
+  is running the demo. It frees up within 9 min."); token-check -> busy true. Public POST -> 401.
+- Lock hands the demo back: a browser that toggled a rule held the lease (second visitor busy: true);
+  after "Lock demo controls" the second visitor was free at once (busy: false).
+- Left clean for judges: reset sisih-hosted-5 (seed 2mWgoyjGDEN6L9WvcNkDHKYGerpbaZyDfJohKH3t1rh1, owner
+  float FL29EHtXtwNQmEkF9Wed7GtxqvLaykkyyJjFnLNkaQXj), vault 20.00 / 16.50 / 3.50, lease released.
+
+SPEC feature checklist walk (hosted, 1440x900, read-only Playwright walk + screenshots, 2026-11-06):
+55 automated checks ok, no console errors. Fixed during the walk: the top-bar session indicator was
+hidden below 1600 px (now a compact "S2" with a tooltip), and the live UI had no "memory stored"
+toast (now shown on memory.stored with the Walrus link; memory.failed shows an error toast; seen
+live: blob CmOs7MfUdYH00F22PkdZ3DoU1E3CKvgw_xAZScEEUf4, 29 s after a rule toggle).
+
+| Area | Item | Status |
+| --- | --- | --- |
+| Global | Sidebar with 7 screens and a held-request badge | done |
+| Global | Top bar: free-funds meter, Sui network, Walrus Memory, Tatum status, session, wallet | done (session fixed) |
+| Global | Demo-mode banner | done |
+| Global | Right drawer: request, obligation, memory, transaction | done |
+| Global | Toasts: pending, success, failed, memory stored | done (memory stored added) |
+| Global | Collapsible demo dock | done |
+| Overview | Balance card total / committed / free | done |
+| Overview | Composition bar per obligation | done (bar + legend per obligation and Available) |
+| Overview | Verified via Tatum badge | done |
+| Overview | Upcoming commitments, held requests, what changed, stats, recent activity | done |
+| Overview | Quick actions: Deposit, Add commitment, Pause agent | done |
+| Commitments | 10-column table with reserve progress bars | done |
+| Commitments | Add and edit form | done |
+| Commitments | Obligation detail drawer | done |
+| Commitments | Reserve suggestion card (Accept, Change amount, Reject) | done (accepted in both hosted runs) |
+| Commitments | Underfunded banner and remove confirmation | done (underfunded: /dev/states 10; remove confirmation opened and cancelled on the live site) |
+| Agent | Agent card with hard limits, Pause, Revoke | done |
+| Agent | Request feed with filters | done |
+| Agent | Held drawer: reason, balance simulation, recall results, 4 actions | done |
+| Agent | Approve disabled when it would cut reserves | done |
+| Agent | Rule composer with structured preview | done |
+| Agent | Four-step x402 status | done |
+| Memory | Stats header; Timeline, Active rules, Last recall tabs | done |
+| Memory | Before and after card | done |
+| Memory | Memory detail drawer with Walrus link | done |
+| Learning impact | Stat cards and 5 charts with source labels | done (5 charts, 5 captions) |
+| Onchain activity | Table with Tatum verification, filters, detail drawer | done |
+| Settings | Wallet, default policy, hard limits, agents, integrations, demo-mode toggle | done |
+| States | All 12 states in the UI states table | done (/dev/states 1-12 match SPEC names) |
+
+Memory kill test (2026-11-06, local `next start` on PGlite, namespace sisih-local-5, process
+hard-killed with Stop-Process -Force, then restarted and only GET /api/events polled, as the dashboard does):
+
+| Case | Killed when | After restart | Result |
+| --- | --- | --- | --- |
+| A: job id saved | 2.8 s after PATCH /api/rules/rule-76ccee54 (disable), row writing with job 237383db-41c9-4a5e-967d-5dd6af6b806b | first poll: one getRememberStatus -> done | mem-5ea6ab38-73a stored, blob N3twFcBduew2sAkFqGdobmsAmV_FQYBhuPwqCriDwLI; events memory.writing -> memory.stored |
+| B: no job id yet | right after the PATCH (enable) returned in 45 ms | row writing, jobId null | after the 60 s grace one reconcile resubmitted it (memory.resubmitted, job 2832b052-019d-4604-b049-541f9f922785, +80 s), stored 20 s later, blob tlVlbnfs9THJvSl0FIuYPnlzQtLukkuItVwWFupVacI |
 
 Findings:
 
@@ -457,9 +548,11 @@ Phase 4 (2026-11-06, hosted run): operator -> owner 0.50 USDC after the hosted r
 - Hosting: Vercel (project `sisih`, root web/) + Supabase Postgres `sisih-db` (iad1) through the
   Vercel Marketplace, provisioned and connected 2026-11-06 (POSTGRES_URL set by the integration).
   Live at https://sisih-azure.vercel.app; deployed with `vercel deploy --prod` from the working tree.
-- Hosted judges cannot sign owner actions (deposit, accept suggestion) unless the owner wallet has
-  USDC and is the connected wallet; decide how the hosted demo shows owner signing.
-- CLAUDE.md still describes SQLite and SSE; update it to Postgres/PGlite and the polled event feed.
+- The demo-run lease is per browser tab. A judge who closes the tab without "Lock demo controls"
+  holds the demo for up to 10 idle minutes; the next visitor sees "Another visitor is running the
+  demo" with the wait time. Test scripts must click Lock at the end (toast.mjs did not, 2026-11-06).
+- Demo owner signing covers deposit, reserve suggestions, pause and resume only. Withdraw, add /
+  edit / remove commitments, hard limits and revoke still need the owner wallet.
 
 ## Env vars
 

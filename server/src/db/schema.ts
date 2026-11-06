@@ -138,3 +138,17 @@ export const kv = pgTable("kv", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
 });
+
+/** Short leases shared by every instance: the demo-run lock, the action mutex, memory resubmits. */
+export const leases = pgTable("leases", {
+  key: text("key").primaryKey(),
+  holder: text("holder").notNull(),
+  until: ms("until").notNull(),
+});
+
+/** Fixed-window rate limits shared by every instance (key = limit name + client IP). */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  windowStart: ms("window_start").notNull(),
+  hits: integer("hits").notNull(),
+});

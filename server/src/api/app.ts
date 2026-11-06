@@ -27,8 +27,9 @@ import { addLocalRule, cachedRule, cachedRules, currentSession, defaultThreshold
 import { isScenario, runTask, SCENARIOS } from "../agent/runner";
 import { advanceCycle, clock, resetDemo } from "../demo/controls";
 import { merchantRoutes } from "../x402/merchants";
-import { allowedOrigins, DEMO_TOKEN_HEADER, demoGuard } from "./guard";
+import { actionLock, allowedOrigins, DEMO_CLIENT_HEADER, DEMO_TOKEN_HEADER, demoGuard, demoRunStatus, releaseDemoRun } from "./guard";
 import { background } from "../lib/background";
+import { demoOwnerAction, isDemoOwnerAction } from "../demo/owner";
 
 export const walrusBlobUrl = (blobId: string) => `https://walruscan.com/mainnet/blob/${blobId}`;
 
@@ -92,7 +93,7 @@ export function createApp() {
     cors({
       origin: (o) => (o && origins.includes(o.replace(/\/$/, "")) ? o : null),
       allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
-      allowHeaders: ["content-type", DEMO_TOKEN_HEADER],
+      allowHeaders: ["content-type", DEMO_TOKEN_HEADER, DEMO_CLIENT_HEADER],
       maxAge: 600,
     }),
   );
@@ -101,6 +102,10 @@ export function createApp() {
     await next();
   });
   app.use("/api/*", demoGuard());
+  // Fund-moving and long actions run one at a time across all instances (POST only).
+  for (const p of ["/api/demo/run-task", "/api/demo/advance-cycle", "/api/demo/new-session", "/api/demo/reset", "/api/demo/owner-action", "/api/requests", "/api/requests/:id/decision", "/api/suggestions/:id/accept", "/api/sessions"]) {
+    app.use(p, actionLock());
+  }
 
   app.onError((err, c) => {
     if (err instanceof ApiError) return c.json({ error: err.message, code: err.code }, err.status);
@@ -332,7 +337,8 @@ export function createApp() {
   app.post("/api/tx", async (c) => {
     const body = await c.req.json<{ digest: string; label?: string; source?: "owner" | "import" }>();
     if (!/^[1-9A-HJ-NP-Za-km-z]{32,50}$/.test(body.digest ?? "")) throw new ApiError(400, "digest must be a base58 transaction digest");
-    const rec = await recordTx(body.digest, { source: body.source ?? "owner", label: body.label });
+    // Clients may only claim owner (wallet) or import; demo_owner is set by the server when it signs.
+    const rec = await recordTx(body.digest, { source: body.source === "import" ? "import" : "owner", label: body.label });
     await onVaultEvents(rec);
     return ok(c, { ...rec, explorerUrl: explorerTxUrl(rec.digest) }, 201);
   });
@@ -362,8 +368,22 @@ export function createApp() {
   app.post("/api/demo/new-session", async (c) => ok(c, await startSession(), 201));
   app.post("/api/demo/reset", async (c) => ok(c, await resetDemo()));
   app.get("/api/demo/clock", async (c) => ok(c, await clock()));
-  /** The guard already checked x-demo-token; this only confirms it to the dock. */
-  app.post("/api/demo/token-check", (c) => ok(c, { ok: true }));
+  /** The guard already checked x-demo-token; this confirms it and says whether another visitor holds the demo. */
+  app.post("/api/demo/token-check", async (c) => ok(c, { ok: true, ...(await demoRunStatus((n) => c.req.header(n))) }));
+  /** The dock's Lock button: free the demo-run lease held by this caller only. */
+  app.post("/api/demo/release", async (c) => {
+    await releaseDemoRun((n) => c.req.header(n));
+    return ok(c, { ok: true });
+  });
+  /**
+   * Owner actions for judges (testnet only): signed by the demo owner key on the server, labeled
+   * "Demo owner (server-signed, testnet)". A connected owner wallet signs through /api/sui-rpc instead.
+   */
+  app.post("/api/demo/owner-action", async (c) => {
+    const body = await c.req.json<{ action: string; amount?: string; suggestionId?: string }>();
+    if (!isDemoOwnerAction(body.action)) throw new ApiError(400, "action must be deposit, accept_suggestion, pause_agent or resume_agent");
+    return ok(c, await demoOwnerAction(body.action, body), 201);
+  });
 
   // --- live events (polling) ------------------------------------------------------------
   /**

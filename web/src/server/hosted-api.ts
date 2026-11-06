@@ -8,7 +8,15 @@ import "server-only";
 import "./root-env";
 import { after } from "next/server";
 import { createApp } from "../../../server/src/api/app";
+import { demoAccess, type Denied } from "../../../server/src/api/guard";
+import { initDb } from "../../../server/src/db/index";
 import { drainBackground } from "../../../server/src/lib/background";
+
+/** The server's demo checks (token, shared rate limits, demo-run lease) for routes outside Hono. */
+export async function guardRequest(req: Request, path: string): Promise<Denied | null> {
+  await initDb();
+  return demoAccess({ method: req.method, path, header: (n) => req.headers.get(n) });
+}
 
 let app: ReturnType<typeof createApp> | undefined;
 

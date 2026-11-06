@@ -3,7 +3,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, ArrowRight, Download, LockKeyhole, ReceiptText, Search, ShieldCheck, ExternalLink, Brain } from "lucide-react";
-import { useSisih } from "./context";
+import { DEMO_OWNER_LABEL, useSisih } from "./context";
 import { Badge, Button, CopyButton, Empty, Overlay, PageHeading, Panel, Spinner } from "./ui";
 import { money, short } from "@/lib/engine";
 import { api, type LiveTx } from "@/lib/live";
@@ -187,7 +187,7 @@ export function ActivityView() {
               </div>
               <div>
                 <dt>Recorded by</dt>
-                <dd>{tx?.source === "owner" ? "Owner wallet (posted by the browser)" : tx?.source === "import" ? "Imported digest" : "Sisih server"}</dd>
+                <dd>{tx?.source === "owner" ? "Owner wallet (posted by the browser)" : tx?.source === "demo_owner" ? DEMO_OWNER_LABEL : tx?.source === "import" ? "Imported digest" : "Sisih server"}</dd>
               </div>
             </dl>
             {record.explorerUrl && (

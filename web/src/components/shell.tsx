@@ -24,7 +24,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { ConnectButton } from "@mysten/dapp-kit";
-import { useSisih } from "./context";
+import { DEMO_OWNER_LABEL, useSisih } from "./context";
 import { Badge, Button, Overlay, Skeleton } from "./ui";
 import { freeFunds, money } from "@/lib/engine";
 import { TatumDot, useNow } from "./live-bits";
@@ -40,7 +40,7 @@ const navigation = [
   { href: "/settings", label: "Settings", icon: Settings2 },
 ];
 export function Shell({ children }: { children: ReactNode }) {
-  const { state, ready, act, storageError, retryStorage, loadError, refreshVault } = useSisih();
+  const { state, ready, act, storageError, retryStorage, loadError, refreshVault, ownerSigner } = useSisih();
   const now = useNow(5000);
   const free = freeFunds(state);
   const live = state.live;
@@ -160,7 +160,16 @@ export function Shell({ children }: { children: ReactNode }) {
               </Badge>
             </span>
             <TatumDot tatum={live?.tatum} now={now} onRetry={() => void refreshVault()} />
-            <span className="topbar-session">Session {state.session}</span>
+            <span className="topbar-session" title={`Session ${state.session}`}>
+              <span className="session-long">Session </span>
+              <span className="session-short">S</span>
+              {state.session}
+            </span>
+            {ownerSigner === "demo" && (
+              <span title="No owner wallet connected: deposits, reserve suggestions, pause and resume are signed on the server with the demo owner key. Testnet only.">
+                <Badge tone="warning">{DEMO_OWNER_LABEL}</Badge>
+              </span>
+            )}
             <span className="wallet-connect">
               <Wallet size={14} />
               <ConnectButton connectText="Connect wallet" />

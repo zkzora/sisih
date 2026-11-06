@@ -41,6 +41,8 @@ const DDL = [
     request_id TEXT, memory_id TEXT, recorded_at BIGINT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS events (id BIGSERIAL PRIMARY KEY, type TEXT NOT NULL, at BIGINT NOT NULL, data TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS leases (key TEXT PRIMARY KEY, holder TEXT NOT NULL, until BIGINT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS rate_limits (key TEXT PRIMARY KEY, window_start BIGINT NOT NULL, hits INTEGER NOT NULL)`,
   `CREATE INDEX IF NOT EXISTS events_at ON events (at)`,
 ];
 
@@ -98,7 +100,7 @@ export function db(): Db {
   return instance;
 }
 
-const SCHEMA_OBJECTS = ["sessions", "requests", "decisions", "rules_cache", "memories", "suggestions", "tx_log", "events", "kv", "events_at"];
+const SCHEMA_OBJECTS = ["sessions", "requests", "decisions", "rules_cache", "memories", "suggestions", "tx_log", "events", "kv", "leases", "rate_limits", "events_at"];
 
 export async function schemaExists(): Promise<boolean> {
   const res = (await instance!.execute(

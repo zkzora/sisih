@@ -3,6 +3,7 @@ import { handle } from "@/server/hosted-api";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+// x402: verify + facilitator settle + Tatum verification of the digest, all throttled (3 req/s).
+export const maxDuration = 300;
 
 export { handle as GET, handle as POST };

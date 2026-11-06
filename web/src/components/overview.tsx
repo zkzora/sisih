@@ -21,7 +21,7 @@ import { ActivityTable } from "./activity";
 import { VerifiedBadge, Countdown } from "./live-bits";
 import { WhatChanged } from "./memory";
 export function Overview() {
-  const { state, setMoneyModal, act, isOwner, refreshVault } = useSisih();
+  const { state, setMoneyModal, act, canOwner, refreshVault } = useSisih();
   const [requestId, setRequestId] = useState<string | null>(null);
   const held = state.requests.filter((r) => r.status === "held");
   const live = state.live;
@@ -37,7 +37,7 @@ export function Overview() {
         title="Your money, already spoken for."
         description="Commitments protected. Your agent spends only what’s left."
         action={
-          <Button onClick={() => setMoneyModal("deposit")} disabled={!isOwner} title={isOwner ? undefined : "Connect the owner wallet to sign"}>
+          <Button onClick={() => setMoneyModal("deposit")} disabled={!canOwner("deposit")} title={canOwner("deposit") ? undefined : "Connect the owner wallet, or unlock the demo dock, to sign"}>
             <Plus size={16} />
             Deposit
           </Button>
@@ -138,7 +138,7 @@ export function Overview() {
           <span>
             {money(state.obligations.reduce((v, o) => v + Math.max(0, o.amount - o.reserved), 0))} USDC short of funding every commitment.
           </span>
-          <Button variant="ghost" onClick={() => setMoneyModal("deposit")} disabled={!isOwner}>
+          <Button variant="ghost" onClick={() => setMoneyModal("deposit")} disabled={!canOwner("deposit")}>
             Deposit
           </Button>
         </div>
@@ -317,12 +317,12 @@ export function Overview() {
           <Plus size={14} />
           Add a commitment
         </Link>
-        <button onClick={() => setMoneyModal("deposit")} disabled={!isOwner}>
+        <button onClick={() => setMoneyModal("deposit")} disabled={!canOwner("deposit")}>
           <ArrowDownLeft size={14} />
           Deposit
         </button>
         <button
-          disabled={!isOwner || state.agentStatus === "revoked"}
+          disabled={!canOwner(state.agentStatus === "active" ? "pause_agent" : "resume_agent") || state.agentStatus === "revoked"}
           onClick={() =>
             void act({
               type: "agent-status",

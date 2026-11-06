@@ -289,11 +289,20 @@
 .topbar-right > * {
   flex-shrink: 0;
 }
+.topbar-session .session-short {
+  display: none;
+}
 @media (max-width: 1599px) {
   .tatum-detail,
-  .walrus-net,
-  .topbar-session {
+  .walrus-net {
     display: none;
+  }
+  /* Keep the session indicator (SPEC top bar), compact: "S2" with a "Session 2" tooltip. */
+  .topbar-session .session-long {
+    display: none;
+  }
+  .topbar-session .session-short {
+    display: inline;
   }
   .topbar-right {
     gap: 10px;

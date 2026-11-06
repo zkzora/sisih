@@ -13,7 +13,7 @@ import { usdc } from "../chain/sisih";
 import { onVaultEvents } from "../services/chainEvents";
 import { currentSession, kvRead, kvSet } from "../services/state";
 import { BILLS } from "./bills";
-import { emergencyWithdrawAll, SEED_DEPOSIT, seedVault } from "./owner";
+import { emergencyWithdrawAll, OWNER_DEPOSIT_FLOAT, SEED_DEPOSIT, seedVault } from "./owner";
 import { assertTestnet, operatorSendUsdc, recycle, usdcBalance, waitForBalance, type SweepRecord } from "./recycle";
 
 export const SIMULATED_INCOME = usdc("17.00");
@@ -143,6 +143,15 @@ export async function resetDemo() {
   const seed = await seedVault();
   if (!seed.ok) throw new Error(`seed failed: ${seed.reason}`);
   say(`seed ${seed.digest}`);
+  // Leave the owner a small float so a Deposit works right after a reset. Computed, not read:
+  // a balance read right after the seed can lag (see waitForBalance).
+  const ownerAfterSeed = (ownerHas > SEED_DEPOSIT ? ownerHas : SEED_DEPOSIT) - SEED_DEPOSIT;
+  let ownerFloat: string | null = null;
+  if (ownerAfterSeed < OWNER_DEPOSIT_FLOAT) {
+    const amount = OWNER_DEPOSIT_FLOAT - ownerAfterSeed;
+    ownerFloat = await operatorSendUsdc(address("owner"), amount);
+    say(`owner deposit float ${formatUsdc(amount)} USDC from operator ${ownerFloat}`);
+  }
   const v = await readVault();
   const result = {
     namespace: ns,
@@ -151,6 +160,7 @@ export async function resetDemo() {
     recycled,
     ownerTopUp: topUp,
     seed: seed.digest,
+    ownerFloat,
     vault: { total: v.total.toString(), reserved: v.reserved.toString(), free: v.free.toString() },
     agentUsdc: agentLeft.toString(),
     log,

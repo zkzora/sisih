@@ -161,13 +161,16 @@ export interface RecordedTx {
   error: string | null;
 }
 
+/** Who signed a recorded digest: our server keys, the owner wallet, the demo owner key (testnet), or an import. */
+export type TxSource = "our" | "owner" | "demo_owner" | "import";
+
 /**
  * Remember a digest and prove it through Tatum: GetTransaction (effects + events), then
  * one vault read. Idempotent per digest (a second call re-reads, the row is updated).
  */
 export async function recordTx(
   digest: string,
-  meta: { source: "our" | "owner" | "import"; label?: string; requestId?: string; memoryId?: string; refreshVault?: boolean },
+  meta: { source: TxSource; label?: string; requestId?: string; memoryId?: string; refreshVault?: boolean },
 ): Promise<RecordedTx> {
   const d = db();
   await d
@@ -235,7 +238,7 @@ export async function signedWrite(
   signer: Keypair,
   label: string,
   build: (tx: Transaction) => void,
-  meta: { requestId?: string; source?: "our" | "owner"; budget?: bigint } = {},
+  meta: { requestId?: string; source?: TxSource; budget?: bigint } = {},
 ): Promise<WriteResult> {
   const tx = new Transaction();
   tx.setSender(signer.toSuiAddress());

@@ -14,7 +14,7 @@ import { AlertCircle, CheckCircle2, ExternalLink, X } from "lucide-react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "@mysten/dapp-kit/dist/index.css";
 import { buildState } from "@/lib/adapt";
-import { api, ApiFailure, demoToken, setDemoToken, type LiveActivity, type LiveClock, type LiveHealth, type LiveInsights, type LiveMemory, type LiveRecall, type LiveRequest, type LiveRule, type LiveSession, type LiveState, type LiveSuggestion } from "@/lib/live";
+import { api, ApiFailure, demoHeaders, demoToken, setDemoToken, type LiveActivity, type LiveClock, type LiveHealth, type LiveInsights, type LiveMemory, type LiveRecall, type LiveRequest, type LiveRule, type LiveSession, type LiveState, type LiveSuggestion } from "@/lib/live";
 import type { Action, DemoState, Outcome } from "@/lib/types";
 import { Spinner } from "./ui";
 
@@ -45,6 +45,10 @@ type ContextValue = {
   unlock: (token: string) => Promise<boolean>;
   lock: () => void;
   isOwner: boolean;
+  /** Who signs owner actions now: the owner wallet, the demo owner key (testnet, dock unlocked, no wallet), or nobody. */
+  ownerSigner: "wallet" | "demo" | null;
+  /** True when an owner action of this kind can be signed right now. */
+  canOwner: (kind: OwnerKind) => boolean;
   walletAddress: string | null;
   x402Steps: Record<string, X402Step[]>;
   newRequestIds: Set<string>;
@@ -53,6 +57,12 @@ type ContextValue = {
 };
 
 const SisihContext = createContext<ContextValue | null>(null);
+
+/** Shown wherever the server signs as the owner (matches server/src/demo/owner.ts). */
+export const DEMO_OWNER_LABEL = "Demo owner (server-signed, testnet)";
+/** Owner actions a judge may run without the owner wallet, on testnet only. */
+const DEMO_OWNER_KINDS = ["deposit", "accept_suggestion", "pause_agent", "resume_agent"] as const;
+export type OwnerKind = (typeof DEMO_OWNER_KINDS)[number] | "withdraw_free" | "emergency_withdraw_all" | "add_obligation" | "set_obligation_target" | "remove_obligation" | "pay_obligation" | "set_agent_policy" | "revoke_agent";
 
 const { networkConfig } = createNetworkConfig({
   // dapp-kit requires a JSON-RPC config; signing a pre-built transaction string never uses it.
@@ -174,6 +184,16 @@ function LiveProvider({ children }: { children: ReactNode }) {
     };
     const onEvent = (type: string, d: { id?: string } | null) => {
       for (const [re, keys] of EVENT_KEYS) if (re.test(type)) queue(keys);
+      // SPEC toast "memory stored": every Walrus write that lands, wherever it was started.
+      if (type === "memory.stored") {
+        const blob = (d as { blobId?: string } | null)?.blobId;
+        pushToast({ message: "Memory stored on Walrus mainnet.", link: blob ? { href: `https://walruscan.com/mainnet/blob/${blob}`, label: `${blob.slice(0, 10)}…` } : undefined });
+        return;
+      }
+      if (type === "memory.failed") {
+        pushToast({ message: "A memory write to Walrus failed. Retry it from the Memory screen.", error: true });
+        return;
+      }
       if (!(type.startsWith("x402.") || type === "request.created") || !d?.id) return;
       const id = d.id;
       if (type === "request.created") {
@@ -246,14 +266,19 @@ function LiveProvider({ children }: { children: ReactNode }) {
   const isOwner = Boolean(account?.address && owner && account.address.toLowerCase() === owner.toLowerCase());
   const network = q.state.data?.network ?? "testnet";
   const explorerTx = (d: string) => `https://suiscan.xyz/${network}/tx/${d}`;
+  // Judges without the owner wallet: on testnet, with the dock unlocked, the server signs a few
+  // owner actions with the demo owner key. A connected wallet always signs itself.
+  const ownerSigner: "wallet" | "demo" | null = isOwner ? "wallet" : !account && unlocked && network === "testnet" ? "demo" : null;
+  const canOwner = (kind: OwnerKind) => ownerSigner === "wallet" || (ownerSigner === "demo" && (DEMO_OWNER_KINDS as readonly string[]).includes(kind));
 
   // --- demo token --------------------------------------------------------------------
   const unlock = async (token: string) => {
     setDemoToken(token.trim());
     try {
-      await api("/api/demo/token-check", { method: "POST" });
+      const r = await api<{ ok: boolean; busy: boolean; freeInSeconds: number }>("/api/demo/token-check", { method: "POST" });
       setUnlocked(true);
-      notify("Demo controls unlocked for this browser session.");
+      if (r.busy) notify(`Demo controls unlocked. Another visitor is running the demo right now; actions free up within ${Math.ceil(r.freeInSeconds / 60)} min.`, true);
+      else notify("Demo controls unlocked for this browser session.");
       return true;
     } catch {
       setDemoToken(null);
@@ -263,24 +288,41 @@ function LiveProvider({ children }: { children: ReactNode }) {
     }
   };
   const lock = () => {
+    // Hand the demo back first (needs the token), so the next visitor does not wait for the idle timeout.
+    void api("/api/demo/release", { method: "POST" }).catch(() => {});
     setDemoToken(null);
     setUnlocked(false);
   };
 
   // --- owner transactions ------------------------------------------------------------
   const sigRpc = async <T,>(body: unknown): Promise<T> => {
-    const headers: Record<string, string> = { "content-type": "application/json" };
-    const t = demoToken();
-    if (t) headers["x-demo-token"] = t;
+    const headers: Record<string, string> = { "content-type": "application/json", ...demoHeaders() };
     const res = await fetch("/api/sui-rpc", { method: "POST", headers, body: JSON.stringify(body) });
     const json = await res.json();
     if (!res.ok) throw new ApiFailure(res.status, json.error ?? "Sui request failed", json.code ?? "error");
     return json as T;
   };
 
-  const ownerTx = async (kind: string, args: Record<string, unknown>, label: string, after?: (digest: string) => Promise<void>): Promise<Outcome> => {
+  /** Owner action signed by the demo owner key on the server (testnet only, see ownerSigner). */
+  const demoOwnerTx = async (action: (typeof DEMO_OWNER_KINDS)[number], body: Record<string, string>, label: string): Promise<Outcome> => {
+    const tid = pushToast({ message: `${label}: signing as ${DEMO_OWNER_LABEL}…`, pending: true });
+    try {
+      const r = await api<{ digest: string }>("/api/demo/owner-action", { method: "POST", body: { action, ...body } });
+      replaceToast(tid, { message: `${label} signed by ${DEMO_OWNER_LABEL}, verified via Tatum.`, link: { href: explorerTx(r.digest), label: r.digest.slice(0, 10) + "…" } });
+      return { state: state!, message: `${label} confirmed.` };
+    } catch (err) {
+      const message = err instanceof ApiFailure ? err.message : (err as Error).message ?? String(err);
+      replaceToast(tid, { message: `${label} failed: ${message}`, error: true, retry: () => void demoOwnerTx(action, body, label) });
+      return { state: state!, message, error: true };
+    }
+  };
+
+  const ownerTx = async (kind: OwnerKind, args: Record<string, unknown>, label: string, after?: (digest: string) => Promise<void>): Promise<Outcome> => {
     const fail = (message: string): Outcome => ({ state: state!, message, error: true });
-    if (!account) return fail("Connect the owner wallet to sign this action.");
+    if (ownerSigner === "demo" && (kind === "deposit" || kind === "pause_agent" || kind === "resume_agent")) {
+      return demoOwnerTx(kind, kind === "deposit" ? { amount: String(args.amount) } : {}, label);
+    }
+    if (!account) return fail(ownerSigner === "demo" ? `${label} needs the owner wallet. ${DEMO_OWNER_LABEL} only signs deposits, reserve suggestions, pause and resume.` : "Connect the owner wallet to sign this action.");
     if (!isOwner) return fail("Connect the owner wallet to sign. This wallet is not the vault owner.");
     if (!unlocked) return fail("Demo controls are locked. Enter the demo token first.");
     const retry = () => void ownerTx(kind, args, label, after);
@@ -374,6 +416,7 @@ function LiveProvider({ children }: { children: ReactNode }) {
         const o = s.obligations.find((x) => x.id === action.id);
         const sid = o?.suggestionId;
         if (!sid) return { state: s, message: "No open suggestion for this commitment.", error: true };
+        if (ownerSigner === "demo") return demoOwnerTx("accept_suggestion", { suggestionId: sid }, `Reserve ${o.name} ${(action.amount / 1e6).toFixed(2)} USDC`);
         return ownerTx("set_obligation_target", { id: Number(action.id), target: String(action.amount) }, `Reserve ${o.name} ${(action.amount / 1e6).toFixed(2)} USDC`, async (digest) => {
           await api(`/api/suggestions/${sid}/accept`, { method: "POST", body: { digest } });
         });
@@ -490,6 +533,8 @@ function LiveProvider({ children }: { children: ReactNode }) {
         unlock,
         lock,
         isOwner,
+        ownerSigner,
+        canOwner,
         walletAddress: account?.address ?? null,
         x402Steps,
         newRequestIds,

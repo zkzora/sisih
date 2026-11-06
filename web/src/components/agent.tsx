@@ -21,7 +21,7 @@ import { freeFunds, money, short } from "@/lib/engine";
 import { RequestDrawer } from "./request-drawer";
 import { ExplorerLink } from "./live-bits";
 export function AgentView() {
-  const { state, act, unlocked, isOwner, newRequestIds, x402Steps } = useSisih();
+  const { state, act, unlocked, isOwner, canOwner, newRequestIds, x402Steps } = useSisih();
   const policy = state.live?.policy;
   const spent = policy ? (Date.now() >= policy.windowStartMs + 86_400_000 ? 0 : Number(policy.spentInWindow)) : 0;
   const query = useSearchParams();
@@ -89,8 +89,8 @@ export function AgentView() {
             )}
             <Button
               variant="secondary"
-              disabled={state.agentStatus === "revoked" || !isOwner}
-              title={isOwner ? undefined : "Connect the owner wallet to sign"}
+              disabled={state.agentStatus === "revoked" || !canOwner(state.agentStatus === "active" ? "pause_agent" : "resume_agent")}
+              title={canOwner(state.agentStatus === "active" ? "pause_agent" : "resume_agent") ? undefined : "Connect the owner wallet, or unlock the demo dock, to sign"}
               onClick={() =>
                 void act({
                   type: "agent-status",
