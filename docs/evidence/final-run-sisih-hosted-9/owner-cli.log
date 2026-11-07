@@ -89,3 +89,16 @@ exit 0 (6 s)
 Agent resumed.
 resume_agent: verified through Tatum · https://suiscan.xyz/testnet/tx/GLgCsrdrk8J6Fk4JX4jTiz49VEBxubh1We8wiHQJFFLJ
 Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+== 2026-11-07T01:52:49Z pnpm sisih reserve set 58 4.00
+set_reserve: verified through Tatum · https://suiscan.xyz/testnet/tx/461wEbPYi5epwCt4W11FtnmBTTHfKvn2592rTvm2EHtR
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+exit 0
+== 2026-11-07T01:52:55Z pnpm sisih status
+Sisih · Sui Testnet (vault, x402, via Tatum) · Walrus Memory Mainnet · session 2
+Vault        total 17.60 · committed 16.00 · free 1.60 USDC (the agent can only spend free funds)
+Agent        active · 2.00 per request · 6.00 per day (spent 2.10) · expires 2026-12-07 01:31 UTC
+Commitments  Inference API 7.00/7.00 · Hosting VPS 5.00/5.00 · Weekly savings 4.00/4.00
+Memory       namespace sisih-hosted-9: 12 stored
+Preferences  allow ChainScope up to 1.00
+Held         nothing is waiting for you
+exit 0

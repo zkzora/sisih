@@ -139,6 +139,24 @@ pays.
 The owner then ran `pnpm sisih release`, which released the shared demo lease. The final vault holds
 17.60 total, 17.50 committed and 0.10 free, in session 2.
 
+### After the run: the demo is ready for judges
+
+The run ended with 0.10 USDC free, which was below every service's price. A judge's agent could not
+have bought anything. So the owner restored the savings reserve to its starting target
+(`pnpm sisih reserve set 58 4.00`, at the end of `owner-cli.log`):
+[`461wEbPYi5epwCt4W11FtnmBTTHfKvn2592rTvm2EHtR`](https://suiscan.xyz/testnet/tx/461wEbPYi5epwCt4W11FtnmBTTHfKvn2592rTvm2EHtR).
+
+The demo now stays in session 2 of `sisih-hosted-9`:
+
+- The vault holds 17.60 total, 16.00 committed and 1.60 free.
+- The ChainScope preference is active.
+
+This change wrote one more `reserve_change` memory. It is not part of the 12 checked below.
+
+Before this change, the same connection check was run from PowerShell, using the README's agent
+setup with `claude @sisih`. It was read only, and the agent correctly reported 0.10 free and that
+no purchase could complete.
+
 ## Memory evidence
 
 `verify-memories.txt` comes from `server/scripts/verify-memories.ts sisih-hosted-9`. It runs two
