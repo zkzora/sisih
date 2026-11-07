@@ -54,7 +54,7 @@ export function DemoDock() {
               </form>
             ) : (
               <>
-                <p className="muted">Scripted test scenarios (for testing rules and approval flows, not an external agent). To run a real autonomous agent, connect Claude Code via MCP.</p>
+                <p className="muted">Scripted test scenarios (for testing rules and approval flows, not an external agent). To run a real autonomous agent, connect your agent via MCP.</p>
                 <div className="scenario-buttons">
                   <button disabled={working} onClick={() => void act({ type: "request", merchant: "DataMart" })}>
                     <Database size={16} />

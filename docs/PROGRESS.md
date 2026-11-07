@@ -12,6 +12,12 @@ Unified Handoff implementation complete (2026-11-07).
 
 ## Done
 
+### Agent-neutral public copy (2026-11-07)
+
+- Public page headings and explanatory copy now use "your agent" or "the agent" rather than a client brand.
+- Connect starts with the agent MCP configuration, followed by the recorded CLI example. Client-specific executable names, flags, and skill paths remain accurate.
+- Proof narratives use generic agent wording; the original recorded client details remain in the linked evidence files.
+
 ### Unified handoff: 3-Page Public Site, Role-Scoped MCP & Mainnet Prep (2026-11-07)
 
 - **Product Restructuring:**

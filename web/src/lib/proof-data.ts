@@ -11,7 +11,7 @@ export const RUN = {
   date: "2026-11-07",
   window: "01:30 to 01:41 UTC",
   networks: "Sui Testnet (vault, x402, testnet USDC, through Tatum) · Walrus Memory Mainnet",
-  agent: "Claude Code 2.1.201 (model claude-sonnet-5), restricted to the five Sisih agent tools",
+  agent: "MCP agent, restricted to the five Sisih agent tools",
   owner: 'Sisih CLI; owner transactions signed on the server by "Demo owner (server-signed, testnet)"',
   evidencePath: "docs/evidence/final-run-sisih-hosted-9",
 } as const;
@@ -48,7 +48,7 @@ export const TRACE: Step[] = [
     title: "The agent gets a task",
     who: "agent",
     happened:
-      "Asked to check the vault's health, Claude Code read its budget (3.50 free of 20.00, largest payment 2.00) and the services, then asked Sisih to buy the ChainScope live vault report (0.80 USDC).",
+      "Asked to check the vault's health, the agent read its budget (3.50 free of 20.00, largest payment 2.00) and the services, then asked Sisih to buy the ChainScope live vault report (0.80 USDC).",
   },
   {
     id: "hold",
@@ -80,7 +80,7 @@ export const TRACE: Step[] = [
     who: "agent",
     requestId: "req-637fe5e4-e5a",
     outcome: "settled · live onchain data, Sui Testnet checkpoint 403681845",
-    happened: "Claude checked the same request (a status call never pays), received the live report and answered from it.",
+    happened: "The agent checked the same request (a status call never pays), received the live report and answered from it.",
   },
   {
     id: "recall",
@@ -89,7 +89,7 @@ export const TRACE: Step[] = [
     requestId: "req-e2e8e0e4-b03",
     outcome: "settled by allow_rule · checkpoint 403682570",
     happened:
-      "After pnpm sisih session next, the rules were rebuilt from Walrus recall (1 rule from 7 recalled memories, 2056 ms). A new Claude session with no history asked again; the purchase went through without the owner.",
+      "After pnpm sisih session next, the rules were rebuilt from Walrus recall (1 rule from 7 recalled memories, 2056 ms). A new agent session with no history asked again; the purchase went through without the owner.",
     receipts: [
       { label: "Vault release", digest: "HJXGudjrcFGPiJ1xUhv9MuPe5qqRVjzuCo3NkhtDJVNk", outcome: "success" },
       { label: "x402 settlement", digest: "DGhrQx2GuVHzJL5GH4iUzBy8R7GioiQkJzwH6ctfiheq", outcome: "success" },
@@ -135,12 +135,12 @@ export const LIMITATIONS = [
   "One shared Testnet workspace with a server-signed demo owner; no per-visitor vaults.",
   "All merchants are operated by the Sisih project. ChainScope returns live Testnet data; the others return labeled fixed examples.",
   "One agent answer omitted the receipts it was asked to list; another finished while its memory was still writing.",
-  "The agent runs used claude -p (headless); interactive mode was not separately recorded.",
+  "The agent runs used a headless CLI; interactive mode was not separately recorded.",
 ];
 
 /** Earlier recorded runs, kept as history (not part of the trace above). */
 export const HISTORY = [
-  { namespace: "sisih-hosted-7", date: "2026-11-06", what: "First real Claude Code runs over MCP, owner approval in the former dashboard. 4 of 4 memories verified per job.", path: "docs/evidence/agent-run-sisih-hosted-7" },
+  { namespace: "sisih-hosted-7", date: "2026-11-06", what: "First real agent runs over MCP, owner approval in the former dashboard. 4 of 4 memories verified per job.", path: "docs/evidence/agent-run-sisih-hosted-7" },
   { namespace: "sisih-hosted-6", date: "2026-11-06", what: "Five sessions with the built-in Research Agent; manual reviews per session 2, 1, 1, 2, 2. 35 of 35 memories verified per job.", path: "docs/evidence/sisih-hosted-6" },
 ];
 

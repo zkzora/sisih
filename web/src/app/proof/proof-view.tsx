@@ -67,7 +67,7 @@ export function ProofView() {
         title="The recorded run step by step"
         intro={
           <p>
-            The agent (Claude Code) requests services over MCP. The owner sets limits, reviews held requests and approves them with <code>pnpm sisih</code>.
+            The agent requests services over MCP. The owner sets limits, reviews held requests and approves them with <code>pnpm sisih</code>.
             Hard Move vault limits on Sui Testnet always prevail over remembered preferences on Walrus Mainnet.
           </p>
         }

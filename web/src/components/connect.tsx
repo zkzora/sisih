@@ -76,7 +76,7 @@ export function ConnectView() {
       <PageHeading
         eyebrow="Connect your agent"
         title="Your agent buys. You stay in charge from the terminal."
-        description="Claude Code calls Sisih over MCP to buy services for its task. You set its limits and decide new purchases with the Sisih CLI. The dashboard is optional."
+        description="Your agent calls Sisih over MCP to buy services for its task. You set its limits and decide new purchases with the Sisih CLI. The dashboard is optional."
         action={
           <Link className="button button-secondary" href="/tour">
             Explore a recorded run
@@ -85,7 +85,7 @@ export function ConnectView() {
       />
       <ol className="connect-flow" aria-label="How it works">
         <li>
-          <strong>Your agent</strong> (Claude Code) gets a task, picks a service and asks Sisih to buy it using a fresh idempotency key.
+          <strong>Your agent</strong> gets a task, picks a service and asks Sisih to buy it using a fresh idempotency key.
         </li>
         <li>
           <strong>Sisih</strong> pays at once if it fits your limits and remembered preferences, holds it if unfamiliar, and refuses anything that touches committed funds.
@@ -97,13 +97,13 @@ export function ConnectView() {
       <p className="detail-note connect-networks">Vault and x402 payments on Sui Testnet (testnet USDC, through Tatum). Memory on Walrus Mainnet. Demo merchants.</p>
 
       <div className="connect-grid">
-        <Panel title="Agent: Claude Code" action={<Badge>agent credential</Badge>}>
+        <Panel title="Your agent" action={<Badge>agent credential</Badge>}>
           <div className="connect-body">
             <p>
               MCP endpoint (Streamable HTTP): <code>{endpoint}</code>
             </p>
             <p>
-              <strong>1.</strong> In a new, empty folder, create <code>.mcp.json</code>. Claude Code reads the credential from an environment variable:
+              <strong>1.</strong> In a new, empty folder, create <code>.mcp.json</code>. This CLI example reads the credential from an environment variable:
             </p>
             <Code label=".mcp.json">{mcpJson}</Code>
             <p>

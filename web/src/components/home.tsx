@@ -43,7 +43,7 @@ export function HomeView() {
       <section className="home-workflow" aria-labelledby="home-workflow-title">
         <div className="home-section-heading"><span className="eyebrow">HOW IT WORKS</span><h2 id="home-workflow-title">A useful purchase. A clear boundary.</h2></div>
         <ol>
-          <li><span className="home-step-number">01</span><PlugZap size={22} aria-hidden /><h3>Your agent asks</h3><p>Give Claude Code a task. It discovers a service, checks its budget and requests a purchase through Sisih.</p></li>
+          <li><span className="home-step-number">01</span><PlugZap size={22} aria-hidden /><h3>Your agent asks</h3><p>Give your agent a task. It discovers a service, checks its budget and requests a purchase through Sisih.</p></li>
           <li><span className="home-step-number">02</span><ShieldCheck size={22} aria-hidden /><h3>Your limits decide</h3><p>A purchase can proceed within your limits, wait for your approval, or be blocked to protect committed money.</p></li>
           <li><span className="home-step-number">03</span><Brain size={22} aria-hidden /><h3>Your decision carries forward</h3><p>Approve and remember. The next session recalls your preference from Walrus and applies the same hard limits.</p></li>
         </ol>

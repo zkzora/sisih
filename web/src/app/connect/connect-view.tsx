@@ -159,9 +159,9 @@ pnpm sisih release`;
           </div>
         </dl>
         <div className="status-row">
-          <span className="tag tag-ok">Verified setup: Claude Code</span>
+          <span className="tag tag-ok">Verified agent run</span>
           <span>
-            The spending-agent recipe below is the one used in the recorded run (Claude Code 2.1.201, headless <code>claude -p</code>). Other MCP clients that
+            The spending-agent CLI example below is the one used in the recorded run. Other MCP clients that
             support Streamable HTTP with custom headers are compatible candidates; they have not been checked.
           </span>
         </div>
@@ -192,11 +192,14 @@ pnpm sisih release`;
         </ul>
       </Section>
 
-      <Section id="agent" eyebrow="Recipe 1" title="Spending agent (Claude Code, verified)">
+      <Section id="agent" eyebrow="Recipe 1" title="Your spending agent">
+        <p>Configure your agent&apos;s MCP client with the server URL and agent credential. Configuration syntax and environment variable support depend on your client.</p>
+        <Code label="agent MCP configuration">{agentJson}</Code>
+        <h3>Verified CLI example</h3>
         <p>In a new, empty folder that holds nothing but the agent&apos;s setup:</p>
         <ShellTabs label="spending agent setup" powershell={agentSetupPs} bash={agentSetupSh} />
         <p>
-          Run Claude Code with only the Sisih agent tools. <code>--tools &quot;Skill,ToolSearch&quot;</code> removes the built-in file and shell tools;{" "}
+          Run your agent with only the Sisih agent tools. In this CLI example, <code>--tools &quot;Skill,ToolSearch&quot;</code> removes the built-in file and shell tools;{" "}
           <code>--allowedTools</code> alone does not.
         </p>
         <ShellTabs label="spending agent run" powershell={agentRunPs} bash={agentRunSh} />
@@ -219,7 +222,7 @@ pnpm sisih release`;
 
       <Section id="owner" eyebrow="Recipe 2" title="Owner assistant (same URL, owner credential)">
         <p className="callout">
-          New in this build and not yet run with Claude Code: the owner tools are checked with a real MCP SDK client in isolated tests, not in a recorded session.
+          New in this build: the owner tools are checked with a real MCP SDK client in isolated tests. An owner-assistant session has not yet been recorded.
           Treat this recipe as a candidate.
         </p>
         <p>
