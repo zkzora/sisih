@@ -1,0 +1,91 @@
+== 2026-11-07T01:30:35Z pnpm sisih demo reset --yes
+Resetting the shared testnet demo (emergency withdraw, sweeps, reseed, new Walrus namespace)…
+Done: namespace sisih-hosted-9 · vault 20.00 / 16.50 / 3.50 · seed https://suiscan.xyz/testnet/tx/7qCqTe8nTKZktPZxqAkQkrcEQELKND9FdrWHfscaxUp2
+exit 0 (38 s)
+== 2026-11-07T01:31:13Z pnpm sisih limits set --per-request 2.00 --per-day 6.00 --days 30
+set_limits: verified through Tatum · https://suiscan.xyz/testnet/tx/HRPPmUjQs1HLinUsGainL7UV1d398FQVA1UowrKpxNbx
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+exit 0 (6 s)
+== 2026-11-07T01:31:19Z pnpm sisih status
+Sisih · Sui Testnet (vault, x402, via Tatum) · Walrus Memory Mainnet · session 1
+Vault        total 20.00 · committed 16.50 · free 3.50 USDC (the agent can only spend free funds)
+Agent        active · 2.00 per request · 6.00 per day (spent 0.00) · expires 2026-12-07 01:31 UTC
+Commitments  Inference API 6.00/6.00 · Hosting VPS 5.00/5.00 · Weekly savings 4.00/4.00 · Domain renewal 1.50/1.50
+Memory       namespace sisih-hosted-9: 0 stored
+Preferences  none
+Held         nothing is waiting for you
+exit 0 (3 s)
+== 2026-11-07T01:35:07Z pnpm sisih requests --held
+req-637fe5e4-e5a   S1 ChainScope  0.80   held          none     New merchant. Free funds are sufficient, but ChainScope has no approve
+exit 0 (3 s)
+== 2026-11-07T01:35:10Z pnpm sisih approve req-637fe5e4-e5a --remember
+Approving req-637fe5e4-e5a; Sisih pays the same request now (release from free funds, x402 settle, Tatum verification)…
+req-637fe5e4-e5a · session 1 · ChainScope (demo) Live Sui Testnet vault report · 0.80 USDC
+  decision: approved (new_merchant); payment: paid
+  reason: New merchant. Free funds are sufficient, but ChainScope has no approved rule yet.
+  task: Buy the ChainScope live Sui Testnet vault report to check vault health.
+  vault release: https://suiscan.xyz/testnet/tx/3sts8iZ2UNtF7CrNK28U2HQvAkc8GCrd1SPcap4XcCy6 (verified)
+  x402 settle: https://suiscan.xyz/testnet/tx/ErfGvPGLEKaxJJTaLCrDiYgqmnnxsVADj5kPguXhNZiu (verified)
+  preference saved: rule-b2dbdeb1 (rule memory mem-a7142537-613, writing to Walrus Memory Mainnet)
+The agent continues with get_request_status on the same request; it never pays twice.
+exit 0 (12 s)
+== 2026-11-07T01:36:07Z pnpm sisih demo cycle
+  paid Inference API 6.80 https://suiscan.xyz/testnet/tx/BN9hirNWMGPiUKL9PCF5xHopGkZaUJTHAq2yQZFhi5ce
+  paid Hosting VPS 5.00 https://suiscan.xyz/testnet/tx/Bz7veNSS9BMQk3GZdd1D12vbGPErJBRL9TqYtJfCq14A
+  paid Weekly savings 4.00 https://suiscan.xyz/testnet/tx/9xSUo3LyXuiAZnN5nCGxXMqQHqgfJrdZPTcTYmKf2KHv
+  paid Domain renewal 1.50 https://suiscan.xyz/testnet/tx/8s6qNhAwnnc5g1LJ55EJX6XjWp1xbutLxdPvovsuAn5p
+Simulated income 17.00 (demo) https://suiscan.xyz/testnet/tx/4cXWQWTLTbuzMt9KNVfEWRQ2QQgYS1xcWmExuvG6guxW; reserves funded.
+exit 0 (28 s)
+== 2026-11-07T01:36:35Z pnpm sisih suggestions
+sug-6cf565d5 · Inference API 6.00 → 7.00 · Inference API: raise 6.00 to 7.00 USDC. Last cycle was 0.80 short. → pnpm sisih suggestions accept sug-6cf565d5
+exit 0 (2 s)
+== 2026-11-07T01:36:40Z pnpm sisih suggestions accept sug-6cf565d5
+Reserve changed to 7.00 USDC; reserve_change memory mem-c5be2f08-073 is being written to Walrus.
+accept_suggestion: verified through Tatum · https://suiscan.xyz/testnet/tx/6Nm5B5rv7HbFMcbQtQPkTxsBx4h7utSheZb1FUds1Z1i
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+exit 0 (7 s)
+== 2026-11-07T01:36:47Z pnpm sisih session next
+Session 2 started. Rules rebuilt from Walrus recall: 1 (1 active) from 7 recalled memories in 2056 ms.
+exit 0 (18 s)
+== 2026-11-07T01:37:05Z pnpm sisih prefs
+rule-b2dbdeb1   active   Always allow data from ChainScope up to 1.00 USDC until 2026-12-07 · walrus Nx9vQ0lsbU1sNtVLXqweYEoO31FlGz17Mb1yqLjKN_8 · from walrus
+exit 0 (2 s)
+== 2026-11-07T01:38:57Z pnpm sisih commitments
+id   name              target   reserved  cadence   next due
+56   Inference API     7.00     7.00      Monthly   2026-11-07 01:37 UTC
+57   Hosting VPS       5.00     5.00      Monthly   2026-11-07 01:37 UTC
+58   Weekly savings    4.00     4.00      Weekly    2026-11-07 01:37 UTC
+Change a reserve: pnpm sisih reserve set <id> <amount>
+== 2026-11-07T01:39:02Z pnpm sisih reserve set 58 5.50
+set_reserve: verified through Tatum · https://suiscan.xyz/testnet/tx/82Z7cwv5b7h9UaDdrb6q7gSxzPmzFWtspnGMrBmEfYXY
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+exit 0 (5 s)
+== 2026-11-07T01:39:08Z pnpm sisih status
+Sisih · Sui Testnet (vault, x402, via Tatum) · Walrus Memory Mainnet · session 2
+Vault        total 18.10 · committed 17.50 · free 0.60 USDC (the agent can only spend free funds)
+Agent        active · 2.00 per request · 6.00 per day (spent 1.60) · expires 2026-12-07 01:31 UTC
+Commitments  Inference API 7.00/7.00 · Hosting VPS 5.00/5.00 · Weekly savings 5.50/5.50
+Memory       namespace sisih-hosted-9: 9 stored
+Preferences  allow ChainScope up to 1.00
+Held         nothing is waiting for you
+exit 0 (2 s)
+== 2026-11-07T01:39:47Z tsx server/scripts/gate-release.ts --yes --skip-success --amount 0.80
+release 0.80: AFKJwvpjY4gYphMeyKsWuz1PrXrRzcoQm8MMWRXEtKqG success=false verified-on-chain=failed as expected
+  abort: EExceedsFree  raw: {"$kind":"MoveAbort","message":"MoveAbort in 1st command, 'EExceedsFree': Amount exceeds free funds; reserves are locked, in '0x37a5513a911110d00b9c795390d1af5b04a3873e6df4
+PASS
+== 2026-11-07T01:39:54Z pnpm sisih deny req-5176bfd5-d5c
+req-5176bfd5-d5c · session 2 · ChainScope (demo) Live Sui Testnet vault report · 0.80 USDC
+  decision: denied (would_cut_reserve); payment: none
+  reason: Would use 0.20 USDC of committed funds. Reserves are locked by the contract.
+  task: Get a fresh live vault health report to re-check vault health now that the savings reserve has been raised
+The agent continues with get_request_status on the same request; it never pays twice.
+exit 0 (3 s)
+== 2026-11-07T01:39:57Z pnpm sisih pause
+Agent paused: the vault refuses every release until you resume.
+pause_agent: verified through Tatum · https://suiscan.xyz/testnet/tx/GJ3AGmivtxtBKH3v7DjRiGsvftqyJ1pma7GZXcs2Rkq5
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+exit 0 (6 s)
+== 2026-11-07T01:40:47Z pnpm sisih resume
+Agent resumed.
+resume_agent: verified through Tatum · https://suiscan.xyz/testnet/tx/GLgCsrdrk8J6Fk4JX4jTiz49VEBxubh1We8wiHQJFFLJ
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
