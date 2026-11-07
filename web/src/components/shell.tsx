@@ -43,8 +43,8 @@ const navigation = [
 ];
 // First-time visitors: a labeled replay of a recorded run, and the MCP setup for a real agent.
 const tryNavigation = [
-  { href: "/tour", label: "Explore demo", icon: Compass },
   { href: "/connect", label: "Connect your agent", icon: PlugZap },
+  { href: "/tour", label: "Explore a recorded run", icon: Compass },
 ];
 export function Shell({ children }: { children: ReactNode }) {
   const { state, ready, act, storageError, retryStorage, loadError, refreshVault, ownerSigner } = useSisih();
@@ -97,7 +97,22 @@ export function Shell({ children }: { children: ReactNode }) {
           </span>
           <ChevronDown size={14} />
         </button>
-        <div className="nav-heading">WORKSPACE</div>
+        <div className="nav-heading">GET STARTED</div>
+        <nav aria-label="Get started">
+          {tryNavigation.map((n) => (
+            <Link
+              href={n.href}
+              key={n.href}
+              className={`nav-link ${pathname === n.href ? "active" : ""}`}
+              aria-current={pathname === n.href ? "page" : undefined}
+              onClick={() => setMobile(false)}
+            >
+              <n.icon size={18} strokeWidth={1.7} />
+              <span>{n.label}</span>
+            </Link>
+          ))}
+        </nav>
+        <div className="nav-heading">WORKSPACE · OPTIONAL</div>
         <nav aria-label="Main navigation">
           {navigation.map((n) => (
             <Link
@@ -115,21 +130,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="nav-heading">TRY SISIH</div>
-        <nav aria-label="Try Sisih">
-          {tryNavigation.map((n) => (
-            <Link
-              href={n.href}
-              key={n.href}
-              className={`nav-link ${pathname === n.href ? "active" : ""}`}
-              aria-current={pathname === n.href ? "page" : undefined}
-              onClick={() => setMobile(false)}
-            >
-              <n.icon size={18} strokeWidth={1.7} />
-              <span>{n.label}</span>
-            </Link>
-          ))}
-        </nav>
+
         <div className="sidebar-bottom">
           <div className="sidebar-rule">
             <LockKeyhole size={18} />
@@ -205,7 +206,7 @@ export function Shell({ children }: { children: ReactNode }) {
               <span>
                 Demo workspace · <strong className="demo-banner-networks">Sui {state.preferences.network} · Walrus Memory Mainnet</strong>{" "}
                 <span className="demo-banner-detail">
-                  · DataMart, SearchBox and ReportLab are demo merchants run by the Sisih team. Income is simulated and demo funds are recycled.
+                  · The merchants are demo services run by the Sisih team (ChainScope returns live Sui Testnet data; the others return fixed examples). Income is simulated and demo funds are recycled.
                 </span>
               </span>
               <button onClick={() => setHelp(true)}>

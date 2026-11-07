@@ -44,7 +44,7 @@ export function Overview() {
         }
       />
       <IntroCard />
-      <section className="balance-card" aria-label="Vault balance">
+      <section className="balance-card" aria-label="Vault balance" id="workspace">
         <div className="balance-card-heading">
           <span>
             <span className="vault-dot" />
@@ -345,7 +345,7 @@ function FlaskLabel() {
 
 const INTRO_KEY = "sisih-intro-dismissed";
 
-/** First-visit introduction with the two ways to try Sisih. Dismissal is a per-viewer convenience. */
+/** First-visit introduction: what Sisih protects, how an agent uses it, how to start. */
 function IntroCard() {
   const [hidden, setHidden] = useState(true);
   useEffect(() => {
@@ -356,22 +356,35 @@ function IntroCard() {
     }
   }, []);
   if (hidden) return null;
+  const facts = [
+    ["What Sisih protects", "Money you already promised to bills and savings is reserved in a Move vault on Sui Testnet. Your agent can only be paid from what is left."],
+    ["How your agent uses it", "Claude Code connects over MCP, picks a paid service for its task and asks Sisih to buy it. Known purchases within your limits go through; new ones wait for you."],
+    ["How you stay in charge", "From your terminal: pnpm sisih status, approve or deny, set limits, pause. Your decisions are remembered on Walrus Memory Mainnet; they never raise a hard limit."],
+    ["What you can inspect now", "A recorded run with every transaction and memory linked, and this workspace: live balances, requests, memories and Tatum-verified activity."],
+  ];
   return (
-    <section className="intro-card" aria-label="Try Sisih">
-      <div>
-        <h2>An AI agent that can only spend money you haven&apos;t promised.</h2>
-        <p>
-          Your commitments are reserved in a vault on Sui Testnet first. The agent buys from what is left, you approve anything new, and Sisih remembers your
-          decisions on Walrus Memory Mainnet.
-        </p>
+    <section className="intro-card" aria-label="Get started with Sisih">
+      <div className="intro-main">
+        <h2>Your AI agent can only spend money you haven&apos;t promised.</h2>
+        <div className="intro-facts">
+          {facts.map(([t, d]) => (
+            <div key={t}>
+              <h3>{t}</h3>
+              <p>{d}</p>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="intro-actions">
-        <Link className="button button-primary" href="/tour">
-          Explore demo
-        </Link>
-        <Link className="button button-secondary" href="/connect">
+        <Link className="button button-primary" href="/connect">
           Connect your agent
         </Link>
+        <Link className="button button-secondary" href="/tour">
+          Explore a recorded run
+        </Link>
+        <a className="button button-ghost" href="#workspace">
+          Open workspace
+        </a>
         <button
           className="text-button"
           onClick={() => {
@@ -383,7 +396,7 @@ function IntroCard() {
             }
           }}
         >
-          Hide
+          Hide this introduction
         </button>
       </div>
     </section>

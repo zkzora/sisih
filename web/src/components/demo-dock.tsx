@@ -45,7 +45,7 @@ export function DemoDock() {
                   setToken("");
                 }}
               >
-                <p className="muted">This public workspace is read-only. Enter the demo token to run the agent, advance cycles and reset. It is kept only for this browser tab.</p>
+                <p className="muted">This public workspace is read-only. Enter the demo token to run the agent, advance cycles and reset; it is kept only for this browser tab. Owners can do the same from a terminal with pnpm sisih (see Connect your agent).</p>
                 <input type="password" autoComplete="off" placeholder="Demo token" aria-label="Demo token" value={token} onChange={(e) => setToken(e.target.value)} />
                 <Button type="submit" className="full-width" disabled={!token || checking}>
                   {checking ? <Spinner label="Checking" /> : <LockOpen size={14} />}

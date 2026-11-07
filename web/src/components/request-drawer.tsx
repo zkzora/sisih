@@ -70,7 +70,7 @@ export function RequestDrawer({ id, onClose }: { id: string | null; onClose: () 
             Done
           </Button>
         ) : locked ? (
-          <DrawerUnlock unlock={unlock} />
+          <DrawerUnlock unlock={unlock} requestId={r.id} />
         ) : remember ? (
           <>
             <Button variant="secondary" onClick={() => setRemember(null)}>
@@ -273,7 +273,7 @@ export function RequestDrawer({ id, onClose }: { id: string | null; onClose: () 
  * Owners often arrive from an agent's link straight into this drawer. The drawer is modal, so the
  * dock behind it cannot be reached: offer the same demo-token unlock right here.
  */
-function DrawerUnlock({ unlock }: { unlock: (token: string) => Promise<boolean> }) {
+function DrawerUnlock({ unlock, requestId }: { unlock: (token: string) => Promise<boolean>; requestId: string }) {
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   return (
@@ -288,7 +288,10 @@ function DrawerUnlock({ unlock }: { unlock: (token: string) => Promise<boolean> 
         setToken("");
       }}
     >
-      <p className="muted">Demo controls are locked. Enter the demo token to decide this request.</p>
+      <p className="muted">
+        Demo controls are locked. Enter the demo token to decide here, or from your terminal: <code>pnpm sisih approve {requestId} --remember</code> /{" "}
+        <code>pnpm sisih deny {requestId}</code>
+      </p>
       <div className="drawer-unlock-row">
         <input type="password" aria-label="Demo token" placeholder="Demo token" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
         <Button type="submit" disabled={busy || !token.trim()}>

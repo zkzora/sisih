@@ -79,7 +79,7 @@ export function TourView() {
   return (
     <>
       <PageHeading
-        eyebrow="Explore demo"
+        eyebrow="Explore a recorded run"
         title="How Sisih protects money you've promised."
         description="A guided replay of one recorded run. Nothing on this page pays, signs or writes memory."
         action={
