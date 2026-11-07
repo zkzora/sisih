@@ -1,0 +1,67 @@
+== 2026-11-07T01:22:01Z pnpm sisih demo reset --yes
+Resetting the shared testnet demo (emergency withdraw, sweeps, reseed, new Walrus namespace)…
+Done: namespace sisih-hosted-8 · vault 20.00 / 16.50 / 3.50 · seed https://suiscan.xyz/testnet/tx/BsKLyGZ8mnyhZrgN3U8fohTDggr7XHYpzzHgJfhYRnxr
+exit 0 (27 s)
+== 2026-11-07T01:22:28Z pnpm sisih status
+Sisih · Sui Testnet (vault, x402, via Tatum) · Walrus Memory Mainnet · session 1
+Vault        total 20.00 · committed 16.50 · free 3.50 USDC (the agent can only spend free funds)
+Agent        active · 5.00 per request · 10.00 per day (spent 0.00) · expires 2026-12-07 01:22 UTC
+Commitments  Inference API 6.00/6.00 · Hosting VPS 5.00/5.00 · Weekly savings 4.00/4.00 · Domain renewal 1.50/1.50
+Memory       namespace sisih-hosted-8: 0 stored
+Preferences  none
+Held         nothing is waiting for you
+== 2026-11-07T01:22:38Z pnpm sisih limits set --per-request 2.00 --per-day 6.00 --days 30
+set_limits: verified through Tatum · https://suiscan.xyz/testnet/tx/EfD3HxfReruNbA3TubJdwauDune6HKWXAXR6hPpRhLg6
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+exit 0
+== 2026-11-07T01:22:44Z pnpm sisih limits
+Per request 2.00 · per day 6.00 (spent 0.00 in the current 24 h) · active · expires 2026-12-07 01:22 UTC
+These are enforced by the Move vault on Sui Testnet; no preference can raise them.
+exit 0
+== 2026-11-07T01:22:47Z pnpm sisih prefs
+No preferences yet. Approve or deny with --remember, or: pnpm sisih prefs add allow <merchant> --max <usdc>
+exit 0
+== 2026-11-07T01:25:32Z pnpm sisih requests --held
+req-adfd4a17-2e8   S1 ChainScope  0.80   held          none     New merchant. Free funds are sufficient, but ChainScope has no approve
+exit 0 (2 s)
+== 2026-11-07T01:25:34Z pnpm sisih approve req-adfd4a17-2e8 --remember
+Approving req-adfd4a17-2e8; Sisih pays the same request now (release from free funds, x402 settle, Tatum verification)…
+req-adfd4a17-2e8 · session 1 · ChainScope (demo) Live Sui Testnet vault report · 0.80 USDC
+  decision: approved (new_merchant); payment: paid
+  reason: New merchant. Free funds are sufficient, but ChainScope has no approved rule yet.
+  task: Buy the live Sui Testnet vault report to check the owner's vault health.
+  vault release: https://suiscan.xyz/testnet/tx/AphvZbiF7srarunT81dSk2YK8ietSJwta5ubrZd8JzXj (verified)
+  x402 settle: https://suiscan.xyz/testnet/tx/E99a7cDXEcjbhnbPHe8Yvt1Sp6YDidENwkFjAritRTLM (verified)
+  preference saved: rule-b68ee055 (rule memory mem-54dee8d6-868, writing to Walrus Memory Mainnet)
+The agent continues with get_request_status on the same request; it never pays twice.
+exit 0 (11 s)
+== 2026-11-07T01:26:26Z pnpm sisih demo cycle
+  paid Inference API 6.80 https://suiscan.xyz/testnet/tx/GHrZ7zMkfRsEsh9kBeJDXU2L7FVksHJgnTU8DYQQaBR8
+  paid Hosting VPS 5.00 https://suiscan.xyz/testnet/tx/BDgKCNhD2zTfa6M9JELzvAdQ5bEHDJ8z3MbHejnhR8nC
+  paid Weekly savings 4.00 https://suiscan.xyz/testnet/tx/9A1mHQGdcDcKgAmxBZNwpbaqyYBhQ6XJ9MeyvXHGBifa
+  paid Domain renewal 1.50 https://suiscan.xyz/testnet/tx/3zcSYB395hAvXn2hAbtxyEuGQwr2KiGYAV7sjEupK4XC
+Simulated income 17.00 (demo) https://suiscan.xyz/testnet/tx/12KcHE1HrCgQtb8ic3dECXSqXNzQgP9fgn3bFLkgnVtv; reserves funded.
+exit 0 (30 s)
+== 2026-11-07T01:26:56Z pnpm sisih suggestions
+sug-5fc6f71d · Inference API 6.00 → 7.00 · Inference API: raise 6.00 to 7.00 USDC. Last cycle was 0.80 short. → pnpm sisih suggestions accept sug-5fc6f71d
+exit 0 (3 s)
+== 2026-11-07T01:27:06Z pnpm sisih suggestions accept sug-5fc6f71d
+Reserve changed to 7.00 USDC; reserve_change memory mem-7eea97a7-1aa is being written to Walrus.
+accept_suggestion: verified through Tatum · https://suiscan.xyz/testnet/tx/7SbispRPo9j87FgX5bDQLFpLMKB53jnuKTQtGAAjLWEo
+Owner actions are signed on the server by "Demo owner (server-signed, testnet)", not by your own wallet.
+exit 0 (7 s)
+== 2026-11-07T01:27:13Z pnpm sisih session next
+Session 2 started. Rules rebuilt from Walrus recall: 1 (1 active) from 7 recalled memories in 2679 ms.
+exit 0 (24 s)
+== 2026-11-07T01:27:37Z pnpm sisih prefs
+rule-b68ee055   active   Always allow data from ChainScope up to 1.00 USDC until 2026-12-07 · walrus pmAl1JLnKUugZyhgr20Nst8l7HgpupUGqDTd1tDKjp4 · from walrus
+exit 0 (2 s)
+== 2026-11-07T01:27:39Z pnpm sisih status
+Sisih · Sui Testnet (vault, x402, via Tatum) · Walrus Memory Mainnet · session 2
+Vault        total 18.90 · committed 16.00 · free 2.90 USDC (the agent can only spend free funds)
+Agent        active · 2.00 per request · 6.00 per day (spent 0.80) · expires 2026-12-07 01:22 UTC
+Commitments  Inference API 7.00/7.00 · Hosting VPS 5.00/5.00 · Weekly savings 4.00/4.00
+Memory       namespace sisih-hosted-8: 7 stored, 1 writing
+Preferences  allow ChainScope up to 1.00
+Held         nothing is waiting for you
+exit 0 (3 s)
