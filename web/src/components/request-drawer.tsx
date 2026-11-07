@@ -12,7 +12,7 @@ const roundUp = (v: number) => Math.max(STEP, Math.ceil(v / STEP) * STEP);
 const in30Days = () => new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
 
 export function RequestDrawer({ id, onClose }: { id: string | null; onClose: () => void }) {
-  const { state, act, setMoneyModal, x402Steps, unlocked, busy } = useSisih();
+  const { state, act, setMoneyModal, x402Steps, unlocked, unlock, busy } = useSisih();
   const r = state.requests.find((r) => r.id === id);
   const [remember, setRemember] = useState<"approve" | "deny" | null>(null);
   const [max, setMax] = useState("1.5");
@@ -70,7 +70,7 @@ export function RequestDrawer({ id, onClose }: { id: string | null; onClose: () 
             Done
           </Button>
         ) : locked ? (
-          <p className="muted">Demo controls are locked. Enter the demo token in Demo controls to decide.</p>
+          <DrawerUnlock unlock={unlock} />
         ) : remember ? (
           <>
             <Button variant="secondary" onClick={() => setRemember(null)}>
@@ -266,5 +266,35 @@ export function RequestDrawer({ id, onClose }: { id: string | null; onClose: () 
       )}
       {busy === "decide" && <Spinner label="Recording decision" />}
     </Overlay>
+  );
+}
+
+/**
+ * Owners often arrive from an agent's link straight into this drawer. The drawer is modal, so the
+ * dock behind it cannot be reached: offer the same demo-token unlock right here.
+ */
+function DrawerUnlock({ unlock }: { unlock: (token: string) => Promise<boolean> }) {
+  const [token, setToken] = useState("");
+  const [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="drawer-unlock"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!token.trim()) return;
+        setBusy(true);
+        await unlock(token);
+        setBusy(false);
+        setToken("");
+      }}
+    >
+      <p className="muted">Demo controls are locked. Enter the demo token to decide this request.</p>
+      <div className="drawer-unlock-row">
+        <input type="password" aria-label="Demo token" placeholder="Demo token" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
+        <Button type="submit" disabled={busy || !token.trim()}>
+          {busy ? <Spinner label="Checking" /> : "Unlock"}
+        </Button>
+      </div>
+    </form>
   );
 }

@@ -526,3 +526,26 @@
     display: none;
   }
 }
+
+/* Unlock inside the request drawer (owners arriving from an agent's link). */
+.drawer-unlock {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+.drawer-unlock p {
+  margin: 0;
+}
+.drawer-unlock-row {
+  display: flex;
+  gap: 8px;
+}
+.drawer-unlock-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--input);
+  background: var(--card);
+  font: inherit;
+}
