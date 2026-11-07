@@ -13,13 +13,57 @@ Walrus Memory. The money lives in a Move contract on Sui, and the contract has t
 
 Live demo: https://sisih-azure.vercel.app
 
+## Two terminals: your agent buys, you decide
+
+Sisih is built for an agent that already works in a terminal. Claude Code connects to Sisih's MCP
+server with its own credential. That credential lets it read its budget and the services it may
+buy, request a purchase for its task, and read its own requests. Nothing else. There are no owner
+tools on that server, and there is no switch that turns the rules off.
+
+The owner sits in a second terminal with the Sisih CLI and an owner token the agent never sees. From
+there the owner can:
+
+- check the budget (`pnpm sisih status`)
+- set the agent's limits
+- change reserves
+- answer held purchases (`pnpm sisih approve <id> --remember`)
+- pause, resume or revoke the agent
+- inspect the evidence
+
+The dashboard shows the same state, but it is optional.
+
+Here is the final run, on 2026-11-07 (Walrus namespace `sisih-hosted-9`). For this test, Claude Code
+was started with only Sisih's tools: it could not read files, run a shell or see the owner token.
+
+1. The owner set a 2.00 per-request and 6.00 per-day limit from the terminal.
+2. The agent was asked to check the vault's health with a live report from ChainScope. ChainScope
+   is a demo merchant that reads the vault through Tatum at purchase time. It is new, so Sisih held
+   the 0.80 purchase. Nothing was paid, and Claude printed the exact command for the owner.
+3. The owner ran `pnpm sisih approve req-637fe5e4-e5a --remember`. Twelve seconds later the release
+   from free funds and the x402 settlement were both verified through Tatum, and the preference
+   ("allow ChainScope data up to 1.00 USDC") was on its way to Walrus Memory.
+4. Claude checked the same request, never paying twice, and answered from live data at Sui Testnet
+   checkpoint 403681845.
+5. After a billing cycle and `pnpm sisih session next`, a fresh Claude session asked again. The
+   purchase went through on its own, because the preference had been rebuilt from Walrus.
+6. Then the owner raised the savings reserve until only 0.60 was free, and Claude asked once more.
+   The preference was still active, but Sisih blocked the purchase: it would have used 0.20 of
+   committed money. The same 0.80 release sent straight to the vault aborted on chain:
+   https://suiscan.xyz/testnet/tx/AFKJwvpjY4gYphMeyKsWuz1PrXrRzcoQm8MMWRXEtKqG
+7. The owner paused the agent from the terminal, and the next purchase was blocked until the owner
+   resumed it.
+
+Every Claude Code transcript, the owner's command log, and each of the 12 memories (checked one by
+one against the Walrus relayer) are in the repository under
+`docs/evidence/final-run-sisih-hosted-9`.
+
 ## Two kinds of rules
 
 Sisih splits rules into two kinds and never mixes them up.
 
 **Hard rules** are enforced by the `sisih::vault` Move contract on Sui Testnet: a reserve per
-commitment, a per-request cap (5.00 USDC in the demo), a 24-hour cap (10.00), a permission expiry,
-pause and revoke. The agent is only ever paid by `release_to_agent`, which splits coins from the free
+commitment, a per-request cap and a 24-hour cap (5.00 and 10.00 USDC in the seeded demo; the owner
+set 2.00 and 6.00 from the terminal in the final run), a permission expiry, pause and revoke. The agent is only ever paid by `release_to_agent`, which splits coins from the free
 pool and aborts with `EExceedsFree` if the amount would touch a reserve.
 
 **Soft rules** are the owner's preferences: which merchants are trusted, up to what amount, and for
@@ -47,10 +91,10 @@ At the start of each session Sisih rebuilds its rules from Walrus recall. Postgr
 When the agent asks to pay a merchant, Sisih also recalls what it remembers about that merchant and
 shows the results, with their distances, next to the decision.
 
-## How memory changed a decision
+## How memory changed a decision, over five sessions
 
-The demo below ran on 2026-11-06 in one workspace (Walrus namespace `sisih-hosted-6`). Sessions 1 and
-2 were clicked through the dashboard.
+An earlier run, on 2026-11-06 (Walrus namespace `sisih-hosted-6`), used the built-in Research Agent
+for five sessions in one workspace. Sessions 1 and 2 were clicked through the dashboard.
 
 Session 1 starts with 20.00 USDC in the vault, 16.50 of it reserved and 3.50 free. The agent buys
 0.50 of data from DataMart; that is under the 0.50 automatic threshold, so it goes through, paid
@@ -102,19 +146,28 @@ users, and it is not evidence that Sisih works in production. It shows the loop 
 the owner decides once, the memory changes the next decision, and the contract keeps the promises.
 
 By the end of the run the namespace held 35 memories on Walrus Mainnet: 14 decisions, 13 bill
-outcomes, 4 session summaries, 2 reserve changes and 2 rules.
+outcomes, 4 session summaries, 2 reserve changes and 2 rules. All 35 were checked again on
+2026-11-07, one by one, through their relayer jobs.
 
 ## Limits
 
-The merchants and bill payees are ours, labeled demo; the income is simulated and a billing cycle
-lasts two minutes so a demo fits in three. The vault and payments run on Sui Testnet; Walrus Memory
-runs on Mainnet. On testnet, a visitor with the demo token can sign deposits, reserve changes, pause
-and resume without a wallet, through a server key that the UI labels "Demo owner (server-signed,
-testnet)"; that path is refused on mainnet. Sisih is a hackathon build, unaudited.
+The merchants and bill payees are ours, labeled demo. Only ChainScope returns live data; the
+others return fixed example content, and the agent is told which is which. The income is
+simulated.
+
+The vault and payments run on Sui Testnet; Walrus Memory runs on Mainnet.
+
+The owner's terminal actions are signed by a server key, which the CLI and the UI label "Demo owner
+(server-signed, testnet)", not by the owner's own wallet. That covers a fixed list of owner
+operations: deposits, reserves, commitments, limits, pause, resume and revoke. It is refused on
+mainnet.
+
+It is one shared demo workspace, not a vault per visitor. Sisih is a hackathon build, unaudited.
 
 ## What's next
 
-Real merchants instead of demo ones, an owner wallet flow on mainnet, and memory that explains
-itself better: why a rule exists, when it was last used, and when it should expire.
+Real merchants instead of demo ones, an owner CLI that signs with the owner's own key, one vault
+per owner, and memory that explains itself better: why a rule exists, when it was last used, and
+when it should expire.
 
 Code, evidence and every transaction digest: see the repository README and `docs/PROGRESS.md`.

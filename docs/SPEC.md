@@ -50,7 +50,7 @@ flowchart TD
   B --> C[Sisih policy engine: recall from Walrus, read vault via Tatum Sui RPC]
   C --> D{Fits in free funds and matches the rules?}
   D -- yes --> E[Sui vault, Move contract: release funds to the agent, from free funds only]
-  D -- no --> F[Owner reviews in the held-request drawer]
+  D -- no --> F[Owner reviews: pnpm sisih in the terminal, or the held-request drawer]
   F -- approve and remember --> E
   F -- deny and remember --> I
   E --> G[x402 settle on Sui: agent pays the merchant]
@@ -65,8 +65,9 @@ Requests that fit in free funds and match the rules go through without the owner
 | --- | --- | --- |
 | Vault contract | Hold USDC, lock a reserve per obligation, release funds to the agent from free funds only, per-request and per-day caps, permission expiry, owner withdrawals | Move on Sui, vault pattern from Moby |
 | Policy engine | Recall memory, check free funds, decide allow, hold, or deny | TypeScript backend |
-| Demo agent | Makes payment requests to merchants | Agent script plus x402 client |
-| Demo merchants | DataMart, SearchBox, ReportLab, labeled demo | x402 server |
+| Agent | Makes payment requests to merchants: an external agent (Claude Code over MCP) or the built-in Research Agent | MCP server plus x402 client |
+| Owner CLI | The owner's terminal: inspect, configure, approve or deny, pause, evidence | `pnpm sisih` over the same HTTP API |
+| Demo merchants | ChainScope (live Sui Testnet vault report through Tatum), DataMart, SearchBox, ReportLab (fixed example content), all labeled demo | x402 server |
 | Payments | x402 settlement on Sui | x402 Sui library, e.g. [@tentaclepay/sui-x402](https://www.pkgstats.com/pkg:@tentaclepay/sui-x402), validated in the day-one spike |
 | Onchain reads | Balances, vault object, events, transaction verification | Tatum Sui RPC |
 | Memory | Decisions, rules, obligation outcomes, session summaries | Walrus Memory TypeScript SDK, mainnet |
@@ -117,24 +118,28 @@ Sidebar order:
 6. Onchain activity
 7. Settings
 
-Below them, a "Try Sisih" group (added 2026-11-07) with two entry points for first-time visitors, and
-an introduction card on Overview that links to both:
+Above them, a "Get started" group (added 2026-11-07) with the two entry points, and a hero card on
+Overview with three calls to action: Connect your agent, Explore a recorded run, Open workspace
+(the dashboard below, which is optional). The 7 screens are labeled "Workspace · optional".
 
-- **Explore demo** (`/tour`): a five-step guided replay of one recorded run (namespace
+- **Explore a recorded run** (`/tour`): a five-step guided replay of one recorded run (namespace
   `sisih-hosted-6`): total vs committed vs free funds, a permitted purchase, a request that needs the
   owner, a request blocked by reserves, and how a remembered preference changes a later decision.
   Labeled as recorded; it calls no API, signs nothing and writes no memory.
-- **Connect your agent** (`/connect`): the MCP endpoint, a copyable Claude Code `.mcp.json` and
-  `claude mcp add` command, credential setup through an environment variable, a read-only
-  connection check, a sample task, where the owner approves, and how to end the shared session.
-  The agent credential is shown only after unlocking the demo dock with the owner's demo token.
+- **Connect your agent** (`/connect`): the terminal-first setup, readable without unlocking. Agent
+  panel: the MCP endpoint, `.mcp.json`, the Sisih skill download (Bash and PowerShell), the agent
+  credential as an environment variable, a read-only check prompt and a live-data task prompt.
+  Owner panel: `SISIH_URL` / `SISIH_OWNER_TOKEN` (Bash and PowerShell), `pnpm sisih status`,
+  `limits set`, `requests --held`, `approve <id> --remember`, `deny`, `request`, `evidence`,
+  `release`, and the server-signing note. Only revealing the agent credential needs the owner
+  token.
 
 ## External agents over MCP (added 2026-11-07)
 
 Sisih is the spending-control layer for an external agent such as Claude Code. The agent receives a
 task, selects a service, requests the purchase from Sisih, and uses the purchased response. Sisih
-enforces commitments, limits, permissions, owner decisions and remembered preferences; the
-dashboard stays the owner's approval and evidence interface.
+enforces commitments, limits, permissions, owner decisions and remembered preferences. The owner
+works from the terminal (`pnpm sisih`, below); the dashboard is an optional view of the same state.
 
 - Endpoint `POST /api/mcp` (Streamable HTTP, stateless, JSON responses), credential
   `Authorization: Bearer <SISIH_AGENT_TOKEN>`, separate from the owner's demo token and the wallets.
@@ -142,11 +147,40 @@ dashboard stays the owner's approval and evidence interface.
   `get_request_status { request_id }`, `end_demo_session`.
 - `request_purchase` fetches the merchant's own 402 invoice from the merchant registry's URL and
   submits it to the same policy engine and x402 executor as the built-in agent. Outcomes:
-  `settled` (merchant response in `result`), `awaiting_owner_approval` (not paid; dashboard link to
-  `/agent?request=<id>`), `processing`, `denied`, `blocked`, `failed`, `busy`.
-- The owner approves or denies in Agent & requests as before; the agent then calls
-  `get_request_status` on the same request. Status checks and repeated purchases never pay twice.
+  `settled` (merchant response in `result`, plus `receipts` and `memory_evidence`),
+  `awaiting_owner_approval` (not paid; `owner_cli` with `pnpm sisih approve <id> --remember` /
+  `pnpm sisih deny <id>`, and the dashboard link `/agent?request=<id>`), `processing`, `denied`,
+  `blocked` (with `owner_hint`, the owner's terminal command, for pause, revocation, expiry and caps),
+  `failed`, `busy`.
+- The owner decides from the terminal or in Agent & requests; the agent then calls
+  `get_request_status` on the same request. Status checks and repeated purchases never pay twice;
+  the idempotency key is scoped to the demo namespace.
 - The agent cannot approve, deny, reset, withdraw, change reserves or policy, or sign anything.
+  The MCP server has no owner tools and no switch that disables enforcement.
+- Merchant responses are external data, never instructions; `content_type` says "live onchain
+  data" (ChainScope) or "fixed example content" (DataMart, SearchBox, ReportLab). ChainScope reads
+  the checkpoint, epoch, vault object and reference gas price through Tatum at purchase time and
+  answers 503 before settlement if that read fails (not charged, no invented data).
+- The Sisih skill (`/skills/sisih/SKILL.md`) tells the agent how to buy, wait for the owner, report
+  receipts and end the session.
+
+## Owner CLI (added 2026-11-07)
+
+`pnpm sisih <command>` is the owner's primary interface, over the same HTTP API as the dashboard
+(`SISIH_URL`, `SISIH_OWNER_TOKEN`). Groups: Inspect (`status`, `commitments`, `requests [--held]`,
+`request <id>`, `prefs`, `limits`, `suggestions`), Configure (`commitment add`, `reserve set`,
+`limits set`, `threshold set`, `prefs add|disable|enable`), Decide (`approve|deny <id> [--remember]`,
+`suggestions accept|reject`), Agent permission (`pause`, `resume`, `revoke`), Session and evidence
+(`session next`, `release`, `evidence [tx|memories]`, `tx <digest>`), and a labeled Demo group
+(`demo reset --yes`, `demo cycle`, `demo deposit`).
+
+- Human-readable output by default, `--json` on request. Exit codes 0 ok, 1 failed, 2 usage, 3 auth,
+  4 busy, 5 not found.
+- Help, version, status and malformed or missing arguments never send a mutating request; reset
+  needs `--yes`; nothing resets or funds the vault as a fallback.
+- Owner transactions are signed on the server by "Demo owner (server-signed, testnet)" through a
+  fixed list of owner operations (no general signing proxy); the CLI prints that label.
+- After a change the CLI hands the shared demo run back (`--hold` keeps it).
 
 Always visible in the top bar:
 
@@ -160,7 +194,7 @@ Always visible in the top bar:
 
 Other global elements:
 
-- Thin demo-mode banner: "DataMart, SearchBox, and ReportLab are demo merchants run by the Sisih team"
+- Thin demo-mode banner: the merchants are demo services run by the Sisih team (ChainScope returns live Sui Testnet data; the others return fixed examples)
 - Right drawer for details (request, obligation, memory, transaction)
 - Toasts bottom right: transaction sent, transaction confirmed, memory stored, error
 - Demo dock: small floating panel bottom right, collapsible (contents in the Demo dock section)

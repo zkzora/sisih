@@ -16,7 +16,7 @@ Mandatory (both pages):
 | --- | --- |
 | Walrus Memory integrated and writing on Mainnet | Done: relayer https://relayer.memory.walrus.xyz; every decision, rule, outcome and summary is a memory |
 | Tatum RPC used for onchain data where relevant | Done: every Sui read and write through Tatum's Sui Testnet gRPC gateway (`server/src/lib/tatum.ts`) |
-| At least 10 memories stored on Mainnet | Done in the documented run: namespace `sisih-hosted-6`, 35 stored (docs/PROGRESS.md, Phase 5) |
+| At least 10 memories stored on Mainnet | Done. Final run `sisih-hosted-9`: 12 stored, each checked through its relayer job (docs/evidence/final-run-sisih-hosted-9). Earlier run `sisih-hosted-6`: 35 stored, re-checked the same way on 2026-11-07 |
 | Published blog post: what it does, how it uses Tatum + Walrus, how it learned over time | Draft ready: docs/BLOG.md. **Needs your input:** publish it and paste the URL |
 | Working demo and public repo | Demo live: https://sisih-azure.vercel.app. **Needs your input:** make the GitHub repo public |
 | Short demo video (2 to 3 min), asked on the form | Script ready: docs/RECORDING.md. **Needs your input:** record and upload it |
@@ -54,8 +54,9 @@ Bonus criteria (no prize or eligibility is guaranteed; judges decide):
 ## Project description
 
 **Short description (one line):** Sisih is a USDC vault for AI agents: commitments are reserved in a
-Move contract on Sui first, the agent spends only what is left, and the owner's decisions are
-remembered in Walrus Memory so the next session needs fewer manual reviews.
+Move contract on Sui first, the agent (Claude Code over MCP) spends only what is left, the owner
+decides held purchases from the terminal, and those decisions are remembered in Walrus Memory so the
+next session needs fewer manual reviews.
 
 **Problem.** People who let an AI agent pay for APIs and data (x402) often fund it from the same USDC
 that must cover hosting, inference bills, savings and renewals. A spending limit does not know which
@@ -80,13 +81,30 @@ payments the vault already allows, and the policy engine checks hard rules befor
 - x402 on Sui: `@tentaclepay/sui-x402`; demo merchants answer 402; the vault releases exactly the
   invoice amount from free funds; the agent pays with exactly that coin; the facilitator settles on
   Sui Testnet; both digests are verified through Tatum.
-- MCP for external agents: Claude Code connects to `https://sisih-azure.vercel.app/api/mcp` with its
-  own agent credential and gets five tools (budget, services, request purchase, request status, end
-  session). Held purchases return a request ID and a dashboard link; after the owner approves, the
-  agent resumes the same request and receives the purchased content. Verified with real Claude Code
-  runs on 2026-11-06 (README, "Connect a real agent").
+- **MCP for external agents.** Claude Code connects to `https://sisih-azure.vercel.app/api/mcp`
+  with its own agent credential.
+  - It gets five tools: budget, services, request purchase, request status and end session.
+  - There are no owner tools on that server.
+  - A held purchase returns the owner's terminal command (`pnpm sisih approve <id> --remember`) and
+    a dashboard link.
+  - A settled purchase returns the result, the receipts and the Walrus memory evidence.
+  - Merchant output is treated as external data, never as instructions.
+- **Owner CLI.** `pnpm sisih` lets the owner inspect, set limits and reserves, approve or deny
+  (optionally remembered), pause, resume, revoke, start the next session, inspect the evidence and
+  release the shared demo. Owner transactions are signed by "Demo owner (server-signed, testnet)".
+- **Live data.** ChainScope, a demo merchant, sells a live Sui Testnet vault report read through
+  Tatum at purchase time. If the read fails, the purchase is not charged. The other merchants return
+  labeled fixed examples.
 
-**Learning loop.** Session 1: SearchBox 1.20 is held as a new merchant; the owner approves and
+**Learning loop, terminal run (2026-11-07, `sisih-hosted-9`).** Claude Code asks for the
+ChainScope report and it is held. The owner runs `pnpm sisih approve <id> --remember`, and Claude
+resumes with live data. After `pnpm sisih session next`, a fresh Claude session buys it with no
+approval, through the preference rebuilt from Walrus. When a higher savings reserve leaves too
+little free money, the same purchase is blocked, and the contract refuses the release directly
+(`EExceedsFree`). Pause from the terminal blocks the agent until resume. The evidence is in
+docs/evidence/final-run-sisih-hosted-9.
+
+**Learning loop, five-session run (2026-11-06, `sisih-hosted-6`).** Session 1: SearchBox 1.20 is held as a new merchant; the owner approves and
 remembers; a rule memory is stored on Walrus. Session 2: rules are rebuilt from Walrus recall and the
 same request is approved automatically. A 6.80 Inference bill against a 6.00 reserve is stored as an
 outcome memory and produces a suggestion to raise the reserve to 7.00, which the owner signs.
@@ -96,26 +114,35 @@ left too little free money). Five demo sessions in one workspace, not users.
 
 **Working demo and evidence.** https://sisih-azure.vercel.app (read-only without the demo token).
 Networks: Sui Testnet for the vault and x402, Walrus Memory Mainnet. Evidence with explorer and
-Walruscan links: README "Evidence" and docs/PROGRESS.md (Phase 5), including the contract refusing a
+Walruscan links: README "Evidence" and docs/PROGRESS.md, including the contract refusing a
 release that memory would have allowed:
-https://suiscan.xyz/testnet/tx/3QcakorFNa8YhAaXHdv8wHU39kYXnis4EdJA6mLhRGeM
+https://suiscan.xyz/testnet/tx/AFKJwvpjY4gYphMeyKsWuz1PrXrRzcoQm8MMWRXEtKqG (final run) and
+https://suiscan.xyz/testnet/tx/3QcakorFNa8YhAaXHdv8wHU39kYXnis4EdJA6mLhRGeM (five-session run).
 
 **Experience with Walrus (notes for your own answer).** The SDK's async remember job (about 20 s to
 stored) shaped the UI's "Writing" state; recall with an explicit limit can miss rule memories in a
 larger namespace, so Sisih runs tag queries next to the broad recall; the relayer sponsors gas, so
-writing memory needs no wallet on the user side.
+writing memory needs no wallet on the user side. On 2026-11-07 the namespace-filtered listing
+returned 0 while per-job status still worked, so verification moved to per-job checks; one write
+failed once with "Memory encryption backend is unavailable" and succeeded on retry.
 
 ## Judge access (private channel only)
 
 Paste this into a private field of the form (or send it privately). Never put the token in the repo,
 README, blog or a public post.
 
-> Demo: https://sisih-azure.vercel.app. Start with "Explore demo" (no token needed). To run it live,
-> open "Demo controls" (bottom right) and enter the demo token: [paste the token from your password
-> manager here, in the private field only]. Without the token the site is read-only. With it, the
-> dock runs the built-in agent's demo tasks, a billing cycle, a new session and a reset; owner
-> actions are signed by "Demo owner (server-signed, testnet)" when no wallet is connected.
-> To try a real agent: after unlocking, open "Connect your agent", reveal the agent credential, set
-> it as SISIH_AGENT_TOKEN and follow the Claude Code steps there; approve the agent's requests in
-> Agent & requests. One visitor or agent runs the demo at a time; "Lock demo controls" or the
-> agent's end_demo_session hands it back. Sui Testnet for the vault and x402, Walrus Memory Mainnet.
+> Demo: https://sisih-azure.vercel.app. Sui Testnet for the vault and x402, Walrus Memory Mainnet.
+> No token needed for "Explore a recorded run". Owner token (private): [paste the token from your
+> password manager here, in the private field only].
+> Terminal workflow (README, "Quickstart"):
+> (1) In the repo, after pnpm install, set SISIH_URL=https://sisih-azure.vercel.app and
+> SISIH_OWNER_TOKEN=<owner token>, then run `pnpm sisih status`.
+> (2) On /connect, unlock Demo controls with the owner token and reveal the agent credential. Put
+> it in SISIH_AGENT_TOKEN, in a separate, empty agent folder with the .mcp.json and skill from
+> /connect. Never put the owner token there.
+> (3) Ask Claude Code the ChainScope task. When it prints `pnpm sisih approve <id> --remember`,
+> run it in the owner terminal, then tell Claude you approved.
+> (4) `pnpm sisih evidence` shows the verified transactions and memories. `pnpm sisih release`
+> hands the shared demo back.
+> Owner actions are signed by "Demo owner (server-signed, testnet)", not by your wallet. One
+> visitor or agent runs the demo at a time. `pnpm sisih demo reset --yes` starts a clean run.

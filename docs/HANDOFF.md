@@ -28,8 +28,14 @@ address landed on testnet and is untouched.
 
 ## Status
 
-Phase 5 (testnet demo finalization) is done; evidence in docs/PROGRESS.md. Phase 6 documents are
-written and checked (2026-11-06); nothing has been pushed, published or submitted.
+The agent-first, terminal-first milestone is done (2026-11-07). Nothing has been pushed, published
+or submitted.
+
+- Claude Code buys over MCP with its own credential.
+- The owner works from the terminal with `pnpm sisih`.
+- The dashboard is the optional workspace.
+
+The final run is `sisih-hosted-9`: docs/evidence/final-run-sisih-hosted-9 and docs/PROGRESS.md.
 
 ## Done (Phase 6 prep, 2026-11-06)
 
@@ -59,8 +65,9 @@ Checks:
   Suiscan answers 200 for any path, so every cited digest was also read back through Tatum testnet:
   9 of 9 exist, 8 succeeded and the contract check failed with EExceedsFree as documented. All 6
   cited blob IDs were listed in sisih-hosted-6 by the Walrus Memory SDK on mainnet (35 memories) on
-  2026-11-06; on 2026-11-07 that namespace listing returned 0 while recall still returns all 35,
-  including the 3 cited blobs checked again.
+  2026-11-06. On 2026-11-07 the namespace-filtered listing returned 0, so all 35 were verified again,
+  one by one, through their relayer jobs (35 of 35 done with matching blob ids, and 35 in the
+  unfiltered account listing: docs/evidence/sisih-hosted-6/verify-memories-2026-11-07.txt).
 - Every number in the docs matches the snapshot: manual reviews 2, 1, 1, 2, 2; 35 memories stored
   (decision 14, obligation_outcome 13, session_summary 4, reserve_change 2, rule 2); money protected
   13.40.
@@ -70,6 +77,57 @@ Checks:
 
 Public but personal: docs/PROGRESS.md names your own Walrus Memory account owner wallet
 (0xd89f…ae32). It is not a secret; remove it before publishing if you prefer.
+
+## Terminal-first milestone (2026-11-07)
+
+What changed:
+
+- **Owner CLI.** `pnpm sisih` covers status, commitments, requests, preferences, limits, reserves,
+  approve and deny (optionally remembered), pause, resume, revoke, session next, evidence and
+  release. Reset, cycle and deposit are in a labeled demo group.
+- **Agent results.** Held results carry `owner_cli`. Blocks carry `owner_hint`. Settled results
+  carry receipts and memory evidence.
+- **ChainScope.** It returns live Sui Testnet data read through Tatum. The other merchants return
+  labeled fixed examples.
+- **Sisih skill.** Served at `/skills/sisih/SKILL.md`.
+- **Website.** Connect your agent, Explore a recorded run and Open workspace are the entry points.
+- **gate-release.ts.** It no longer runs a release on `--help`.
+
+Evidence: docs/evidence/final-run-sisih-hosted-9/README.md. It holds the seven real Claude Code
+runs, the owner CLI log, and 12 of 12 memories verified per job.
+
+The hosted demo is left in session 2 of `sisih-hosted-9`:
+
+- The vault holds 17.60 total, 16.00 committed and 1.60 free.
+- The ChainScope preference is active, and the lease is released.
+- A judge's agent can buy ChainScope at once through the remembered preference, without a reset.
+
+### Try it yourself (PowerShell)
+
+The README's quickstart has the full commands. In short:
+
+1. **Owner terminal.** In the repo, after `pnpm install`:
+   - `$env:SISIH_URL = "https://sisih-azure.vercel.app"`
+   - `$env:SISIH_OWNER_TOKEN = "<demo token>"`
+   - `pnpm sisih status`
+2. **Agent credential.** On https://sisih-azure.vercel.app/connect, unlock Demo controls with the
+   demo token and reveal the agent credential.
+3. **Agent folder.** Use a new, empty folder.
+   - Download the skill to `.claude/skills/sisih/SKILL.md` and write `.mcp.json`. The README writes
+     it without a BOM.
+   - `Remove-Item Env:SISIH_OWNER_TOKEN, Env:DEMO_TOKEN -ErrorAction SilentlyContinue`
+   - `$env:SISIH_AGENT_TOKEN = "<agent credential>"`
+   - Start `claude` with the README's `$sisih` flags.
+4. **Run.** Ask the connection check, then the ChainScope task. For a held step, reset first, so
+   that ChainScope is new: `pnpm sisih demo reset --yes`.
+5. **Approve.** When Claude prints `pnpm sisih approve <id> --remember`, run it in the owner
+   terminal. Then tell Claude you approved.
+6. **Next session.** Run `pnpm sisih session next`, then start a fresh Claude session with the same
+   task. It goes through on the remembered preference.
+   - Try a block: `pnpm sisih reserve set <id> <amount>` to leave less free money, or
+     `pnpm sisih pause`.
+7. **Finish.** `pnpm sisih evidence`, then `pnpm sisih release`, or ask Claude to call
+   `end_demo_session`.
 
 ## MCP milestone (2026-11-07)
 
@@ -93,7 +151,7 @@ mine is explained in PROGRESS and in the activity feed; the next reset sweeps it
   `vercel env add SISIH_AGENT_TOKEN production --sensitive --force` with the new value on stdin, then
   `vercel deploy --prod`. Old agent configs stop working at once.
 
-### Try it yourself
+### Try it in the browser (earlier flow, still works)
 
 1. Open https://sisih-azure.vercel.app/tour and click through the five steps (no token needed).
 2. Open https://sisih-azure.vercel.app/connect, unlock Demo controls with the demo token, reveal the
@@ -124,14 +182,17 @@ evidence before a reset.
 
 ## Your steps, in order
 
-1. Record (docs/RECORDING.md). The evidence of sisih-hosted-6 is already saved in
-   docs/evidence/; then Reset demo, wait 2 minutes, record Part A, click Lock, run sessions 3 to 5:
-   `API_URL=https://sisih-azure.vercel.app pnpm demo:continue`, record Part B. Do not reset after the
-   final take.
-2. Write the new run into docs/PROGRESS.md: namespace, stored memories (at least 10 stored),
-   reviews per session. If the numbers differ from sisih-hosted-6, update README, BLOG, SUBMISSION
-   and SOCIAL to the run the video shows, or keep citing sisih-hosted-6 and say the video is a
-   later run.
+1. Record the terminal story (docs/RECORDING.md). The evidence of `sisih-hosted-9` is already
+   saved in docs/evidence/.
+   - Start with `pnpm sisih demo reset --yes`, then record the owner terminal and the agent
+     terminal side by side.
+   - Release the lease at the end, and do not reset after the final take.
+2. Write the new run into docs/PROGRESS.md: namespace, request ids, digests.
+   - Verify the memories with
+     `pnpm --filter @sisih/server exec tsx scripts/verify-memories.ts <namespace>`. At least 10
+     must be stored.
+   - If you cite the video's run instead of `sisih-hosted-9`, update README, BLOG, SUBMISSION and
+     SOCIAL to match.
 3. Upload the video; add its URL near the top of README.md and in SUBMISSION.md.
 4. Review README.md and docs/BLOG.md, then publish the blog; add its URL to README.md and
    SUBMISSION.md.
@@ -148,5 +209,7 @@ evidence before a reset.
   walrussessions page. Check the live form for extra fields.
 - Learning impact does not trend down over five sessions; the docs say why. Do not rewrite it as an
   improvement.
-- A reset before recording replaces what the dashboard shows; the snapshot in docs/evidence keeps
-  sisih-hosted-6 inspectable.
+- A reset before recording replaces what the dashboard shows. The snapshots in docs/evidence keep
+  sisih-hosted-6, -7 and -9 inspectable.
+- The real-agent acceptance runs used `claude -p` (headless) with the isolation flags. An
+  interactive `claude` session with the same flags was not separately recorded.

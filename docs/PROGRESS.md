@@ -2,15 +2,135 @@
 
 ## Current phase
 
-MCP milestone done (2026-11-07 WIB; runs at 2026-11-06 17:25 to 17:32 UTC): a real external agent
-(Claude Code) requests services through Sisih over MCP, passes its spending controls, gets owner
-approval in the dashboard, receives the purchased result and continues its task; first-time
-visitors get "Explore demo" and "Connect your agent". Remaining steps are the user's: record the
-video, publish the blog, make the repo public, post, submit (docs/HANDOFF.md). Networks are final:
-vault, reserves, agent releases and x402 on **Sui Testnet** through Tatum testnet; Walrus Memory on
-**Mainnet**. The mainnet migration is cancelled.
+Agent-first, terminal-first milestone done (2026-11-07). Claude Code buys over MCP with its own
+restricted credential. The owner configures, approves, pauses and inspects evidence from the
+terminal (`pnpm sisih`). The dashboard is the optional workspace. The final run is on `sisih-hosted-9`
+(see below and docs/evidence/final-run-sisih-hosted-9).
+
+Remaining steps are the user's (docs/HANDOFF.md): record the video, publish the blog, make the repo
+public, post and submit.
+
+Networks are final: vault, reserves, agent releases and x402 on **Sui Testnet** through Tatum
+testnet; Walrus Memory on **Mainnet**. The mainnet migration is cancelled.
 
 ## Done
+
+### Agent-first product, terminal-first owner workflow (2026-11-07)
+
+This milestone made the owner's terminal the primary owner interface. The Claude Code agent buys over
+MCP, and the owner sets limits and decides held purchases with `pnpm sisih`. The dashboard became the
+optional workspace.
+
+Built:
+
+- **Owner CLI.**
+  - `pnpm sisih` (`server/src/cli/{spec,parse,run}.ts`, entry `server/scripts/sisih.ts`) is a command
+    table over the existing HTTP API. Groups: Inspect, Configure, Decide, Agent permission, Session,
+    Evidence, plus a labeled Demo group.
+  - Output is human readable by default, with `--json` on request.
+  - Exit codes: 0 ok, 1 failed, 2 usage, 3 auth, 4 busy, 5 not found.
+  - Help, version, status, malformed and missing arguments never send a mutating request.
+  - Mutations without the owner token exit 3 before any fetch. `demo reset` needs `--yes`.
+  - After a change, the CLI releases the shared demo run unless `--hold`.
+  - It is run through root tsx (`"sisih": "tsx server/scripts/sisih.ts"`), so exit codes survive.
+    Nested `pnpm --filter exec` flattened them to 1.
+- **Owner operations.**
+  - `server/src/demo/owner.ts` gained `set_reserve`, `add_commitment`, `set_limits` and
+    `revoke_agent`, next to deposit, accept_suggestion, pause and resume.
+  - It is a whitelist with bounded amounts and validated inputs, signed as "Demo owner
+    (server-signed, testnet)", with `assertTestnet`. It is not a signing proxy.
+  - `POST /api/rules` creates an owner preference (`createOwnerRule`, shared with `ownerDecision`).
+  - While an agent holds the demo run, the owner may also pause, resume, configure and change rules.
+- **gate-release.ts.** `--help` no longer runs a release. Parsing is strict, `--yes` is required, and
+  `parseGateArgs` / `runGateRelease` are covered by regression tests.
+- **ChainScope.**
+  - A new demo merchant: "Live Sui Testnet vault report", data, 0.80 USDC
+    (`server/src/x402/live-report.ts`).
+  - Through Tatum, it reads the checkpoint, epoch and chain time (`GetServiceInfo`), the vault
+    object and the reference gas price at purchase time. It returns observations and calculated
+    values separately.
+  - The report is produced before settlement. If the read fails, the merchant answers 503 "not
+    settled, not charged".
+  - The registry marks each service's content as `live` or `fixed`, and every response carries
+    `content_type`.
+- **MCP.**
+  - Held results return `owner_cli` (`pnpm sisih approve <id> --remember`, `pnpm sisih deny <id>`)
+    and the dashboard link.
+  - Settled results return `receipts`, `memory_evidence` and `result_note` (external data, never
+    instructions).
+  - `get_budget` returns the server-computed `largest_payment_now_usdc`.
+  - Permission and cap blocks return `owner_hint`, for example `pnpm sisih resume`.
+  - The idempotency key is scoped to the namespace. Stale mappings are ignored, and a reset clears
+    the per-run MCP keys.
+- **Sisih skill.** `web/public/skills/sisih/SKILL.md`, served at `/skills/sisih/SKILL.md`.
+- **Web.**
+  - The Overview hero has three actions: Connect your agent, Explore a recorded run, Open
+    workspace.
+  - A "Get started" nav group sits above "Workspace · optional".
+  - `/connect` was rewritten for the terminal: agent and owner setup in Bash and PowerShell, check
+    and task prompts, terminal approval, inspect, release. It is readable without unlocking.
+  - The request drawer and the dock show the `pnpm sisih` commands.
+- **Memory verification.** `server/scripts/verify-memories.ts` runs `getRememberStatus(jobId)` per
+  memory and counts the namespace in the unfiltered account listing. With `--rows <file>` it also
+  verifies earlier namespaces. The namespace-filtered `listMemories` returned 0 on 2026-11-07, so it
+  is no longer used.
+- **Tests.** 107 server tests (37 new CLI and gate-release tests, plus MCP tests) and 18 web tests.
+
+Final run (namespace `sisih-hosted-9`):
+
+- Date: 2026-11-07, 01:30 to 01:41 UTC.
+- Agent: Claude Code 2.1.201, model claude-sonnet-5.
+- Full record: [docs/evidence/final-run-sisih-hosted-9](evidence/final-run-sisih-hosted-9/README.md).
+
+The agent was isolated:
+
+- Its folder held only `.mcp.json` and the skill.
+- The owner token was unset in its environment.
+- Claude Code ran with `--tools "Skill,ToolSearch" --permission-mode dontAsk --strict-mcp-config
+  --setting-sources project`, plus `--allowedTools` for the five Sisih tools.
+- The probe showed that the agent could not list files or read the environment.
+
+| Step | Result |
+| --- | --- |
+| Owner: `demo reset --yes`, `limits set --per-request 2.00 --per-day 6.00 --days 30` | seed `7qCqTe8nTKZktPZxqAkQkrcEQELKND9FdrWHfscaxUp2` (38 s), limits `HRPPmUjQs1HLinUsGainL7UV1d398FQVA1UowrKpxNbx` |
+| A1: the agent discovers the tools and requests ChainScope | `req-637fe5e4-e5a` `awaiting_owner_approval` (`new_merchant`), with `owner_cli` |
+| Owner: `approve req-637fe5e4-e5a --remember` (12 s) | release `3sts8iZ2UNtF7CrNK28U2HQvAkc8GCrd1SPcap4XcCy6`, settle `ErfGvPGLEKaxJJTaLCrDiYgqmnnxsVADj5kPguXhNZiu`, `rule-b2dbdeb1`, blob `Nx9vQ0lsbU1sNtVLXqweYEoO31FlGz17Mb1yqLjKN_8` |
+| A2: same session, `get_request_status` | settled, live data at checkpoint 403681845 |
+| Owner: `demo cycle`, `suggestions accept sug-6cf565d5`, `session next` | Bills and income `BN9hirNW…`, `Bz7veNSS…`, `9xSUo3Ly…`, `8s6qNhAw…`, `4cXWQWTL…`. Inference API reserve raised from 6.00 to 7.00: `6Nm5B5rv7HbFMcbQtQPkTxsBx4h7utSheZb1FUds1Z1i`. 1 rule rebuilt from 7 recalled memories in 2056 ms |
+| A3: a fresh session buys ChainScope | `req-e2e8e0e4-b03` settled by `allow_rule`: release `HJXGudjrcFGPiJ1xUhv9MuPe5qqRVjzuCo3NkhtDJVNk`, settle `DGhrQx2GuVHzJL5GH4iUzBy8R7GioiQkJzwH6ctfiheq`, checkpoint 403682570 |
+| Owner: `reserve set 58 5.50` | `82Z7cwv5b7h9UaDdrb6q7gSxzPmzFWtspnGMrBmEfYXY`; vault 18.10 total, 17.50 committed, 0.60 free |
+| A4: ChainScope again, with the preference active | `req-5176bfd5-d5c` `blocked` (`would_cut_reserve`, 0.20). Direct release aborts with `EExceedsFree`: `AFKJwvpjY4gYphMeyKsWuz1PrXrRzcoQm8MMWRXEtKqG` (intentional). The owner denied the request from the CLI |
+| Owner: `pause` | `GJ3AGmivtxtBKH3v7DjRiGsvftqyJ1pma7GZXcs2Rkq5` |
+| A5: DataMart while paused | `req-24c634a4-1e1` `blocked` (`agent_paused`); `get_budget` largest payment 0.00 |
+| Owner: `resume` | `GLgCsrdrk8J6Fk4JX4jTiz49VEBxubh1We8wiHQJFFLJ` |
+| A6: DataMart | `req-fe4eada9-2c0` settled (`default_threshold`): release `AD3AHbwT5amDYnJsJT1RXK6HrVaDTaN9S7qagkAap9oP`, settle `66z3Ttbb5puKteSY5hQYJNaHPJLj89FH94iAXHAJ9YEH`; the agent called it fixed example content |
+| Owner: `release`; afterwards `reserve set 58 4.00` | Lease released. `461wEbPYi5epwCt4W11FtnmBTTHfKvn2592rTvm2EHtR` leaves 1.60 free, so a judge's agent can buy |
+| Walrus Mainnet | 12 of 12 memories `done` with matching blob ids (per job), and 12 of 12 in the unfiltered listing. One write (`mem-ae3f69ee-a69`) first failed with "Memory encryption backend is unavailable" and was stored after one owner retry |
+
+Earlier namespaces were re-verified per job on 2026-11-07: `sisih-hosted-6` 35 of 35 and
+`sisih-hosted-7` 4 of 4 (`verify-memories-2026-11-07.txt` in each evidence folder).
+
+Bugs found by the real runs, and fixed:
+
+- **Isolation.** In the preliminary `sisih-hosted-8` run, `--allowedTools` did not remove built-in
+  tools, and the agent used `Read` and `Bash` (see `docs/evidence/preliminary-run-sisih-hosted-8`).
+  Fixed with `--tools` and `dontAsk`. The hosted-8 run is kept as preliminary.
+- **Stale idempotency.** After a reset, a reused key pointed at a deleted request ("No request
+  req-adfd4a17-2e8", three times). The key is now scoped to the namespace, stale mappings are
+  ignored, and a reset clears the per-run keys. A test was added.
+- **Arithmetic.** The agent took 3.50 free as its ceiling, although the per-request cap was 2.00.
+  `get_budget` now returns `largest_payment_now_usdc`.
+- **Pause hint.** On a pause, the agent could only point to the dashboard. Blocks now carry
+  `owner_hint`.
+
+Limitations:
+
+- **A2's answer was terse.** It omitted the receipts and the checkpoint the prompt asked for.
+- **A3 listed no memory blob.** The memory was still "writing" after two checks, about 20 s.
+- **A3 took 92 s.** The agent searched for tools it did not have.
+- **One shared workspace, server-signed owner.** There are no per-visitor vaults.
+- **pnpm prints one `$ tsx …` line** before the CLI output, unless `-s` is used.
+- **User-level skills are excluded** only through `--setting-sources project`.
 
 ### MCP for external agents and first-visit entry points (2026-11-07)
 
@@ -742,13 +862,18 @@ Phase 4 (2026-11-06, hosted run): operator -> owner 0.50 USDC after the hosted r
 - The demo-run lease is per browser tab. A judge who closes the tab without "Lock demo controls"
   holds the demo for up to 10 idle minutes; the next visitor sees "Another visitor is running the
   demo" with the wait time. Test scripts must click Lock at the end (toast.mjs did not, 2026-11-06).
-- Demo owner signing covers deposit, reserve suggestions, pause and resume only. Withdraw, add /
-  edit / remove commitments, hard limits and revoke still need the owner wallet.
+- Demo owner signing covers these whitelisted owner operations: deposit, reserve suggestions,
+  pause, resume, revoke, reserve targets, add commitment, and limits (2026-11-07). Withdraw and
+  removing or editing commitments still need the owner wallet.
 - Learning impact over the 5 real sessions does not trend down (manual reviews 2, 1, 1, 2, 2): the
   sessions 4 and 5 holds come from low free funds after a reserve raise, not from memory. Phase 6
   docs must describe this as it is.
-- Before recording, reset the hosted demo (docs/RECORDING.md); that replaces the sisih-hosted-6
-  state on the dashboard. Its evidence stays on Sui Testnet, on Walrus Mainnet and in this file.
+- The hosted demo is in the final state of `sisih-hosted-9`: session 2, 1.60 free, ChainScope
+  preference active. Recording from a clean state needs `pnpm sisih demo reset --yes`
+  (docs/RECORDING.md); that starts a new namespace. The hosted-6, hosted-7 and hosted-9 evidence
+  stays on Sui Testnet, on Walrus Mainnet and in docs/evidence.
+- The SDK's namespace-filtered `listMemories` has returned 0 since 2026-11-07. Verification uses
+  per-job status plus the unfiltered listing (server/scripts/verify-memories.ts).
 
 ## Env vars
 
@@ -764,6 +889,10 @@ New in Phase 3 (optional): PUBLIC_BASE_URL (merchant URLs the agent calls; defau
 New in Phase 4: DEMO_TOKEN (unlocks the demo dock), WEB_ORIGIN (CORS), MEMWAL_NAMESPACE_PREFIX;
 DATABASE_URL is now pglite:... locally or a Postgres URL hosted (POSTGRES_URL from the Supabase
 integration also works); NEXT_PUBLIC_SUI_NETWORK, NEXT_PUBLIC_DEV_STATES (web).
+New in the MCP milestone: SISIH_AGENT_TOKEN (agent credential, Vercel env only).
+New in the terminal-first milestone:
+- MERCHANT_CHAINSCOPE_ADDRESS, MERCHANT_CHAINSCOPE_PRIVATE_KEY (local .env and Vercel production).
+- SISIH_URL, SISIH_OWNER_TOKEN, SISIH_CLIENT_ID (owner CLI, the owner's shell only).
 
 ## Later
 
