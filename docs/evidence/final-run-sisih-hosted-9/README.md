@@ -19,8 +19,10 @@ MCP tools.
 | --- | --- |
 | `owner-cli.log` | Every owner command with its UTC time, output and exit code |
 | `claude-code-runs.md` | The seven Claude Code runs: prompt, tool calls, key results, final answer |
-| `verify-memories.txt` | Per-memory Walrus check (relayer job status and blob id, plus the full account listing) |
-| `state.json`, `requests.json`, `memories.json`, `activity.json`, `rules.json`, `sessions.json`, `insights.json`, `suggestions.json` | Public API snapshot after the run |
+| `verify-memories.txt` | Per-memory Walrus check at the end of the run: 12 of 12 (relayer job status and blob id, plus the full account listing) |
+| `claude-code-post-deploy-check.md` | A7: a real Claude Code run after the `owner_hint` deploy (paused agent) |
+| `verify-memories-final.txt` | The same check on the final state, including A7's decision memory: 13 of 13 |
+| `state.json`, `requests.json`, `memories.json`, `activity.json`, `rules.json`, `sessions.json`, `insights.json`, `suggestions.json` | Public API snapshot of the final state, taken after A7 |
 
 No credential appears in any of these files. Each file was checked against the values of the owner
 token, the agent credential, the Tatum key, the Walrus Memory key and every private key; there were
@@ -151,7 +153,26 @@ The demo now stays in session 2 of `sisih-hosted-9`:
 - The vault holds 17.60 total, 16.00 committed and 1.60 free.
 - The ChainScope preference is active.
 
-This change wrote one more `reserve_change` memory. It is not part of the 12 checked below.
+A direct `reserve set` writes no memory; only an accepted or rejected suggestion writes a
+`reserve_change` memory.
+
+### After the deploy: the agent relays the owner's command (A7)
+
+The `owner_hint` change was deployed, and the agent's skill was refreshed from
+`/skills/sisih/SKILL.md`.
+
+1. 02:03 UTC: the owner ran `pnpm sisih pause`:
+   [`9ErBHNraWLS4qNJiozd4qKQgBSB5UPgmxqExn18ZBmtt`](https://suiscan.xyz/testnet/tx/9ErBHNraWLS4qNJiozd4qKQgBSB5UPgmxqExn18ZBmtt).
+2. A fresh, isolated Claude Code session asked for DataMart. `req-6136b586-89d` came back
+   `blocked` (`agent_paused`), with `owner_hint` "The owner can resume the agent from their
+   terminal: pnpm sisih resume".
+3. Claude told the user to run `pnpm sisih resume`, and also gave the dashboard link. It ended the
+   session. See `claude-code-post-deploy-check.md`.
+4. The owner ran `pnpm sisih resume`:
+   [`BEucMsFcWsehH7pkqEd9WxZW3dZhFWFr7gqwXL9p2y5B`](https://suiscan.xyz/testnet/tx/BEucMsFcWsehH7pkqEd9WxZW3dZhFWFr7gqwXL9p2y5B).
+
+A7 added one decision memory. The final namespace holds 13 memories, all verified
+(`verify-memories-final.txt`).
 
 Before this change, the same connection check was run from PowerShell, using the README's agent
 setup with `claude @sisih`. It was read only, and the agent correctly reported 0.10 free and that
@@ -202,9 +223,9 @@ once with `POST /api/memories/mem-ae3f69ee-a69/retry` (owner token), and it was 
 - **A2's answer was terse.** It gave the free funds and the largest payment, but not the receipts or
   the checkpoint, although the prompt asked for both. The tool result contained them.
 - **A5 gave only the dashboard to unpause.** The agent did not know the terminal command. Since
-  then, permission and cap blocks carry an `owner_hint` (for example `pnpm sisih resume`), and the
-  skill tells the agent to relay it. This change was made after the run and is covered by
-  `server/src/mcp/mcp.test.ts`.
+  then, permission and cap blocks carry an `owner_hint`, and the skill tells the agent to relay it.
+  This is covered by `server/src/mcp/mcp.test.ts` and was confirmed by a real run after the deploy
+  (A7).
 - **A3 reported no memory evidence.** The memory was still being written when the agent finished.
   The blob id is in `memories.json`.
 - **This is one shared workspace with a server-signed demo owner.** There are no per-visitor vaults.
