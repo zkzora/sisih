@@ -39,7 +39,9 @@ with prices. Do not call `request_purchase` during a connection check.
      `request_id`. Never submit the purchase again.
    - `processing`: approved and being paid. Check again with `get_request_status` after a few seconds.
    - `blocked`: a hard limit refused it (committed funds, caps, paused or revoked permission). Report
-     the reason. Do not retry, split the purchase, or switch to another service to get around it.
+     the reason. If there is an `owner_hint` (for example `pnpm sisih resume`), give the user that
+     terminal command; only the owner can run it. Do not retry, split the purchase, or switch to
+     another service to get around it.
    - `denied`: the owner or a remembered owner preference refused it. Continue without it.
    - `failed`: nothing was settled. Report the reason; do not retry on your own.
    - `busy`: someone else is using the shared demo. Wait and retry later, or tell the user.

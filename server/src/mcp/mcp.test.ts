@@ -278,11 +278,16 @@ describe("terminal-first owner workflow and hard limits", () => {
     vault.state = { ...vault.state, policy: { ...vault.state.policy!, paused: true } };
     expect((await call(client, "get_budget")).body.agent_permission.status).toBe("paused");
     const paused = (await call(client, "request_purchase", { service: "datamart", task: "Buy while paused" })).body;
-    expect(paused).toMatchObject({ outcome: "blocked", paid: false });
+    expect(paused).toMatchObject({ outcome: "blocked", paid: false, decision_code: "agent_paused" });
+    // The owner's terminal command is relayed as a hint; it is not an action the agent can take.
+    expect(paused.owner_hint).toContain("pnpm sisih resume");
+    expect(paused.owner_cli).toBeUndefined();
     const savedPolicy = vault.state.policy;
     vault.state = { ...vault.state, policy: null };
     expect((await call(client, "get_budget")).body.agent_permission.status).toBe("revoked");
-    expect((await call(client, "request_purchase", { service: "datamart", task: "Buy while revoked" })).body).toMatchObject({ outcome: "blocked", paid: false });
+    const revoked = (await call(client, "request_purchase", { service: "datamart", task: "Buy while revoked" })).body;
+    expect(revoked).toMatchObject({ outcome: "blocked", paid: false, decision_code: "agent_no_permission" });
+    expect(revoked.owner_hint).toContain("pnpm sisih limits set");
     vault.state = { ...vault.state, policy: { ...savedPolicy!, paused: false } };
     expect(charges).toEqual([]);
   });
