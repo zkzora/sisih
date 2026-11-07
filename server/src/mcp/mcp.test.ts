@@ -103,7 +103,7 @@ describe("connection and discovery", () => {
     const names = (await client.listTools()).tools.map((t) => t.name).sort();
     expect(names).toEqual(["end_demo_session", "get_budget", "get_request_status", "list_services", "request_purchase"]);
     const services = (await call(client, "list_services")).body.services;
-    expect(services.map((s: { service: string }) => s.service)).toEqual(["datamart", "searchbox", "reportlab"]);
+    expect(services.map((s: { service: string }) => s.service)).toEqual(["datamart", "searchbox", "reportlab", "chainscope"]);
     expect(services.every((s: { demo: boolean }) => s.demo)).toBe(true);
     const budget = (await call(client, "get_budget")).body;
     expect(budget.vault).toMatchObject({ total_usdc: "20.00", committed_usdc: "16.50", free_usdc: "3.50" });
@@ -253,5 +253,75 @@ describe("understandable errors and the shared demo", () => {
     expect(reset.status).toBe(423);
     expect((await reset.json()).code).toBe("agent_run_active");
     void actionLock;
+  });
+});
+
+describe("terminal-first owner workflow and hard limits", () => {
+  it("a held purchase hands the owner an exact terminal command for that request", async () => {
+    const client = await connect();
+    const held = (await call(client, "request_purchase", { service: "chainscope", task: "Vault health check for the owner" })).body;
+    expect(held.outcome).toBe("awaiting_owner_approval");
+    expect(held.owner_cli).toEqual({
+      approve: `pnpm sisih approve ${held.request_id}`,
+      approve_and_remember: `pnpm sisih approve ${held.request_id} --remember`,
+      deny: `pnpm sisih deny ${held.request_id}`,
+    });
+    expect(held.next_step).toContain(`pnpm sisih approve ${held.request_id} --remember`);
+    expect(held.owner_dashboard_url).toContain(held.request_id); // the browser is optional, not the only path
+    const services = (await call(client, "list_services")).body.services;
+    expect(services.find((s: { service: string }) => s.service === "chainscope").content).toMatch(/live/);
+  });
+
+  it("pause and revoke take effect on the agent at once", async () => {
+    const client = await connect();
+    vault.state = { ...vault.state, policy: { ...vault.state.policy!, paused: true } };
+    expect((await call(client, "get_budget")).body.agent_permission.status).toBe("paused");
+    const paused = (await call(client, "request_purchase", { service: "datamart", task: "Buy while paused" })).body;
+    expect(paused).toMatchObject({ outcome: "blocked", paid: false });
+    const savedPolicy = vault.state.policy;
+    vault.state = { ...vault.state, policy: null };
+    expect((await call(client, "get_budget")).body.agent_permission.status).toBe("revoked");
+    expect((await call(client, "request_purchase", { service: "datamart", task: "Buy while revoked" })).body).toMatchObject({ outcome: "blocked", paid: false });
+    vault.state = { ...vault.state, policy: { ...savedPolicy!, paused: false } };
+    expect(charges).toEqual([]);
+  });
+
+  it("an active allow preference still cannot spend committed funds", async () => {
+    const { createOwnerRule } = await import("../services/requests");
+    await createOwnerRule({ merchant: "SearchBox", category: "search", maxAmount: 1_500_000n, action: "allow", expiresMs: Date.now() + 86_400_000 }, { session: 1 });
+    const client = await connect();
+    const ok = (await call(client, "request_purchase", { service: "searchbox", task: "Allowed by the remembered preference" })).body;
+    expect(ok).toMatchObject({ outcome: "settled", decision_code: "allow_rule" });
+    vault.state = { ...vault.state, free: 1_000_000n }; // 1.00 free, SearchBox costs 1.20
+    const blocked = (await call(client, "request_purchase", { service: "searchbox", task: "Same preference, not enough free funds" })).body;
+    expect(blocked).toMatchObject({ outcome: "blocked", paid: false, decision_code: "would_cut_reserve" });
+    expect(charges).toEqual([ok.request_id]);
+  });
+
+  it("processing and failed outcomes say plainly that nothing is settled", async () => {
+    const { outcomeFor } = await import("./tools");
+    const view = { id: "req-p", merchant: "ChainScope", amount: "800000", taskContext: "t", reasons: ["New merchant"], code: "new_merchant", status: "approved", allowDisabled: false, paymentStatus: "pending", paymentDigests: [] } as never;
+    const processing = outcomeFor(view, null);
+    expect(processing).toMatchObject({ outcome: "processing", paid: false });
+    expect(processing.message).toMatch(/not settled until Tatum verifies/);
+    const failed = outcomeFor({ ...(view as object), paymentStatus: "failed" } as never, null, "Vault refused the release (EExceedsFree)");
+    expect(failed).toMatchObject({ outcome: "failed", paid: false });
+    expect(failed.message).toMatch(/EExceedsFree/);
+  });
+
+  it("the owner can pause during an agent run; demo-run actions stay blocked", async () => {
+    const { acquireLease } = await import("../lib/leases");
+    await acquireLease("demo_run", "agent:demo", 60_000);
+    const app = new Hono();
+    app.use("/api/*", demoGuard());
+    for (const p of ["/api/demo/owner-action", "/api/rules", "/api/demo/run-task"]) app.post(p, (c) => c.json({ ok: true }));
+    const owner = { "x-demo-token": "owner-secret", "x-demo-client": "owner-cli", "x-forwarded-for": "10.0.6.6" };
+    expect((await app.request("/api/demo/owner-action", { method: "POST", headers: owner })).status).toBe(200);
+    expect((await app.request("/api/rules", { method: "POST", headers: owner })).status).toBe(200);
+    expect((await app.request("/api/demo/run-task", { method: "POST", headers: owner })).status).toBe(423);
+    // ...and the agent credential still cannot reach any of them
+    expect((await app.request("/api/demo/owner-action", { method: "POST", headers: { authorization: "Bearer agent-secret", "x-forwarded-for": "10.0.6.7" } })).status).toBe(401);
+    expect((await app.request("/api/rules", { method: "POST", headers: { authorization: "Bearer agent-secret", "x-forwarded-for": "10.0.6.7" } })).status).toBe(401);
+    await releaseLease("demo_run", "agent:demo");
   });
 });
