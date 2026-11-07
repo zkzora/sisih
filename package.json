@@ -9,6 +9,10 @@
     "typecheck": "pnpm -r typecheck",
     "demo:run": "pnpm --filter @sisih/server exec tsx scripts/demo-run.ts",
     "demo:continue": "pnpm --filter @sisih/server exec tsx scripts/demo-continue.ts",
-    "mcp:check": "pnpm --filter @sisih/server exec tsx scripts/mcp-check.ts"
+    "mcp:check": "pnpm --filter @sisih/server exec tsx scripts/mcp-check.ts",
+    "sisih": "tsx server/scripts/sisih.ts"
+  },
+  "devDependencies": {
+    "tsx": "4.23.15"
   }
 }

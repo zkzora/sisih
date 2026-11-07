@@ -170,6 +170,25 @@ export async function submitRequest(input: SubmitInput) {
 
 export type OwnerDecision = "approve_once" | "approve_and_remember" | "deny" | "deny_and_remember";
 
+/**
+ * Write an owner preference: a rule memory on Walrus plus the local rule cache (applies at once).
+ * Used by "remember" decisions and by owners creating a preference directly (POST /api/rules).
+ * A preference only chooses among payments the vault already allows; it never expands authority.
+ */
+export async function createOwnerRule(fields: RuleFields, opts: { session: number; requestId?: string }) {
+  const sentence = ruleSentence(fields);
+  const ruleId = `rule-${randomUUID().slice(0, 8)}`;
+  const mem = await remember(
+    "rule",
+    sentence,
+    { ruleId, merchant: fields.merchant, category: fields.category, maxAmount: fields.maxAmount.toString(), action: fields.action, expiresMs: fields.expiresMs, requestId: opts.requestId ?? null },
+    { session: opts.session, usedIn: opts.requestId ? [opts.requestId] : [] },
+  );
+  const rule = await addLocalRule({ ...fields, sentence }, mem.id, ruleId); // applies immediately from the local cache
+  publish("rule.created", jsonSafe(rule));
+  return { ruleId, memoryId: mem.id, sentence, rule };
+}
+
 export interface RuleInput {
   merchant?: string;
   category?: Category;
@@ -230,17 +249,9 @@ export async function ownerDecision(id: string, kind: OwnerDecision, ruleInput?:
   let ruleId: string | undefined;
   let ruleMemoryId: string | undefined;
   if (fields) {
-    const sentence = ruleSentence(fields);
-    ruleId = `rule-${randomUUID().slice(0, 8)}`;
-    const mem = await remember(
-      "rule",
-      sentence,
-      { ruleId, merchant: fields.merchant, category: fields.category, maxAmount: fields.maxAmount.toString(), action: fields.action, expiresMs: fields.expiresMs, requestId: r.id },
-      { session: r.session, usedIn: [r.id] },
-    );
-    ruleMemoryId = mem.id;
-    const rule = await addLocalRule({ ...fields, sentence }, mem.id, ruleId); // applies immediately from the local cache
-    publish("rule.created", jsonSafe(rule));
+    const created = await createOwnerRule(fields, { session: r.session, requestId: r.id });
+    ruleId = created.ruleId;
+    ruleMemoryId = created.memoryId;
   }
 
   await db().insert(schema.decisions).values({ requestId: id, kind, ruleId: ruleId ?? null, memoryId: ruleMemoryId ?? null, at: nowMs });

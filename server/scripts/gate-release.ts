@@ -1,18 +1,18 @@
 /**
- * Phase 1 gate: operator releases 0.50 to the agent (must succeed), then 5.00 (must abort
- * with EExceedsFree: within the 5.00 per-request cap, but only 3.00 is free).
- * The failing transaction is executed on-chain with a small explicit gas budget, so the
- * abort has a digest as evidence.
+ * Contract check (Phase 1 gate, reused as evidence): see src/demo/gate-release.ts.
+ *   tsx scripts/gate-release.ts --help
+ *   tsx scripts/gate-release.ts --yes --skip-success --amount 1.20
+ * The failing transaction is executed onchain with a small explicit gas budget, so the abort has
+ * a digest as evidence.
  */
 import { Inputs, Transaction } from "@mysten/sui/transactions";
 import { CLOCK_ID, vaultAbortName as abortName, operatorCapId, target, usdc, usdcType, vaultId } from "../src/chain/sisih";
-import { formatUsdc } from "../src/lib/env";
+import { runGateRelease } from "../src/demo/gate-release";
 import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction } from "../src/lib/tatum";
 import { address, keypair } from "../src/lib/wallets";
 
-const operator = keypair("operator");
-const agent = address("agent");
-const agentUsdc = async () => BigInt((await suiClient().core.getBalance({ owner: agent, coinType: usdcType() })).balance.balance);
+const operator = () => keypair("operator");
+const agentUsdc = async () => BigInt((await suiClient().core.getBalance({ owner: address("agent"), coinType: usdcType() })).balance.balance);
 
 /**
  * Build release_to_agent. With unsimulated = true every input is a fully specified object
@@ -21,7 +21,7 @@ const agentUsdc = async () => BigInt((await suiClient().core.getBalance({ owner:
  */
 async function release(amount: bigint, requestId: string, unsimulated = false) {
   const tx = new Transaction();
-  const sender = operator.toSuiAddress();
+  const sender = operator().toSuiAddress();
   tx.setSender(sender);
   await setGas(tx, { budget: 20_000_000n });
   let vaultArg, capArg, clockArg;
@@ -60,26 +60,17 @@ async function release(amount: bigint, requestId: string, unsimulated = false) {
     typeArguments: [usdcType()],
     arguments: [vaultArg, capArg, tx.pure.u64(amount), tx.pure.vector("u8", [...new TextEncoder().encode(requestId)]), clockArg],
   });
-  return signAndExecuteDetailed(tx, operator);
+  return signAndExecuteDetailed(tx, operator());
 }
 
-let okPass = true;
-if (!process.argv.includes("--skip-success")) {
-  const before = await agentUsdc();
-  const ok = await release(usdc("0.50"), "gate-0.50");
-  const okV = await verifyTransaction(ok.digest);
-  const after = await agentUsdc();
-  console.log(`release 0.50: ${ok.digest} success=${ok.success} verified=${okV.success} agent USDC ${formatUsdc(before)} -> ${formatUsdc(after)}`);
-  okPass = ok.success && okV.success && after - before === usdc("0.50");
-}
-
-// --amount=1.20: the refused release (default 5.00). Use an amount above the vault's free funds.
-const badAmount = process.argv.find((a) => a.startsWith("--amount="))?.slice(9) ?? "5.00";
-const bad = await release(usdc(badAmount), `gate-${badAmount}`, true);
-const badV = await verifyTransaction(bad.digest);
-console.log(`release ${badAmount}: ${bad.digest} success=${bad.success} verified-on-chain=${!badV.success ? "failed as expected" : "UNEXPECTED SUCCESS"}`);
-console.log(`  abort: ${abortName(bad.error)}  raw: ${bad.error?.slice(0, 300)}`);
-
-const pass = okPass && !bad.success && !badV.success && abortName(bad.error) === "EExceedsFree";
-console.log(pass ? "PASS" : "FAIL");
-process.exit(pass ? 0 : 1);
+// Arguments are checked first (src/demo/gate-release.ts): --help, unknown options and a missing
+// --yes never reach release().
+process.exit(
+  await runGateRelease(process.argv.slice(2), {
+    release: (amount, requestId, unsimulated) => release(usdc(amount), requestId, unsimulated),
+    verify: (d) => verifyTransaction(d),
+    agentUsdc,
+    abortName: (e) => abortName(e ?? null),
+    log: (l) => console.log(l),
+  }),
+);

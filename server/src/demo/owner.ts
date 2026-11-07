@@ -112,7 +112,7 @@ export function setObligationTarget(id: number, newTarget: bigint, source: "owne
 /** Shown wherever the server signs as the owner, so nobody mistakes it for the owner wallet. */
 export const DEMO_OWNER_LABEL = "Demo owner (server-signed, testnet)";
 
-const DEMO_OWNER_ACTIONS = ["deposit", "accept_suggestion", "pause_agent", "resume_agent"] as const;
+const DEMO_OWNER_ACTIONS = ["deposit", "accept_suggestion", "pause_agent", "resume_agent", "revoke_agent", "set_reserve", "add_commitment", "set_limits"] as const;
 export type DemoOwnerAction = (typeof DEMO_OWNER_ACTIONS)[number];
 export const isDemoOwnerAction = (a: unknown): a is DemoOwnerAction => DEMO_OWNER_ACTIONS.includes(a as DemoOwnerAction);
 
@@ -123,7 +123,29 @@ const DEMO_DEPOSIT_MAX = usdc("1.00");
  * The owner actions a judge can run without the owner wallet, signed with the demo owner key.
  * Refused on mainnet: there every owner action comes from the owner's own wallet.
  */
-export async function demoOwnerAction(action: DemoOwnerAction, body: { amount?: string; suggestionId?: string }) {
+export interface DemoOwnerBody {
+  amount?: string;
+  suggestionId?: string;
+  obligationId?: number;
+  name?: string;
+  payee?: string;
+  kind?: "fixed" | "usage";
+  recurring?: boolean;
+  priority?: "must" | "important";
+  cadence?: string;
+  maxPerRequest?: string;
+  maxPerDay?: string;
+  days?: number;
+}
+
+const OWNER_AMOUNT_MAX = usdc("100.00"); // sanity bound for demo commitments, reserves and limits
+const LIMIT_MAX = usdc("50.00");
+const baseUnits = (v: string | undefined, what: string): bigint => {
+  if (!/^\d+$/.test(v ?? "")) throw new ApiError(400, `${what} must be a base-unit integer string`);
+  return BigInt(v!);
+};
+
+export async function demoOwnerAction(action: DemoOwnerAction, body: DemoOwnerBody) {
   assertTestnet(`${DEMO_OWNER_LABEL} signing`);
   const fail = (w: WriteResult): never => {
     throw new ApiError(422, w.ok ? "unexpected" : `${w.reason}`, w.ok ? "rejected" : w.code);
@@ -151,10 +173,66 @@ export async function demoOwnerAction(action: DemoOwnerAction, body: { amount?: 
     }
     case "pause_agent":
     case "resume_agent":
-      w = await signedWrite(owner(), `${action === "pause_agent" ? "Pause" : "Resume"} agent · ${DEMO_OWNER_LABEL}`, (tx) =>
+    case "revoke_agent": {
+      const verb = action === "pause_agent" ? "Pause agent" : action === "resume_agent" ? "Resume agent" : "Revoke agent permission";
+      w = await signedWrite(owner(), `${verb} · ${DEMO_OWNER_LABEL}`, (tx) =>
         tx.moveCall({ target: target(action), typeArguments: T(), arguments: [tx.object(vaultId())] }),
       { source: "demo_owner" });
       break;
+    }
+    case "set_reserve": {
+      const amount = baseUnits(body.amount, "amount");
+      if (amount <= 0n || amount > OWNER_AMOUNT_MAX) throw new ApiError(400, `Reserve must be between 0.000001 and ${formatUsdc(OWNER_AMOUNT_MAX)} USDC`);
+      const o = (await vaultState()).obligations.find((x) => x.id === Number(body.obligationId));
+      if (!o) throw new ApiError(404, `No commitment with id ${body.obligationId}`, "not_found");
+      w = await signedWrite(owner(), `Change reserve: ${o.name} ${formatUsdc(o.target)} to ${formatUsdc(amount)} USDC · ${DEMO_OWNER_LABEL}`, (tx) =>
+        tx.moveCall({ target: target("set_obligation_target"), typeArguments: T(), arguments: [tx.object(vaultId()), tx.pure.u64(BigInt(o.id)), tx.pure.u64(amount)] }),
+      { source: "demo_owner" });
+      break;
+    }
+    case "add_commitment": {
+      const name = (body.name ?? "").trim();
+      if (!/^[A-Za-z0-9 .,'&()-]{2,40}$/.test(name)) throw new ApiError(400, "name must be 2 to 40 letters, digits, spaces or simple punctuation");
+      if (!/^0x[0-9a-fA-F]{64}$/.test(body.payee ?? "")) throw new ApiError(400, "payee must be a full Sui address (0x + 64 hex)");
+      const amount = baseUnits(body.amount, "amount");
+      if (amount <= 0n || amount > OWNER_AMOUNT_MAX) throw new ApiError(400, `Amount must be between 0.000001 and ${formatUsdc(OWNER_AMOUNT_MAX)} USDC`);
+      const recurring = body.recurring !== false;
+      const cycle = recurring ? demoCycleMs() : 0n;
+      const cadence = (body.cadence ?? (recurring ? "Monthly" : "One-time")).slice(0, 20);
+      w = await signedWrite(owner(), `Add commitment: ${name} ${formatUsdc(amount)} USDC · ${DEMO_OWNER_LABEL}`, (tx) =>
+        tx.moveCall({
+          target: target("add_obligation"),
+          typeArguments: T(),
+          arguments: [
+            tx.object(vaultId()),
+            tx.pure.string(name),
+            tx.pure.address(body.payee!),
+            tx.pure.u64(amount),
+            tx.pure.u8(body.kind === "usage" ? KIND.usage : KIND.fixed),
+            tx.pure.u64(cycle),
+            tx.pure.u64(BigInt(Date.now()) + demoCycleMs()),
+            tx.pure.u8(body.priority === "important" ? PRIORITY.important : PRIORITY.must),
+            tx.pure.string(cadence),
+          ],
+        }),
+      { source: "demo_owner" });
+      break;
+    }
+    case "set_limits": {
+      const perRequest = baseUnits(body.maxPerRequest, "maxPerRequest");
+      const perDay = baseUnits(body.maxPerDay, "maxPerDay");
+      const days = Number(body.days ?? 30);
+      if (perRequest <= 0n || perRequest > perDay || perDay > LIMIT_MAX) throw new ApiError(400, `Need 0 < per-request <= per-day <= ${formatUsdc(LIMIT_MAX)} USDC`);
+      if (!Number.isInteger(days) || days < 1 || days > 90) throw new ApiError(400, "days must be a whole number from 1 to 90");
+      w = await signedWrite(owner(), `Agent limits ${formatUsdc(perRequest)} per request, ${formatUsdc(perDay)} per day, ${days} days · ${DEMO_OWNER_LABEL}`, (tx) =>
+        tx.moveCall({
+          target: target("set_agent_policy"),
+          typeArguments: T(),
+          arguments: [tx.object(vaultId()), tx.pure.address(address("agent")), tx.pure.u64(perRequest), tx.pure.u64(perDay), tx.pure.u64(BigInt(Date.now()) + BigInt(days) * 86_400_000n), tx.object(CLOCK_ID)],
+        }),
+      { source: "demo_owner" });
+      break;
+    }
   }
   if (!w.ok) fail(w);
   if (w.ok && w.tx) await onVaultEvents(w.tx);

@@ -17,11 +17,11 @@ import { env, suiNetwork } from "../lib/env";
 import { suiClient, tatumGrpcHost, tatumStats } from "../lib/tatum";
 import { address as walletAddress } from "../lib/wallets";
 import { delegatePublicKey, memwalHealth, namespace, pendingMemoryCount, reconcilePendingMemories, remember, retryMemory, RELAYER_URL } from "../memory/memwal";
-import { MERCHANTS } from "../merchants/registry";
+import { findMerchant, MERCHANTS } from "../merchants/registry";
 import { acceptSuggestion, listSuggestions, onVaultEvents, rejectSuggestion } from "../services/chainEvents";
 import { insights } from "../services/insights";
 import { paymentExecutor } from "../services/payments";
-import { ApiError, getRequest, listRequests, ownerDecision, requestView, ruleDraft, submitRequest, type OwnerDecision } from "../services/requests";
+import { ApiError, createOwnerRule, getRequest, listRequests, ownerDecision, requestView, ruleDraft, submitRequest, type OwnerDecision } from "../services/requests";
 import { sessionStats, startSession } from "../services/sessions";
 import { addLocalRule, cachedRule, cachedRules, currentSession, defaultThreshold, kvRead, kvSet, setRuleActive, type CachedRule } from "../services/state";
 import { isScenario, runTask, SCENARIOS } from "../agent/runner";
@@ -31,7 +31,7 @@ import { actionLock, allowedOrigins, clientIp, DEMO_CLIENT_HEADER, DEMO_TOKEN_HE
 import { handleMcp } from "../mcp/server";
 import { baseUrl } from "../x402/merchants";
 import { background } from "../lib/background";
-import { demoOwnerAction, isDemoOwnerAction } from "../demo/owner";
+import { demoOwnerAction, isDemoOwnerAction, type DemoOwnerBody } from "../demo/owner";
 
 export const walrusBlobUrl = (blobId: string) => `https://walruscan.com/mainnet/blob/${blobId}`;
 
@@ -256,6 +256,26 @@ export function createApp() {
   // --- rules --------------------------------------------------------------------------
   app.get("/api/rules", async (c) => ok(c, await Promise.all((await cachedRules()).map(ruleView))));
 
+  /**
+   * Owner (demo token): create a preference directly, for example "allow ChainScope up to 1.00 for
+   * 30 days". The category comes from the merchant registry, never from the caller.
+   */
+  app.post("/api/rules", async (c) => {
+    const b = await c.req.json<{ merchant?: string; action?: string; maxAmount?: string; days?: number }>();
+    const m = findMerchant(b.merchant ?? "");
+    if (!m) throw new ApiError(400, `Unknown merchant ${b.merchant}. Demo merchants: ${MERCHANTS.map((x) => x.name).join(", ")}.`);
+    if (b.action !== "allow" && b.action !== "deny") throw new ApiError(400, "action must be allow or deny");
+    if (!/^\d+$/.test(b.maxAmount ?? "")) throw new ApiError(400, "maxAmount must be a base-unit integer string");
+    const maxAmount = BigInt(b.maxAmount!);
+    if (maxAmount <= 0n || maxAmount > 100_000_000n) throw new ApiError(400, "maxAmount must be between 0.000001 and 100.00 USDC");
+    const days = Number(b.days ?? 30);
+    if (!Number.isInteger(days) || days < 1 || days > 90) throw new ApiError(400, "days must be a whole number from 1 to 90");
+    const created = await createOwnerRule(
+      { merchant: m.name, category: m.category, maxAmount, action: b.action, expiresMs: Date.now() + days * 86_400_000 },
+      { session: await currentSession() },
+    );
+    return ok(c, { ruleId: created.ruleId, memoryId: created.memoryId, sentence: created.sentence }, 201);
+  });
   app.patch("/api/rules/:id", async (c) => {
     const id = c.req.param("id");
     const rule = await cachedRule(id);
@@ -390,8 +410,10 @@ export function createApp() {
    * "Demo owner (server-signed, testnet)". A connected owner wallet signs through /api/sui-rpc instead.
    */
   app.post("/api/demo/owner-action", async (c) => {
-    const body = await c.req.json<{ action: string; amount?: string; suggestionId?: string }>();
-    if (!isDemoOwnerAction(body.action)) throw new ApiError(400, "action must be deposit, accept_suggestion, pause_agent or resume_agent");
+    const body = await c.req.json<DemoOwnerBody & { action: string }>();
+    if (!isDemoOwnerAction(body.action)) {
+      throw new ApiError(400, "action must be one of deposit, accept_suggestion, pause_agent, resume_agent, revoke_agent, set_reserve, add_commitment, set_limits");
+    }
     return ok(c, await demoOwnerAction(body.action, body), 201);
   });
 

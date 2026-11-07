@@ -94,7 +94,15 @@ export function agentAuth(header: (name: string) => string | undefined | null): 
  * requests and start a new session (the dashboard is the owner's approval interface). Every other
  * mutation stays blocked, so two visitors' runs never mix.
  */
-const OWNER_PATHS_DURING_AGENT_RUN = [/^\/api\/requests\/[^/]+\/decision$/, /^\/api\/demo\/new-session$/];
+const OWNER_PATHS_DURING_AGENT_RUN = [
+  /^\/api\/requests\/[^/]+\/decision$/,
+  /^\/api\/demo\/new-session$/,
+  // The owner stays in charge of the agent's authority during its run: pause, resume, revoke,
+  // limits, reserves and preferences. Demo-run actions (reset, cycle, built-in tasks) stay blocked.
+  /^\/api\/demo\/owner-action$/,
+  /^\/api\/rules(\/[^/]+)?$/,
+  /^\/api\/settings$/,
+];
 
 /** The checks every mutating request passes, wherever it is served. null = allowed. */
 export async function demoAccess(req: { method: string; path: string; header: (name: string) => string | undefined | null }): Promise<Denied | null> {
