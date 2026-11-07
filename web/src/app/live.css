@@ -505,3 +505,24 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Long breadcrumbs ("Connect your agent") never push the wallet button off screen. */
+.topbar > .breadcrumb {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.topbar > .topbar-right {
+  flex-shrink: 0; /* its items never shrink, so only the breadcrumb gives way */
+}
+.breadcrumb > span:last-child {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 1439px) {
+  /* Judge mode adds the demo-owner badge: keep the number, drop the caption (tooltip keeps it). */
+  .topbar-right:has(.demo-owner-badge) .available-meter small {
+    display: none;
+  }
+}
