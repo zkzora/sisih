@@ -248,10 +248,12 @@ export interface LoadedRules {
 export const RULE_RECALL_LIMIT = 100; // relayer cap
 
 async function namespaceInventory(ns: string): Promise<number> {
+  // The relayer's namespace filter returned 0 for every namespace on 2026-11-07, while the
+  // unfiltered listing still pages through every memory with its namespace_id; count those.
   let cursor: string | undefined;
   let count = 0;
-  for (let page = 0; page < 20; page++) {
-    const res = await memwal().listMemories({ cursor, namespace: ns, limit: 100 });
+  for (let page = 0; page < 50; page++) {
+    const res = await memwal().listMemories({ cursor, limit: 100 });
     count += res.memories.filter((m) => m.namespace_id === ns).length;
     if (!res.has_more || !res.next_cursor) break;
     cursor = res.next_cursor;
