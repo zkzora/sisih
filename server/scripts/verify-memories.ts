@@ -1,8 +1,10 @@
 /**
  * Verify, per memory, that a namespace's memories are stored on Walrus Mainnet.
  *   SISIH_URL=https://sisih-azure.vercel.app pnpm --filter @sisih/server exec tsx scripts/verify-memories.ts [namespace]
+ *   ... verify-memories.ts <namespace> --rows <memories.json>   (rows from an evidence snapshot)
  *
- * 1. Reads the memory rows the deployment recorded (public GET /api/memories): job id, blob id.
+ * 1. Reads the memory rows the deployment recorded (public GET /api/memories, or a saved snapshot
+ *    with --rows for an earlier namespace): job id, blob id.
  * 2. For each row, asks the relayer for that job (getRememberStatus): must be "done" with the same
  *    blob id. This checks each memory individually instead of inferring a total.
  * 3. Pages through the account's full memory listing WITHOUT the namespace filter (the filtered
@@ -13,14 +15,19 @@
 import "../src/lib/env";
 import { memwalClient } from "../src/memory/memwal";
 
+import { readFileSync } from "node:fs";
+
 const base = (process.env.SISIH_URL ?? "https://sisih-azure.vercel.app").replace(/\/$/, "");
-const state = await (await fetch(`${base}/api/state`)).json();
-const ns = process.argv[2] ?? state.memory.namespace;
-const raw = await (await fetch(`${base}/api/memories`)).json();
+const args = process.argv.slice(2);
+const rowsAt = args.indexOf("--rows");
+const rowsFile = rowsAt >= 0 ? args[rowsAt + 1] : undefined;
+const positional = args.filter((_, i) => rowsAt < 0 || (i !== rowsAt && i !== rowsAt + 1));
+const ns = positional[0] ?? (await (await fetch(`${base}/api/state`)).json()).memory.namespace;
+const raw = rowsFile ? JSON.parse(readFileSync(rowsFile, "utf8")) : await (await fetch(`${base}/api/memories`)).json();
 const rows = ((Array.isArray(raw) ? raw : raw.memories) as any[]).filter((m) => m.namespace === ns);
 const m = memwalClient();
 
-console.log(`namespace ${ns}: ${rows.length} memory rows recorded by ${base}`);
+console.log(`namespace ${ns}: ${rows.length} memory rows recorded by ${rowsFile ?? base}`);
 let confirmed = 0;
 const results: { id: string; type: string; job: string; status: string; blob: string; match: boolean }[] = [];
 for (const r of rows) {

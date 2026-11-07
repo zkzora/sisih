@@ -1,0 +1,9 @@
+namespace sisih-hosted-7: 4 memory rows recorded by ../docs/evidence/agent-run-sisih-hosted-7/memories.json
+  stored  decision           job 87f08bed relayer done   blob 7G-Ja7VVs0bsH_W8jc6ZvalLXAPeDdYsn0VpidjzUZs
+  stored  session_summary    job f0e91527 relayer done   blob fBtwN22lDtsgbARWBARZBPzXGet_pYWXbq4WI8d5Ruw
+  stored  decision           job fc7e5ab5 relayer done   blob c1HS_Tn9d2_krD9e7KxQQ5xeH8J-KVECdOwDsZrS9Wg
+  stored  rule               job 8da683ad relayer done   blob O-QtCBRXvteV5QWhBXJEzen7iRtdn9W3hI0LhbnM79s
+
+per-memory relayer check: 4 of 4 done with a matching blob id
+full account listing (3 pages, unfiltered): 4 memories in sisih-hosted-7; 4 of 4 recorded blob ids present
+recall sample (top 5, sources only): 7G-Ja7VVs0 d=0.501, c1HS_Tn9d2 d=0.560, fBtwN22lDt d=0.606, O-QtCBRXvt d=0.660
