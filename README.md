@@ -5,6 +5,14 @@
 **Live demo:** https://sisih-azure.vercel.app (no setup; read-only for visitors, judges get a demo
 token through the submission form)
 
+Two ways to try it:
+
+- **Explore demo** (https://sisih-azure.vercel.app/tour): a guided replay of one recorded run, no
+  credentials, wallet or transactions.
+- **Connect your agent** (https://sisih-azure.vercel.app/connect): point Claude Code at Sisih's MCP
+  endpoint; the agent requests purchases, you approve new ones in the dashboard, the agent gets the
+  purchased result. See [Connect a real agent](#connect-a-real-agent-mcp).
+
 Sisih is a USDC vault for people who give an AI agent a budget. Committed money (hosting, inference
 bills, savings, renewals) is reserved in a Move contract on Sui first; the agent can only be paid from
 what is left. What the owner decides about the agent's purchases is remembered in Walrus Memory, so
@@ -45,7 +53,7 @@ USDC has no monetary value; every amount below is testnet USDC.
 
 ```mermaid
 flowchart TD
-  A[Research Agent calls a demo merchant] -->|HTTP 402 + invoice| B[Sisih server: payment request]
+  A[Agent: Claude Code over MCP, or the built-in Research Agent<br/>asks to buy a demo service] -->|Sisih fetches the merchant's 402 invoice| B[Sisih server: payment request]
   B --> C{Hard rules first<br/>cached vault state, read via Tatum}
   C -->|over cap, paused, expired,<br/>or would cut a reserve| H[Held or denied]
   C -->|fits the free pool| D[Recall: rules rebuilt from Walrus Memory<br/>plus memories about this merchant]
@@ -120,12 +128,67 @@ the payment, the operator releases exactly that amount from the vault's free poo
 with exactly that coin (`assertPaysFromCoin` refuses anything else). The facilitator verifies,
 co-signs as gas owner and settles; the server then verifies the settlement digest through Tatum.
 
+## Connect a real agent (MCP)
+
+Sisih is the spending-control layer an external agent uses: Claude Code (or any MCP client) receives
+a task, picks a service, asks Sisih to buy it, and uses the purchased response. Sisih applies the
+commitments, limits, owner decisions and remembered preferences; the dashboard is where the owner
+approves and checks the evidence.
+
+- Endpoint: `https://sisih-azure.vercel.app/api/mcp` (Streamable HTTP, stateless, JSON responses;
+  `server/src/mcp/server.ts`).
+- Tools: `get_budget`, `list_services`, `request_purchase`, `get_request_status`,
+  `end_demo_session` (`server/src/mcp/tools.ts`). They reuse the invoice check, policy engine, vault
+  release, x402 settlement, Tatum verification, memory and Postgres paths; MCP keeps no balances or
+  rules of its own.
+- Outcomes: `settled` (with the merchant's response in `result`), `awaiting_owner_approval` (not
+  paid, with a dashboard link), `processing`, `denied`, `blocked`, `failed`, `busy`. Prices,
+  recipients and categories come from the merchant registry and the merchant's own invoice.
+  Repeating a purchase or checking its status never pays twice.
+- Credential: the agent sends `Authorization: Bearer <SISIH_AGENT_TOKEN>`, a credential separate
+  from the owner's demo token and from every signing key. It cannot approve, deny, reset, withdraw
+  or change reserves; those routes still need the demo token or the owner wallet. It is delivered
+  privately: on `/connect` after unlocking the demo dock, or with the submission.
+
+`.mcp.json` in the project where you run Claude Code (the credential comes from your environment):
+
+```json
+{
+  "mcpServers": {
+    "sisih": {
+      "type": "http",
+      "url": "https://sisih-azure.vercel.app/api/mcp",
+      "headers": { "Authorization": "Bearer ${SISIH_AGENT_TOKEN}" }
+    }
+  }
+}
+```
+
+Then ask Claude Code: "Use the sisih MCP server to show me my budget and the services I can buy. Do
+not buy anything." A read-only check from this repo: `MCP_URL=https://sisih-azure.vercel.app/api/mcp
+pnpm mcp:check`.
+
+Verified with real Claude Code runs (Claude Code 2.1.201, 2026-11-06, namespace `sisih-hosted-7`;
+transcripts in [docs/evidence/agent-run-sisih-hosted-7](docs/evidence/agent-run-sisih-hosted-7)):
+
+| Step | Evidence |
+| --- | --- |
+| Claude discovers the tools, reads services and budget (3.50 free), requests SearchBox for its task | `req-ef83634b-191`: `awaiting_owner_approval`, not paid, dashboard link returned |
+| Owner opens that link and chooses Approve & remember in the dashboard | rule memory [O-QtCBRX…M79s](https://walruscan.com/mainnet/blob/O-QtCBRXvteV5QWhBXJEzen7iRtdn9W3hI0LhbnM79s) |
+| The same request settles; Claude resumes, checks it and summarizes the purchased (demo) content | release [2q58QD4t…EBnV](https://suiscan.xyz/testnet/tx/2q58QD4tRMzTemn9PZxsPz3D6zKTDpxZYSN7wdMEPBnV), settlement [FRwkBgsU…D77E8bKh](https://suiscan.xyz/testnet/tx/FRwkBgsUMin3VBi5viiEomdgBHQTRE8ceeQ8D77E8bKh) |
+| New session: rules rebuilt from Walrus; a fresh Claude session buys SearchBox for another task | `req-ebf326db-79f`: settled automatically by the remembered rule, release [C9hywTAF…W3Qq](https://suiscan.xyz/testnet/tx/C9hywTAFw8d1MvGzRsfnDvdbMPDRT2KmEiwnwVQhW3Qq), settlement [4TrgbQVA…aw5](https://suiscan.xyz/testnet/tx/4TrgbQVA3SvHSYSAkW5wM1B8WKENvq1DXyTS61TvCaw5) |
+| Another fresh session asks again with only 1.10 free (rule still active) | `req-9fbb3d5d-2ed`: `blocked`, would use 0.10 of committed funds; the same 1.20 sent straight to the vault aborts [GhJbwaKG…yqvm](https://suiscan.xyz/testnet/tx/GhJbwaKGU6Mn7uLGoy9jmgbngmF15W8VLuMqmKtCyqvm) (`EExceedsFree`) |
+
+The live demo is one shared workspace: one run at a time, with a clear `busy` answer for anyone
+else. The merchant content is fixed demo data, and the agents said so in their answers.
+
 ## Evidence (documented run, 2026-11-06, Sui Testnet + Walrus Mainnet)
 
 Recorded in [docs/PROGRESS.md](docs/PROGRESS.md) (Phase 5), with a snapshot of the public API at
 the end of the run in [docs/evidence/sisih-hosted-6](docs/evidence/sisih-hosted-6). Walrus Memory
-namespace `sisih-hosted-6`: 35 memories stored, also listed by the Walrus Memory SDK from the mainnet
-relayer.
+namespace `sisih-hosted-6`: 35 memories stored. Recall from the mainnet relayer still returns all 35
+(checked 2026-11-07); the SDK's namespace listing returned 35 on 2026-11-06 and 0 on 2026-11-07,
+so recall is the check we rely on.
 
 | What | Evidence |
 | --- | --- |
@@ -152,7 +215,9 @@ workspace, not users or a measure of production effectiveness.
 - On testnet, with the demo token and no wallet connected, deposits, reserve suggestions, pause and
   resume are signed on the server and labeled "Demo owner (server-signed, testnet)" in the UI and in
   the activity feed. This is refused on mainnet. A connected owner wallet signs everything itself.
-- One visitor runs the demo at a time; everyone else sees it read-only.
+- One visitor or agent runs the shared demo at a time; everyone else sees it read-only or gets a
+  `busy` answer. While an agent holds the run, the owner can still approve or deny its requests.
+- The agent credential and the demo token are delivered privately, never on a public page.
 - Sisih is a hackathon build, not audited and not production-ready. It has not been validated with
   customers.
 
@@ -190,7 +255,7 @@ Open http://127.0.0.1:3000. Locally the server keeps app state in embedded PGlit
 | Path | What |
 | --- | --- |
 | `contracts/sisih` | Move package `sisih::vault` and its tests |
-| `server/src` | Hono app: policy engine, Tatum client, Walrus Memory client, agent runner, x402 merchants and facilitator, demo controls, event feed |
+| `server/src` | Hono app: policy engine, Tatum client, Walrus Memory client, MCP adapter (`mcp/`), agent runner, x402 merchants and facilitator, demo controls, event feed |
 | `web` | Next.js dashboard; also hosts the server through route handlers (one Vercel project) |
 | `docs` | [SPEC](docs/SPEC.md), [build plan](docs/BUILD_PLAN.md), [progress and evidence](docs/PROGRESS.md), [blog draft](docs/BLOG.md), [recording guide](docs/RECORDING.md) |
 

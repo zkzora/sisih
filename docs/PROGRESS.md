@@ -2,13 +2,96 @@
 
 ## Current phase
 
-Phase 6 documents prepared on 2026-11-06 (README, blog draft, submission answers, X draft,
-recording guide, evidence snapshot). Remaining steps are the user's: record the video, publish the
-blog, make the repo public, post, submit (docs/HANDOFF.md). Networks are final: vault, reserves, agent
-releases and x402 on **Sui Testnet** through Tatum testnet; Walrus Memory on **Mainnet**. The mainnet
-migration is cancelled (no mainnet funds, deployment or transactions).
+MCP milestone done (2026-11-07 WIB; runs at 2026-11-06 17:25 to 17:32 UTC): a real external agent
+(Claude Code) requests services through Sisih over MCP, passes its spending controls, gets owner
+approval in the dashboard, receives the purchased result and continues its task; first-time
+visitors get "Explore demo" and "Connect your agent". Remaining steps are the user's: record the
+video, publish the blog, make the repo public, post, submit (docs/HANDOFF.md). Networks are final:
+vault, reserves, agent releases and x402 on **Sui Testnet** through Tatum testnet; Walrus Memory on
+**Mainnet**. The mainnet migration is cancelled.
 
 ## Done
+
+### MCP for external agents and first-visit entry points (2026-11-07)
+
+Built:
+
+- `POST /api/mcp` (server/src/mcp): official MCP SDK 1.32.1, Streamable HTTP, stateless, JSON
+  responses (a fresh server and transport per request; nothing held open while a human decides).
+  Tools: get_budget, list_services, request_purchase, get_request_status, end_demo_session.
+- Agent credential SISIH_AGENT_TOKEN (Bearer), separate from DEMO_TOKEN and the wallets; on Vercel a
+  missing credential locks the endpoint (503). Owner routes still require DEMO_TOKEN, so the agent
+  cannot approve, deny, reset, withdraw, change reserves or policy, or sign. Owner-only
+  `/api/demo/agent-credential` delivers the credential to a demo-token holder.
+- Shared demo: the agent holds the demo-run lease as `agent:demo`; other visitors get `busy`
+  (structured, not an error) or 423 `agent_run_active`, but owners may still decide the agent's
+  requests and start a new session. end_demo_session hands the run back.
+- request_purchase fetches the merchant's own 402 invoice from the registry URL and calls the same
+  submitRequest -> policy engine -> x402 executor; the server never trusts a model-supplied price,
+  recipient, category or URL. Idempotency mapping (key or service+task+session) is written in
+  submitRequest's new `onCreated` hook, before any payment; get_request_status only reads.
+- Executor now stores the merchant response (`purchase_result:<id>`) before marking paid, and the
+  payment error on failure. ownerDecision leaves "held" only through a conditional update, before
+  any rule memory or payment, so a concurrent second decision cannot pay or write a rule twice.
+- Demo merchant payloads are richer but say "Fixed sample data, not real-world or current market
+  data" in every response.
+- Web: "Try Sisih" sidebar group, Overview intro card, `/tour` (five-step replay of the recorded
+  sisih-hosted-6 run, labeled recorded, no API calls) and `/connect` (endpoint, `.mcp.json` and
+  `claude mcp add`, env-var credential setup, check prompt, sample task, approval and finish steps;
+  credential revealed only after unlocking with the demo token). Request drawer offers the demo-token
+  unlock inline (the drawer is modal, and owners arrive there from the agent's link). Top bar no
+  longer overflows in judge mode at 1280 or 1440 on any page.
+- `pnpm mcp:check` (read-only SDK client check).
+
+Automated tests (server/src/mcp/mcp.test.ts, 20 tests, real MCP SDK client over handleMcp, PGlite,
+stubbed vault read, invoice, Walrus and a counting payment executor): tool discovery; credential
+refusal and the owner token not accepted at /api/mcp; nine owner/admin routes refuse the agent
+credential; no owner-like tool exists; held purchase not charged; repeated status and duplicate
+submissions do not charge; approval pays the original request exactly once; a concurrent second
+approval cannot pay; denied and blocked requests cannot be resumed into payment; purchased content
+returned to the right request; concurrent purchases never run two payments at once; unknown request
+is a fixable tool error; busy and end_demo_session; owner may decide but not reset during an agent
+run. Suite: server 64, web 18; typecheck and build pass. Move contract unchanged (no Move run needed).
+
+Real Claude Code runs (Claude Code 2.1.201, model claude-opus-4-8, fresh folder with only `.mcp.json`
+and SISIH_AGENT_TOKEN in the environment, only the five sisih tools allowed; transcripts in
+docs/evidence/agent-run-sisih-hosted-7/claude-code-runs.md). Hosted demo reset first because the
+test needs SearchBox to be a new merchant and free funds (sisih-hosted-6 evidence already saved):
+reset B9wyWbMjANszKbfgYLWDTvRdXTeewpfxHfwVdBfUFT5o, namespace sisih-hosted-7, 20.00 / 16.50 / 3.50.
+
+| # | What happened | Evidence |
+| --- | --- | --- |
+| 1-3 | Run A (20 s): Claude found the sisih tools, called list_services and get_budget (3.50 free), then request_purchase searchbox | request `req-ef83634b-191`: `awaiting_owner_approval`, paid false, dashboard link https://sisih-azure.vercel.app/agent?request=req-ef83634b-191 |
+| 4-5 | Owner (Playwright in the dashboard UI) opened that link, unlocked, chose Approve & remember | rule memory O-QtCBRXvteV5QWhBXJEzen7iRtdn9W3hI0LhbnM79s ("Always allow search from SearchBox up to 1.50 USDC"); settled 23 s after the click |
+| 6 | Same request settled, Tatum-verified | release 2q58QD4tRMzTemn9PZxsPz3D6zKTDpxZYSN7wdMEPBnV, x402 settle FRwkBgsUMin3VBi5viiEomdgBHQTRE8ceeQ8D77E8bKh |
+| 7 | Run A resumed (11 s): get_request_status on the same id (no new purchase), summarized the purchased content as demo content, called end_demo_session | transcript |
+| 8 | Owner started session 2: 1 rule rebuilt from Walrus recall (origin walrus, 3.9 s). Fresh Run B (23 s) bought SearchBox for a different task | `req-ebf326db-79f`: settled automatically, code allow_rule, rule-2b66a3c5; release C9hywTAFw8d1MvGzRsfnDvdbMPDRT2KmEiwnwVQhW3Qq, settle 4TrgbQVA3SvHSYSAkW5wM1B8WKENvq1DXyTS61TvCaw5 |
+| 9 | Fresh Run C (20 s) with 1.10 free and the rule active | `req-9fbb3d5d-2ed`: `blocked`, would_cut_reserve (0.10 of committed funds); Claude did not work around it. The same 1.20 sent straight to the vault: GhJbwaKGU6Mn7uLGoy9jmgbngmF15W8VLuMqmKtCyqvm, EExceedsFree |
+
+All six new digests re-read through Tatum testnet (5 success, the contract check failed as
+intended). Memories in sisih-hosted-7: 4 stored (rule O-QtCBRX…, decisions c1HS_Tn9…, 7G-Ja7VV…,
+session summary fBtwN22l…), all 4 returned by recall from the mainnet relayer.
+
+Distinctions: automated protocol tests use stubs; Runs A to C are actual Claude Code invocations;
+the owner approval was a scripted browser acting in the real dashboard; `/tour` is a replay of
+recorded sisih-hosted-6 results, not new transactions; merchant content is fixed demo data.
+
+Problems found and what was done:
+
+- My mistake during verification: a stray `gate-release.ts --help` call ran that script's default
+  sequence, releasing 0.50 from the vault to the agent (HkBdHDH7NuuVKPFKEF4QcHrNNyGHi9Pd4L7WsHTK9iXz)
+  plus a failing 5.00 release (gas only, no USDC moved, digest not recorded). The 0.50 is recorded in
+  the hosted activity feed with that explanation and sits with the agent until the next reset's
+  recycle. Vault now 17.10 / 16.50 / 0.60. Runs A to C and the GhJbwaKG contract check happened
+  before it.
+- Walrus Memory SDK `listMemories` with a namespace filter returned 0 on 2026-11-07 for both
+  sisih-hosted-6 (35 on 2026-11-06) and sisih-hosted-7, while recall returns all 35 and all 4. Docs
+  now rely on recall; Sisih's rule rebuild already uses recall.
+- The agent's deep link opens a modal drawer that covers the dock: fixed with an inline unlock.
+
+Limitations: the hosted demo now shows sisih-hosted-7 (4 memories, two sessions); the 35-memory run
+is sisih-hosted-6 (Walrus, docs/evidence). One configured agent credential, one shared workspace and
+one run at a time. Held requests do not expire on their own; they wait for the owner.
 
 ### Phase 6: submission documents (2026-11-06, nothing pushed, published or submitted)
 

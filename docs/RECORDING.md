@@ -23,8 +23,10 @@ does: "Sui Testnet · Walrus Memory Mainnet".
 
 ## Before the first reset: keep the evidence of the current run
 
-The hosted demo currently shows the documented 5-session run (namespace `sisih-hosted-6`, 35 stored
-memories, recorded in docs/PROGRESS.md, Phase 5). **A reset switches the dashboard to a new Walrus
+The hosted demo currently shows the real Claude Code run of 2026-11-06 (namespace `sisih-hosted-7`,
+4 stored memories, two sessions; snapshot and transcripts in `docs/evidence/agent-run-sisih-hosted-7/`).
+The documented 5-session run (namespace `sisih-hosted-6`, 35 stored memories) is preserved in
+`docs/evidence/sisih-hosted-6/` and on Walrus. **A reset switches the dashboard to a new Walrus
 namespace (`sisih-hosted-<n+1>`) and clears the app database** (requests, activity rows, memory
 rows, sessions). The memories stay on Walrus Mainnet and the transactions stay on Sui Testnet, but
 the dashboard no longer shows them. Before you reset, save a snapshot of the public API (no secrets
@@ -67,6 +69,28 @@ The snapshot of the documented run was saved on 2026-11-06 and is committed in `
 Stop recording. Click **Lock demo controls** in the dock (this hands the demo back, so the script
 below is not blocked).
 
+## Part A with a real agent (Claude Code through MCP), alternative or addition
+
+This shows the product as intended: an external agent buys through Sisih and the owner approves in
+the dashboard. Timings are what we observed on 2026-11-06 (docs/evidence/agent-run-sisih-hosted-7).
+
+Before recording: a fresh project folder with the `.mcp.json` from the Connect your agent page, and
+`SISIH_AGENT_TOKEN` set in that terminal (never show its value). Reset the demo, then click **Lock
+demo controls** so the agent can take the shared run. Two windows side by side: the terminal with
+Claude Code, and the dashboard (unlocked with the demo token) on Agent & requests.
+
+| Step | Do | Expect (observed) |
+| --- | --- | --- |
+| 1 | In Claude Code, give the sample task from the Connect page (research what moves the SUI price, buy SearchBox, wait for approval) | About 20 s: Claude lists services, reads the budget (3.50 free), requests SearchBox; Sisih answers `awaiting_owner_approval`; Claude says nothing was paid and prints the dashboard link |
+| 2 | Open that link in the dashboard | The SearchBox request drawer: held, new merchant |
+| 3 | **Approve & remember**, **Save to memory & approve** | About 23 s to settled: x402 steps, then "Memory stored on Walrus mainnet." |
+| 4 | Tell Claude "I approved it in the dashboard. Check the request and finish the task." | About 11 s: Claude checks the same request (settled, verified), summarizes the purchased result as demo content, ends the demo session |
+| 5 | Dashboard: Dock > **Start new session** | Rules rebuilt from Walrus (about 4 s of recall) |
+| 6 | New Claude Code session: ask for SearchBox again for a different task | About 23 s: settled automatically by the remembered rule, no approval |
+| 7 | New Claude Code session: ask once more | Blocked: free funds are now below 1.20, so it would use committed funds; Claude reports it and does not work around it |
+
+Say once on camera that the merchant content is fixed demo data; the agent says it too.
+
 ## Off camera: sessions 3 to 5
 
 ```sh
@@ -94,6 +118,11 @@ Join A and B with a title card "After 3 more sessions".
 - **"Another visitor is running the demo"** (423): someone else, or an old tab, holds the demo.
   Wait for the time shown (at most 10 minutes) or click Lock in that other tab.
 - **"Another demo action is still running"** (409): wait a few seconds and click again.
+- **"A connected agent is running the demo"** (423, agent_run_active): Claude holds the shared run.
+  You can still approve or deny its requests and start a new session; for anything else ask Claude
+  to call `end_demo_session`, or wait up to 10 minutes.
+- **Claude says the tools are missing or unauthorized**: `SISIH_AGENT_TOKEN` is not set in that
+  terminal, or `.mcp.json` is not in the folder where Claude Code was started.
 - **Advance billing cycle says nothing is due**: wait for the seconds shown, then click again.
 - **A memory shows "Writing"**: Walrus writes take about 20 to 25 s. Start new session waits for
   them; a write whose server function died is finished on the next poll.
@@ -117,6 +146,22 @@ Learning impact charts and the memories behind them.
    docs/SUBMISSION.md and the README at that point, not before.
 
 A clean state (20.00 / 16.50 / 3.50, empty namespace) is only for starting a new take.
+
+## Voiceover lines for the real-agent version (replace 0:20 to 2:15 of the script below)
+
+**Claude Code asks.** I give Claude Code a research task. It connects to Sisih over MCP, sees my
+budget, 3.50 free out of 20, and asks to buy a premium search from SearchBox. Sisih has never seen
+this merchant, so nothing is paid. Claude tells me so and gives me a link.
+
+**I approve.** The link opens the request in my dashboard. I approve and remember: allow SearchBox up
+to 1.50. The payment settles over x402 on Sui Testnet, and the rule is saved to Walrus Memory.
+
+**Claude continues.** I tell Claude I approved. It checks the same request, gets the search result,
+and uses it, and it says this is demo content, because it is.
+
+**Next session.** I start a new session; Sisih rebuilds its rules from Walrus. A fresh Claude session
+asks for SearchBox again, and this time it goes through on its own. One more request, and free money
+is now too low: Sisih blocks it, because it would touch my commitments. The rule does not change that.
 
 ## Voiceover script (about 3 minutes)
 

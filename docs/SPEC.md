@@ -117,6 +117,37 @@ Sidebar order:
 6. Onchain activity
 7. Settings
 
+Below them, a "Try Sisih" group (added 2026-11-07) with two entry points for first-time visitors, and
+an introduction card on Overview that links to both:
+
+- **Explore demo** (`/tour`): a five-step guided replay of one recorded run (namespace
+  `sisih-hosted-6`): total vs committed vs free funds, a permitted purchase, a request that needs the
+  owner, a request blocked by reserves, and how a remembered preference changes a later decision.
+  Labeled as recorded; it calls no API, signs nothing and writes no memory.
+- **Connect your agent** (`/connect`): the MCP endpoint, a copyable Claude Code `.mcp.json` and
+  `claude mcp add` command, credential setup through an environment variable, a read-only
+  connection check, a sample task, where the owner approves, and how to end the shared session.
+  The agent credential is shown only after unlocking the demo dock with the owner's demo token.
+
+## External agents over MCP (added 2026-11-07)
+
+Sisih is the spending-control layer for an external agent such as Claude Code. The agent receives a
+task, selects a service, requests the purchase from Sisih, and uses the purchased response. Sisih
+enforces commitments, limits, permissions, owner decisions and remembered preferences; the
+dashboard stays the owner's approval and evidence interface.
+
+- Endpoint `POST /api/mcp` (Streamable HTTP, stateless, JSON responses), credential
+  `Authorization: Bearer <SISIH_AGENT_TOKEN>`, separate from the owner's demo token and the wallets.
+- Tools: `get_budget`, `list_services`, `request_purchase { service, task, idempotency_key? }`,
+  `get_request_status { request_id }`, `end_demo_session`.
+- `request_purchase` fetches the merchant's own 402 invoice from the merchant registry's URL and
+  submits it to the same policy engine and x402 executor as the built-in agent. Outcomes:
+  `settled` (merchant response in `result`), `awaiting_owner_approval` (not paid; dashboard link to
+  `/agent?request=<id>`), `processing`, `denied`, `blocked`, `failed`, `busy`.
+- The owner approves or denies in Agent & requests as before; the agent then calls
+  `get_request_status` on the same request. Status checks and repeated purchases never pay twice.
+- The agent cannot approve, deny, reset, withdraw, change reserves or policy, or sign anything.
+
 Always visible in the top bar:
 
 - Sisih logo

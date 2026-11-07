@@ -58,7 +58,9 @@ Checks:
   relayer base URL answers 404 at its root (it is an API, linked as an endpoint, not a page).
   Suiscan answers 200 for any path, so every cited digest was also read back through Tatum testnet:
   9 of 9 exist, 8 succeeded and the contract check failed with EExceedsFree as documented. All 6
-  cited blob IDs are listed in sisih-hosted-6 by the Walrus Memory SDK on mainnet (35 memories).
+  cited blob IDs were listed in sisih-hosted-6 by the Walrus Memory SDK on mainnet (35 memories) on
+  2026-11-06; on 2026-11-07 that namespace listing returned 0 while recall still returns all 35,
+  including the 3 cited blobs checked again.
 - Every number in the docs matches the snapshot: manual reviews 2, 1, 1, 2, 2; 35 memories stored
   (decision 14, obligation_outcome 13, session_summary 4, reserve_change 2, rule 2); money protected
   13.40.
@@ -68,6 +70,47 @@ Checks:
 
 Public but personal: docs/PROGRESS.md names your own Walrus Memory account owner wallet
 (0xd89f…ae32). It is not a secret; remove it before publishing if you prefer.
+
+## MCP milestone (2026-11-07)
+
+Done: real Claude Code agent -> Sisih MCP -> owner approval in the dashboard -> purchased result ->
+continued task, plus "Explore demo" and "Connect your agent" on the site. Evidence and limitations:
+docs/PROGRESS.md ("MCP for external agents"), transcripts in docs/evidence/agent-run-sisih-hosted-7/.
+
+The hosted demo now shows namespace sisih-hosted-7 (the agent run: 4 stored memories, sessions 1-2,
+one reserve-blocked request still held, the vault at 17.10 / 16.50 / 0.60). A stray 0.50 release of
+mine is explained in PROGRESS and in the activity feed; the next reset sweeps it back.
+
+### Private credential delivery (agent credential, SISIH_AGENT_TOKEN)
+
+- The value is in the local `.env` and in the Vercel production env (sensitive). It is not in git,
+  the README, the docs, the transcripts or any screenshot.
+- A judge who has the demo token gets it on https://sisih-azure.vercel.app/connect: unlock Demo
+  controls with the demo token, click "Show agent credential", copy it into `SISIH_AGENT_TOKEN`.
+  So the only secret you hand over privately is the demo token, in the form's private field.
+- To rotate it: generate a new random value, put it in `.env`
+  (`SISIH_AGENT_TOKEN=...`), run
+  `vercel env add SISIH_AGENT_TOKEN production --sensitive --force` with the new value on stdin, then
+  `vercel deploy --prod`. Old agent configs stop working at once.
+
+### Try it yourself
+
+1. Open https://sisih-azure.vercel.app/tour and click through the five steps (no token needed).
+2. Open https://sisih-azure.vercel.app/connect, unlock Demo controls with the demo token, reveal the
+   agent credential.
+3. In a new empty folder: create `.mcp.json` from the Connect page, then in that terminal
+   `export SISIH_AGENT_TOKEN="<the credential>"` (PowerShell: `$env:SISIH_AGENT_TOKEN = "..."`), then
+   run `claude` there.
+4. Ask the connection check from the Connect page (read only), then the sample task.
+5. When Claude prints the approval link, open it, unlock in the drawer, Approve & remember.
+6. Tell Claude you approved; it checks the same request and uses the result.
+7. Dock > Start new session; in a new Claude session ask for SearchBox again: it goes through on the
+   remembered rule. Ask once more when free funds are low: Sisih blocks it.
+8. Ask Claude to call end_demo_session, or click Lock demo controls.
+
+Reset the demo first if free funds are too low for a new SearchBox purchase (it needs 1.20 free and
+SearchBox must be new for the approval step); docs/RECORDING.md says how to save the current
+evidence before a reset.
 
 ## Missing inputs (only you can provide them)
 

@@ -80,6 +80,11 @@ payments the vault already allows, and the policy engine checks hard rules befor
 - x402 on Sui: `@tentaclepay/sui-x402`; demo merchants answer 402; the vault releases exactly the
   invoice amount from free funds; the agent pays with exactly that coin; the facilitator settles on
   Sui Testnet; both digests are verified through Tatum.
+- MCP for external agents: Claude Code connects to `https://sisih-azure.vercel.app/api/mcp` with its
+  own agent credential and gets five tools (budget, services, request purchase, request status, end
+  session). Held purchases return a request ID and a dashboard link; after the owner approves, the
+  agent resumes the same request and receives the purchased content. Verified with real Claude Code
+  runs on 2026-11-06 (README, "Connect a real agent").
 
 **Learning loop.** Session 1: SearchBox 1.20 is held as a new merchant; the owner approves and
 remembers; a rule memory is stored on Walrus. Session 2: rules are rebuilt from Walrus recall and the
@@ -105,9 +110,12 @@ writing memory needs no wallet on the user side.
 Paste this into a private field of the form (or send it privately). Never put the token in the repo,
 README, blog or a public post.
 
-> Demo: https://sisih-azure.vercel.app. Open "Demo controls" (bottom right) and enter the demo token:
-> [paste the token from your password manager here, in the private field only]. Without the token
-> the site is read-only. With it, the dock runs the agent's three demo tasks, a billing cycle, a new
-> session and a reset; owner actions are signed by "Demo owner (server-signed, testnet)" when no
-> wallet is connected. One visitor runs the demo at a time; "Lock demo controls" hands it back.
-> Sui Testnet for the vault and x402, Walrus Memory Mainnet.
+> Demo: https://sisih-azure.vercel.app. Start with "Explore demo" (no token needed). To run it live,
+> open "Demo controls" (bottom right) and enter the demo token: [paste the token from your password
+> manager here, in the private field only]. Without the token the site is read-only. With it, the
+> dock runs the built-in agent's demo tasks, a billing cycle, a new session and a reset; owner
+> actions are signed by "Demo owner (server-signed, testnet)" when no wallet is connected.
+> To try a real agent: after unlocking, open "Connect your agent", reveal the agent credential, set
+> it as SISIH_AGENT_TOKEN and follow the Claude Code steps there; approve the agent's requests in
+> Agent & requests. One visitor or agent runs the demo at a time; "Lock demo controls" or the
+> agent's end_demo_session hands it back. Sui Testnet for the vault and x402, Walrus Memory Mainnet.

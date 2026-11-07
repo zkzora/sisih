@@ -36,7 +36,8 @@ Progress log: docs/PROGRESS.md
 
 - contracts/sisih : Move package, module sisih::vault
 - server/ : TypeScript (Hono app). Policy engine, Tatum client, Walrus Memory client,
-  agent runner, demo x402 merchants, x402 facilitator, demo controls, stored event feed.
+  MCP adapter for external agents (server/src/mcp, POST /api/mcp), agent runner, demo x402
+  merchants, x402 facilitator, demo controls, stored event feed.
   App state in Postgres through Drizzle (pg-core): node-postgres (pg) against Supabase's
   transaction pooler when hosted, embedded PGlite locally and in tests.
 - web/ : Next.js dashboard, wired to the server API and @mysten/dapp-kit (approved layout,
@@ -107,6 +108,15 @@ Progress log: docs/PROGRESS.md
    submission form, never in the README or any public doc) and passes shared rate limits, the
    demo-run lease (one visitor at a time) and, for fund-moving routes, the action mutex
    (server/src/api/guard.ts). On Vercel a missing DEMO_TOKEN locks every mutation.
+12. External agents (Claude Code) use MCP at /api/mcp with SISIH_AGENT_TOKEN (Bearer), never
+   DEMO_TOKEN. Tools: get_budget, list_services, request_purchase, get_request_status,
+   end_demo_session. MCP reuses the existing invoice -> policy -> vault -> x402 -> Tatum ->
+   memory path and keeps no balances or rules. The agent never approves, denies, resets,
+   withdraws or changes reserves. Price, recipient, category and URL come from the merchant
+   registry and the merchant's invoice, never from the model. Purchases are idempotent (mapping
+   stored before payment); status checks never pay; a held purchase is a normal result, not a tool
+   error. While the agent holds the demo run, owners may only decide its requests or start a
+   new session. The agent credential is delivered privately (owner-only /api/demo/agent-credential).
 11. Owner actions: a connected owner wallet signs through /api/sui-rpc. On testnet only, with
    the demo token and no wallet, deposit / accept reserve suggestion / pause / resume are
    signed on the server by "Demo owner (server-signed, testnet)" and that label is shown in the
@@ -160,6 +170,6 @@ MERCHANT_DATAMART_PRIVATE_KEY, MERCHANT_SEARCHBOX_PRIVATE_KEY, MERCHANT_REPORTLA
 PAYEE_INFERENCE_PRIVATE_KEY, PAYEE_HOSTING_PRIVATE_KEY, PAYEE_SAVINGS_PRIVATE_KEY,
 PAYEE_DOMAIN_PRIVATE_KEY (demo plumbing so recycle.ts can sweep funds back),
 MEMWAL_KEY, MEMWAL_ACCOUNT_ID, MEMWAL_NAMESPACE, MEMWAL_NAMESPACE_PREFIX, DEMO_CYCLE_MS,
-DEMO_TOKEN, WEB_ORIGIN, DATABASE_URL (local pglite:..., or a Postgres URL; on Vercel leave it
+DEMO_TOKEN, SISIH_AGENT_TOKEN (MCP agent credential), WEB_ORIGIN, DATABASE_URL (local pglite:..., or a Postgres URL; on Vercel leave it
 unset and the Supabase integration's POSTGRES_URL is used), NEXT_PUBLIC_SUI_NETWORK,
 NEXT_PUBLIC_DEV_STATES
