@@ -94,7 +94,7 @@ What changed:
 - **gate-release.ts.** It no longer runs a release on `--help`.
 
 Evidence: docs/evidence/final-run-sisih-hosted-9/README.md. It holds the seven real Claude Code
-runs, the owner CLI log, and 12 of 12 memories verified per job.
+runs, the A7 post-deploy check, the owner CLI log, and 13 of 13 memories verified per job.
 
 The hosted demo is left in session 2 of `sisih-hosted-9`:
 

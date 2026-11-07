@@ -16,7 +16,7 @@ Mandatory (both pages):
 | --- | --- |
 | Walrus Memory integrated and writing on Mainnet | Done: relayer https://relayer.memory.walrus.xyz; every decision, rule, outcome and summary is a memory |
 | Tatum RPC used for onchain data where relevant | Done: every Sui read and write through Tatum's Sui Testnet gRPC gateway (`server/src/lib/tatum.ts`) |
-| At least 10 memories stored on Mainnet | Done. Final run `sisih-hosted-9`: 12 stored, each checked through its relayer job (docs/evidence/final-run-sisih-hosted-9). Earlier run `sisih-hosted-6`: 35 stored, re-checked the same way on 2026-11-07 |
+| At least 10 memories stored on Mainnet | Done. Final run `sisih-hosted-9`: 13 stored, each checked through its relayer job (docs/evidence/final-run-sisih-hosted-9). Earlier run `sisih-hosted-6`: 35 stored, re-checked the same way on 2026-11-07 |
 | Published blog post: what it does, how it uses Tatum + Walrus, how it learned over time | Draft ready: docs/BLOG.md. **Needs your input:** publish it and paste the URL |
 | Working demo and public repo | Demo live: https://sisih-azure.vercel.app. **Needs your input:** make the GitHub repo public |
 | Short demo video (2 to 3 min), asked on the form | Script ready: docs/RECORDING.md. **Needs your input:** record and upload it |

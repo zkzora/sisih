@@ -275,9 +275,9 @@ all seven Claude Code transcripts, the per-memory Walrus check and an API snapsh
 | Fresh Claude session buys ChainScope again | `req-e2e8e0e4-b03` settled through the remembered rule: release [HJXGudjr…NVk](https://suiscan.xyz/testnet/tx/HJXGudjrcFGPiJ1xUhv9MuPe5qqRVjzuCo3NkhtDJVNk), settlement [DGhrQx2G…eq](https://suiscan.xyz/testnet/tx/DGhrQx2GuVHzJL5GH4iUzBy8R7GioiQkJzwH6ctfiheq), checkpoint 403682570 |
 | `pnpm sisih reserve set 58 5.50` leaves 0.60 free | [82Z7cwv5…EYXY](https://suiscan.xyz/testnet/tx/82Z7cwv5b7h9UaDdrb6q7gSxzPmzFWtspnGMrBmEfYXY) |
 | Agent asks again; the allow preference is still active | `req-5176bfd5-d5c` `blocked`, would use 0.20 of committed funds. The same 0.80 sent straight to the vault aborts: [AFKJwvpj…KqG](https://suiscan.xyz/testnet/tx/AFKJwvpjY4gYphMeyKsWuz1PrXrRzcoQm8MMWRXEtKqG) (`EExceedsFree`) |
-| `pnpm sisih pause`, then the agent tries to buy | [GJ3AGmiv…q5](https://suiscan.xyz/testnet/tx/GJ3AGmivtxtBKH3v7DjRiGsvftqyJ1pma7GZXcs2Rkq5); `req-24c634a4-1e1` `blocked` (`agent_paused`), nothing paid |
+| `pnpm sisih pause`, then the agent tries to buy | [GJ3AGmiv…q5](https://suiscan.xyz/testnet/tx/GJ3AGmivtxtBKH3v7DjRiGsvftqyJ1pma7GZXcs2Rkq5); `req-24c634a4-1e1` `blocked` (`agent_paused`), nothing paid. After the `owner_hint` deploy, a repeat check (`req-6136b586-89d`) had Claude relay `pnpm sisih resume` |
 | `pnpm sisih resume`; agent buys fixed example content | [GLgCsrdr…JJ](https://suiscan.xyz/testnet/tx/GLgCsrdrk8J6Fk4JX4jTiz49VEBxubh1We8wiHQJFFLJ); `req-fe4eada9-2c0` settlement [66z3Ttbb…H](https://suiscan.xyz/testnet/tx/66z3Ttbb5puKteSY5hQYJNaHPJLj89FH94iAXHAJ9YEH); the agent called it fixed example content |
-| Walrus Memory Mainnet | 12 of 12 memories checked one by one with `getRememberStatus` (done, matching blob id), and 12 of 12 found in the unfiltered account listing. One write needed a retry after a relayer "encryption backend unavailable" error |
+| Walrus Memory Mainnet | 13 of 13 memories checked one by one with `getRememberStatus` (done, matching blob id), and 13 of 13 found in the unfiltered account listing. One write needed a retry after a relayer "encryption backend unavailable" error |
 
 ### Earlier runs
 

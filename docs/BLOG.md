@@ -53,7 +53,7 @@ was started with only Sisih's tools: it could not read files, run a shell or see
 7. The owner paused the agent from the terminal, and the next purchase was blocked until the owner
    resumed it.
 
-Every Claude Code transcript, the owner's command log, and each of the 12 memories (checked one by
+Every Claude Code transcript, the owner's command log, and each of the 13 memories (checked one by
 one against the Walrus relayer) are in the repository under
 `docs/evidence/final-run-sisih-hosted-9`.
 

@@ -65,7 +65,7 @@ Timings are what we observed on 2026-11-07 (`docs/evidence/final-run-sisih-hoste
 | 1:45 | Agent | A fresh Claude session: "New day: run the vault health check again …" | Settled with no approval, through the remembered preference (`allow_rule`), with a new checkpoint. 30 to 90 s; cut the wait |
 | 2:10 | Owner | `pnpm sisih commitments`, then `pnpm sisih reserve set <savings id> 5.50` | Reserve raised; 0.60 free |
 | 2:20 | Agent | Ask for the report once more | `blocked`, `would_cut_reserve`. The preference does not unlock committed funds, and Claude does not work around it |
-| 2:35 | Owner | `pnpm sisih pause`; in the agent terminal ask for DataMart | `blocked`, `agent_paused`; Claude relays `pnpm sisih resume` |
+| 2:35 | Owner | `pnpm sisih pause`; in the agent terminal ask for DataMart | `blocked`, `agent_paused`; Claude relays the `owner_hint` `pnpm sisih resume` (observed in the post-deploy check, A7) |
 | 2:50 | Owner | `pnpm sisih resume`, `pnpm sisih evidence`, `pnpm sisih release` | Verified transactions and stored memories with Walrus links; lease released |
 
 Say once on camera that ChainScope's report is live onchain data and the other merchants return

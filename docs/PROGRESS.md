@@ -105,7 +105,8 @@ The agent was isolated:
 | Owner: `resume` | `GLgCsrdrk8J6Fk4JX4jTiz49VEBxubh1We8wiHQJFFLJ` |
 | A6: DataMart | `req-fe4eada9-2c0` settled (`default_threshold`): release `AD3AHbwT5amDYnJsJT1RXK6HrVaDTaN9S7qagkAap9oP`, settle `66z3Ttbb5puKteSY5hQYJNaHPJLj89FH94iAXHAJ9YEH`; the agent called it fixed example content |
 | Owner: `release`; afterwards `reserve set 58 4.00` | Lease released. `461wEbPYi5epwCt4W11FtnmBTTHfKvn2592rTvm2EHtR` leaves 1.60 free, so a judge's agent can buy |
-| Walrus Mainnet | 12 of 12 memories `done` with matching blob ids (per job), and 12 of 12 in the unfiltered listing. One write (`mem-ae3f69ee-a69`) first failed with "Memory encryption backend is unavailable" and was stored after one owner retry |
+| Post-deploy check (A7) | `pause` `9ErBHNraWLS4qNJiozd4qKQgBSB5UPgmxqExn18ZBmtt`. `req-6136b586-89d` `blocked` with `owner_hint`, and Claude relayed `pnpm sisih resume`. `resume` `BEucMsFcWsehH7pkqEd9WxZW3dZhFWFr7gqwXL9p2y5B` |
+| Walrus Mainnet | 12 of 12 memories `done` with matching blob ids (per job) at the end of the run, and 13 of 13 in the final state after A7. The unfiltered listing agrees. One write (`mem-ae3f69ee-a69`) first failed with "Memory encryption backend is unavailable" and was stored after one owner retry |
 
 Earlier namespaces were re-verified per job on 2026-11-07: `sisih-hosted-6` 35 of 35 and
 `sisih-hosted-7` 4 of 4 (`verify-memories-2026-11-07.txt` in each evidence folder).
@@ -121,7 +122,7 @@ Bugs found by the real runs, and fixed:
 - **Arithmetic.** The agent took 3.50 free as its ceiling, although the per-request cap was 2.00.
   `get_budget` now returns `largest_payment_now_usdc`.
 - **Pause hint.** On a pause, the agent could only point to the dashboard. Blocks now carry
-  `owner_hint`.
+  `owner_hint`, confirmed by the real A7 run after the deploy.
 
 Limitations:
 
