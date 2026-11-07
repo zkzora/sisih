@@ -167,6 +167,11 @@ export async function getBudget() {
           spent_in_current_24h_usdc: formatUsdc(spent),
           remaining_today_usdc: formatUsdc(p.maxPerDay > spent ? p.maxPerDay - spent : 0n),
           expires_at: new Date(p.expiresMs).toISOString(),
+          // Computed here so the agent does not have to: the smallest of free funds, the per-request
+          // cap and what is left of the 24-hour cap (0 when paused or expired).
+          largest_payment_now_usdc: formatUsdc(
+            permission === "active" ? [v.free, p.maxPerRequest, p.maxPerDay > spent ? p.maxPerDay - spent : 0n].reduce((a, b) => (b < a ? b : a)) : 0n,
+          ),
         }
       : { status: "revoked" },
     owner_preferences: { automatic_approval_up_to_usdc: formatUsdc(threshold), note: "New merchants and amounts above remembered rules wait for the owner." },
