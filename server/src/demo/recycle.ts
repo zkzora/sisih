@@ -28,6 +28,7 @@ export function demoHolders(opts: { includeAgent?: boolean } = {}): Holder[] {
     ["DataMart (demo merchant)", "MERCHANT_DATAMART_PRIVATE_KEY"],
     ["SearchBox (demo merchant)", "MERCHANT_SEARCHBOX_PRIVATE_KEY"],
     ["ReportLab (demo merchant)", "MERCHANT_REPORTLAB_PRIVATE_KEY"],
+    ["ChainScope (demo merchant)", "MERCHANT_CHAINSCOPE_PRIVATE_KEY"],
   ];
   const holders = keys.filter(([, k]) => env(k)).map(([label, k]) => ({ label, keypair: Ed25519Keypair.fromSecretKey(env(k)!) }));
   if (opts.includeAgent !== false) holders.push({ label: "Research Agent leftovers", keypair: keypair("agent") });

@@ -11,6 +11,7 @@ import { recordTx } from "../chain/vault";
 import { publish } from "../lib/bus";
 import { MERCHANTS, merchantAddress, type Merchant } from "../merchants/registry";
 import { x402Facilitator, x402Network } from "./facilitator";
+import { liveVaultReport } from "./live-report";
 
 export function baseUrl(): string {
   // Hosted: the public deployment URL (the agent calls the demo merchants over real HTTP).
@@ -46,7 +47,7 @@ function paymentRequired(m: Merchant): PaymentRequired {
  * data; every payload says so, so an agent quoting it can tell the user.
  */
 const DEMO_NOTICE = "Demo service content from Sisih's demo merchant. Fixed sample data, not real-world or current market data.";
-const DEMO_PAYLOADS: Record<Merchant["slug"], unknown> = {
+const DEMO_PAYLOADS: Partial<Record<Merchant["slug"], unknown>> = {
   datamart: {
     notice: DEMO_NOTICE,
     series: "SUI/USD daily close (demo sample)",
@@ -90,6 +91,16 @@ export function merchantRoutes(): Hono {
         return c.json({ ...required, error: "payment required", merchant: m.name, demo: true }, 402);
       }
       const requirements = required.accepts[0]!;
+      // Live content is produced BEFORE settling: if the chain read fails, nothing is settled and the
+      // buyer is not charged for a report that does not exist. Never a made-up fallback.
+      let content: unknown = DEMO_PAYLOADS[m.slug];
+      if (m.content === "live") {
+        try {
+          content = await liveVaultReport();
+        } catch (err) {
+          return c.json({ error: "live_data_unavailable", message: `Could not read Sui Testnet through Tatum: ${(err as Error).message.slice(0, 160)}. Not settled, not charged.`, demo: true }, 503);
+        }
+      }
       const payload = decodePaymentSignatureHeader(sig);
       const verify = await x402Facilitator().verify(payload, requirements);
       if (!verify.isValid) return c.json({ error: verify.invalidReason, message: verify.invalidMessage, demo: true }, 402);
@@ -101,7 +112,7 @@ export function merchantRoutes(): Hono {
       const rec = await recordTx(settle.transaction, { source: "our", label: `x402 settle: ${m.name} (demo)`, requestId, refreshVault: false });
       publish("x402.settled", { merchant: m.name, digest: settle.transaction, verified: rec.status === "verified", requestId });
       c.header("PAYMENT-RESPONSE", encodePaymentResponseHeader(settle));
-      return c.json({ demo: true, merchant: `${m.name} (demo)`, item: m.item, data: DEMO_PAYLOADS[m.slug], settlement: settle.transaction });
+      return c.json({ demo: true, merchant: `${m.name} (demo)`, item: m.item, content_type: m.content === "live" ? "live onchain data" : "fixed example content", data: content, settlement: settle.transaction });
     });
   }
   return app;
