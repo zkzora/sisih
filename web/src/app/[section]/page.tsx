@@ -1,31 +1,27 @@
-import { Suspense } from "react";
-import { notFound } from "next/navigation";
-import { DashboardView } from "@/components/dashboard-view";
-import { Skeleton } from "@/components/ui";
-import type { View } from "@/lib/types";
-const sections = [
-  "obligations",
-  "agent",
-  "memory",
-  "learning",
-  "activity",
-  "settings",
-  "tour",
-  "connect",
-];
+import { redirect, notFound } from "next/navigation";
+
+const redirects: Record<string, string> = {
+  workspace: "/",
+  tour: "/proof",
+  obligations: "/proof",
+  agent: "/proof",
+  memory: "/proof",
+  learning: "/proof",
+  activity: "/proof",
+  settings: "/connect",
+};
+
 export function generateStaticParams() {
-  return sections.map((section) => ({ section }));
+  return Object.keys(redirects).map((section) => ({ section }));
 }
+
 export default async function SectionPage({
   params,
 }: {
   params: Promise<{ section: string }>;
 }) {
   const { section } = await params;
-  if (!sections.includes(section)) notFound();
-  return (
-    <Suspense fallback={<Skeleton />}>
-      <DashboardView view={section as View} />
-    </Suspense>
-  );
+  const target = redirects[section];
+  if (!target) notFound();
+  redirect(target);
 }

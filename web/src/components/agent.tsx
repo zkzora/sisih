@@ -1,7 +1,9 @@
 "use client";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import {
+  ArrowUpRight,
   Ban,
   Bot,
   Brain,
@@ -46,14 +48,12 @@ export function AgentView() {
         title="Give your agent room. Keep control."
         description="Every request stays within your uncommitted funds and your rules."
         action={
-          <Button
-            disabled={!unlocked}
-            title={unlocked ? undefined : "Unlock demo controls first"}
-            onClick={() => void act({ type: "request", merchant: "SearchBox" })}
-          >
-            <Plus size={15} />
-            Run demo request
-          </Button>
+          <div className="page-actions">
+            <Link className="button button-primary" href="/connect">
+              Connect your agent
+              <ArrowUpRight size={15} />
+            </Link>
+          </div>
         }
       />
       <section className={`agent-card ${state.agentStatus === "revoked" ? "agent-card-revoked" : ""}`}>
@@ -315,16 +315,12 @@ export function AgentView() {
         ) : (
           <Empty
             title="No requests here"
-            description="Try another filter, or run a task from Demo controls."
+            description="Give your connected agent a task, or connect an external agent over MCP."
             action={
-              <Button
-                variant="secondary"
-                disabled={!unlocked}
-                onClick={() => void act({ type: "request", merchant: "DataMart" })}
-              >
-                <Play size={14} />
-                Run a small data request
-              </Button>
+              <Link href="/connect" className="button button-primary">
+                Connect your agent
+                <ArrowUpRight size={14} />
+              </Link>
             }
           />
         )}

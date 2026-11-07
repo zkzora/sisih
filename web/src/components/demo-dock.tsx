@@ -54,7 +54,7 @@ export function DemoDock() {
               </form>
             ) : (
               <>
-                <p className="muted">Each task calls a demo merchant, receives its 402 invoice, and asks Sisih to pay. Run the same task again after a new session to see memory change the outcome.</p>
+                <p className="muted">Scripted test scenarios (for testing rules and approval flows, not an external agent). To run a real autonomous agent, connect Claude Code via MCP.</p>
                 <div className="scenario-buttons">
                   <button disabled={working} onClick={() => void act({ type: "request", merchant: "DataMart" })}>
                     <Database size={16} />

@@ -7,7 +7,7 @@
  */
 import { readVault } from "../chain/vault";
 import { explorerObjectUrl } from "../chain/activity";
-import { formatUsdc, suiNetwork } from "../lib/env";
+import { formatUsdc, suiNetwork, suiNetworkLabel } from "../lib/env";
 import { referenceGasPrice, suiClient, tatumGrpcHost } from "../lib/tatum";
 import { MERCHANTS } from "../merchants/registry";
 
@@ -28,7 +28,7 @@ export async function liveVaultReport() {
   const underfunded = vault.obligations.filter((o) => o.reserve < o.target);
 
   return {
-    notice: "Live data: read from Sui Testnet through Tatum when you bought this report. ChainScope is a demo merchant run by the Sisih team. Testnet values, not market data or financial advice.",
+    notice: `Live data: read from ${suiNetworkLabel()} through Tatum when you bought this report. ChainScope is a demo merchant operated by the Sisih project. ${suiNetwork() === "mainnet" ? "Onchain values" : "Testnet values"}, not market data or financial advice.`,
     source: {
       network: `sui:${suiNetwork()}`,
       chain_id: info.chainId ?? null,

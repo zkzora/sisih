@@ -2,18 +2,52 @@
 
 ## Current phase
 
-Agent-first, terminal-first milestone done (2026-11-07). Claude Code buys over MCP with its own
-restricted credential. The owner configures, approves, pauses and inspects evidence from the
-terminal (`pnpm sisih`). The dashboard is the optional workspace. The final run is on `sisih-hosted-9`
-(see below and docs/evidence/final-run-sisih-hosted-9).
-
-Remaining steps are the user's (docs/HANDOFF.md): record the video, publish the blog, make the repo
-public, post and submit.
-
-Networks are final: vault, reserves, agent releases and x402 on **Sui Testnet** through Tatum
-testnet; Walrus Memory on **Mainnet**. The mainnet migration is cancelled.
+Unified Handoff implementation complete (2026-11-07).
+- Public product is now a 3-page website: **Home (`/`)**, **Connect (`/connect`)**, and **Proof (`/proof`)**.
+- Operational dashboard completely removed from the public product; legacy routes (`/workspace`, `/tour`, etc.) cleanly redirect to `/` or `/proof`.
+- Unified MCP endpoint at `/api/mcp` with role-scoped capabilities (Spending Agent with `SISIH_AGENT_TOKEN` vs Owner Assistant with `SISIH_OWNER_TOKEN`).
+- Companion Owner CLI (`pnpm sisih`) retained for terminal-based inspection, decisions, and local signing.
+- Fully bounded Sui Mainnet proof package prepared (`docs/mainnet/MANIFEST.json`, `docs/mainnet/MANIFEST.md`, `docs/MAINNET_READINESS.md`), status: **prepared · not deployed · not funded · not executed**.
+- All tests passing (server 164, web 18), TypeScript typechecks 100% clean, Next.js production build succeeded, and 12 viewport screenshots captured.
 
 ## Done
+
+### Unified handoff: 3-Page Public Site, Role-Scoped MCP & Mainnet Prep (2026-11-07)
+
+- **Product Restructuring:**
+  - Removed in-app dashboard UI, tabs, and mutating forms from public exposure.
+  - Three canonical public routes:
+    - `/` (Home): Problem statement, Move reserves vs spendable pool, raw wallet failure comparison, 4-step workflow, and brand-approved styling.
+    - `/connect` (Connect): Two verified recipes (Claude Code as spending agent; Owner assistant over MCP), companion CLI reference, environment isolation, and shared demo guidelines.
+    - `/proof` (Proof): Recorded proof from `sisih-hosted-9` with Suiscan Testnet tx links and Walruscan Mainnet blob links, memory verification status (13/13 verified), limitations, and historical runs.
+  - Legacy routes (`/workspace`, `/tour`, `/obligations`, `/agent`, `/memory`, `/learning`, `/activity`, `/settings`) redirect cleanly.
+- **Unified Role-Scoped MCP Endpoint (`/api/mcp`):**
+  - Spending Agent role (`SISIH_AGENT_TOKEN`): `get_budget`, `list_services`, `request_purchase`, `get_request_status`, `end_demo_session`.
+  - Owner Assistant role (`SISIH_OWNER_TOKEN`): `owner_status`, request inspection and decisions, preferences, limits, commitments, reserve suggestions, agent permission, session controls, evidence, and local-signing intents. Exact tool names are listed in `server/src/mcp/server.ts` and the README.
+  - Comprehensive unit test suites added: `server/src/auth/context.test.ts` (9 tests), `server/src/mcp/roles.test.ts` (6 tests), `server/src/owner/intents.test.ts` (12 tests). Total server suite expanded to 164 passing tests across 14 test files.
+- **Sui Mainnet Proof Package:**
+  - Generated `docs/mainnet/preflight.json`, `docs/mainnet/MANIFEST.json`, `docs/mainnet/MANIFEST.md`, and `docs/MAINNET_READINESS.md`.
+  - Real gas measurements rescaled from testnet recorded runs; total aggregate gas cap calculated at 0.5954 SUI, USDC deposit 3.20 USDC.
+  - Strict isolation: zero writes to root `.env`, zero live transactions broadcast, status documented as `prepared · not deployed · not funded · not executed`.
+- **Verification & Testing:**
+  - Server unit tests: 164 passed (14 test files).
+  - Web unit tests: 18 passed (2 test files).
+  - TypeScript typecheck: 0 errors in both `web` and `server`.
+  - Next.js production build: succeeded cleanly with Turbopack.
+  - Browser verification: 12 screenshots captured at 1440px, 1280px, 768px, and 375px across Home, Connect, and Proof. All routes verified 200 OK.
+
+- **Homepage (`/`):** Dedicated public entry explaining the problem ("Your money has a purpose. Your agent has a limit"), live API-backed demo vault preview, compact public navigation, primary action "Connect your agent", secondary "Explore a recorded run", and direct links to onchain transaction, Walrus memory, and learning evidence.
+- **Owner Workspace (`/workspace`):** Moved workspace root to `/workspace` with backward-compatible `/#workspace` hash migration. Visible total, committed, and free funds without top marketing banner. Prominent terminal companion (`pnpm sisih status`) with copy control.
+- **Empty States & Demo Scenarios:** Updated empty states in `agent.tsx` and `memory.tsx` to point visitors to connect an external agent. Relabeled `demo-dock.tsx` task buttons as scripted test scenarios to avoid confusion with the external autonomous agent.
+- **Connect Flow (`/connect`):** Complete, copyable Bash and PowerShell commands using the verified Claude Code flags (`--setting-sources project --mcp-config .mcp.json --strict-mcp-config --tools Skill,ToolSearch --permission-mode dontAsk --allowedTools ...`), unsetting owner credentials in the agent shell, `-p` read-only connection check, status check polling explanation, and shared lease handling. Added judge readiness preflight card explaining free pool dynamics (1.60 free testnet USDC in `sisih-hosted-9`).
+- **MCP Server Description:** Corrected `list_services` in `server/src/mcp/server.ts` to state that all are demo merchants with ChainScope returning live onchain data and others returning labeled fixed samples.
+- **Recording Guide (`docs/RECORDING.md`):** Updated to use verified `-p` flags, dynamic IDs, explicit Inference suggestion acceptance (`pnpm sisih suggestions accept <current-id>`) raising reserve from 6.00 to 7.00, cycle maturity wait (2-minute demo cycle), and balance calculations before reserve blocks.
+- **Styling & Tokens:** Added dedicated CSS for `public-*`, `home-*`, and `workspace-terminal` in `web/src/app/live.css` following Sisih's forest green, lime, ivory, DM Sans, and Geist Mono branding. Verified at 375px, 768px, 1280px, and 1440px with no horizontal overflow and full dark mode support.
+- **Verification:**
+  - TypeScript typecheck: 0 errors across `@sisih/web` and `@sisih/server`.
+  - Vitest test suites: `@sisih/server` 107 passed (107), `@sisih/web` 18 passed (18).
+  - Production build: `next build` succeeded, prerendering all 13 routes.
+  - Browser verification: Local Next.js server verified with 200 OK across 10 routes; 8 screenshots saved to `docs/screenshots/`.
 
 ### Agent-first product, terminal-first owner workflow (2026-11-07)
 

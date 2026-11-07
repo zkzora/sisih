@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { usdcType } from "../chain/sisih";
 import { recordTx } from "../chain/vault";
 import { publish } from "../lib/bus";
+import { suiNetworkLabel } from "../lib/env";
 import { MERCHANTS, merchantAddress, type Merchant } from "../merchants/registry";
 import { x402Facilitator, x402Network } from "./facilitator";
 import { liveVaultReport } from "./live-report";
@@ -98,7 +99,7 @@ export function merchantRoutes(): Hono {
         try {
           content = await liveVaultReport();
         } catch (err) {
-          return c.json({ error: "live_data_unavailable", message: `Could not read Sui Testnet through Tatum: ${(err as Error).message.slice(0, 160)}. Not settled, not charged.`, demo: true }, 503);
+          return c.json({ error: "live_data_unavailable", message: `Could not read ${suiNetworkLabel()} through Tatum: ${(err as Error).message.slice(0, 160)}. The merchant did not settle this payment.`, demo: true }, 503);
         }
       }
       const payload = decodePaymentSignatureHeader(sig);

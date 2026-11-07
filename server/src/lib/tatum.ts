@@ -267,3 +267,14 @@ export async function verifyTransaction(digest: string, opts: { network?: SuiNet
     }
   }
 }
+
+/**
+ * Submit transaction bytes the owner signed locally, through Tatum. The caller has already checked
+ * the bytes against the approved intent (owner/tx.ts). Throws on transport errors: a timeout is not
+ * proof of failure, so callers record the locally computed digest and reconcile instead of re-signing.
+ */
+export async function executeSigned(txBytes: Uint8Array, signature: string, network?: SuiNetwork): Promise<ExecutedTx> {
+  const res = await suiClient(network).executeTransaction({ transaction: txBytes, signatures: [signature] });
+  const t = res.Transaction ?? res.FailedTransaction;
+  return { digest: t.digest, success: t.status.success, error: t.status.success ? null : JSON.stringify(t.status.error) };
+}

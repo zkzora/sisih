@@ -59,35 +59,19 @@ const LIMITS: { name: string; match: (path: string) => boolean; max: number; win
 ];
 
 export interface Denied {
-  status: 401 | 423 | 429 | 503;
+  status: 401 | 403 | 423 | 429 | 503;
   body: { error: string; code: string; retryAfterSeconds?: number };
 }
 
-// --- agent credential (MCP) -------------------------------------------------------------
+// --- agent and owner credentials ---------------------------------------------------------
 /**
- * The external agent (for example Claude Code over MCP) authenticates with its own credential,
- * SISIH_AGENT_TOKEN, sent as `Authorization: Bearer <token>`. It is distinct from DEMO_TOKEN (owner
- * demo controls) and from every signing key, and it only reaches /api/mcp: every other mutating
- * route still checks DEMO_TOKEN, so an agent credential cannot approve, reset, withdraw or change
- * reserves. One configured demo agent; the lease holder below identifies its run.
+ * /api/mcp and /api/owner/* authenticate a bearer credential themselves (auth/context.ts): the
+ * delegated agent (SISIH_AGENT_TOKEN) or the owner. Everything else below is the legacy Testnet
+ * demo-token path. The holder below identifies the one configured demo agent's run.
  */
 export const AGENT_HOLDER = "agent:demo";
 export const MCP_PATH = "/api/mcp";
-
-export type AgentAuth = { ok: true } | { ok: false; status: 401 | 503; error: string };
-
-export function agentAuth(header: (name: string) => string | undefined | null): AgentAuth {
-  const expected = env("SISIH_AGENT_TOKEN");
-  if (!expected) {
-    if (env("VERCEL")) return { ok: false, status: 503, error: "The agent endpoint is not configured on this deployment." };
-    return { ok: true }; // local development without a token
-  }
-  const given = (header("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!given || !tokenMatches(given, expected)) {
-    return { ok: false, status: 401, error: "Missing or invalid agent credential. Send Authorization: Bearer <SISIH_AGENT_TOKEN>." };
-  }
-  return { ok: true };
-}
+export const OWNER_PREFIX = "/api/owner/";
 
 /**
  * While the demo agent holds the demo run, a demo-token owner may still decide that agent's
@@ -109,7 +93,13 @@ export async function demoAccess(req: { method: string; path: string; header: (n
   if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return null;
   // /api/mcp authenticates the agent credential itself (agentAuth); it never accepts DEMO_TOKEN as
   // a substitute and exposes no owner operation.
-  if (req.path === MCP_PATH) return null;
+  if (req.path === MCP_PATH || req.path.startsWith(OWNER_PREFIX)) return null;
+  // Mainnet: no shared-token shortcut. Every owner effect goes through /api/owner/* (owner
+  // credential plus the owner's local signature); demo controls, server-owner signing, transaction
+  // import and the legacy decision/rule/settings routes are refused before any side effect.
+  if (env("SUI_NETWORK") === "mainnet") {
+    return { status: 403, body: { error: "This route is not available on Mainnet. Owner actions use the owner MCP tools or pnpm sisih, signed with the owner's key.", code: "mainnet_route_disabled" } };
+  }
   const expected = env("DEMO_TOKEN");
   if (!expected && env("VERCEL")) return { status: 503, body: { error: "Demo controls are not configured on this deployment.", code: "demo_unconfigured" } };
   if (!tokenMatches(req.header(DEMO_TOKEN_HEADER), expected)) {

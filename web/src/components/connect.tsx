@@ -38,6 +38,15 @@ const CHECK_PROMPT = "Use the sisih MCP server to show me my budget, my limits a
 const TASK_PROMPT =
   "Check whether my Sisih vault is healthy. Use the sisih MCP server to buy the ChainScope live vault report, then tell me how much is committed versus free, whether any commitment is underfunded, and the largest payment you could make right now. Quote the checkpoint and time, list the receipts, and end the demo session. If Sisih holds the purchase for my approval, give me the terminal command and wait.";
 
+const CLAUDE_FLAGS_BASH = `claude --setting-sources project --mcp-config .mcp.json --strict-mcp-config \\
+  --tools Skill,ToolSearch --permission-mode dontAsk \\
+  --allowedTools mcp__sisih__get_budget,mcp__sisih__list_services,mcp__sisih__request_purchase,mcp__sisih__get_request_status,mcp__sisih__end_demo_session,Skill,ToolSearch`;
+
+const CLAUDE_FLAGS_PWSH = `$sisih = @('--setting-sources','project','--mcp-config','.mcp.json','--strict-mcp-config',
+  '--tools','Skill,ToolSearch','--permission-mode','dontAsk','--allowedTools',
+  'mcp__sisih__get_budget','mcp__sisih__list_services','mcp__sisih__request_purchase',
+  'mcp__sisih__get_request_status','mcp__sisih__end_demo_session','Skill','ToolSearch')`;
+
 export function ConnectView() {
   const { unlocked } = useSisih();
   const [origin, setOrigin] = useState("https://sisih-azure.vercel.app");
@@ -76,15 +85,13 @@ export function ConnectView() {
       />
       <ol className="connect-flow" aria-label="How it works">
         <li>
-          <strong>Your agent</strong> (Claude Code) gets a task, picks a service and asks Sisih to buy it.
+          <strong>Your agent</strong> (Claude Code) gets a task, picks a service and asks Sisih to buy it using a fresh idempotency key.
         </li>
         <li>
-          <strong>Sisih</strong> pays at once if it fits your limits and preferences, holds it for you if it is new, and refuses anything that would touch
-          committed funds.
+          <strong>Sisih</strong> pays at once if it fits your limits and remembered preferences, holds it if unfamiliar, and refuses anything that touches committed funds.
         </li>
         <li>
-          <strong>You</strong> answer held requests from your terminal: <code>pnpm sisih approve &lt;id&gt; --remember</code>. The agent continues the same request
-          and uses what it bought.
+          <strong>You</strong> answer held requests from your owner terminal: <code>pnpm sisih approve &lt;id&gt; --remember</code>. The agent checks status using the same request ID and continues without paying twice.
         </li>
       </ol>
       <p className="detail-note connect-networks">Vault and x402 payments on Sui Testnet (testnet USDC, through Tatum). Memory on Walrus Mainnet. Demo merchants.</p>
@@ -100,7 +107,7 @@ export function ConnectView() {
             </p>
             <Code label=".mcp.json">{mcpJson}</Code>
             <p>
-              <strong>2.</strong> Add the Sisih skill (how to buy, wait for approval, report receipts):
+              <strong>2.</strong> Add the Sisih skill (how to buy, handle holds, and report receipts):
             </p>
             <Shells
               label="skill download"
@@ -108,17 +115,41 @@ export function ConnectView() {
               powershell={`New-Item -ItemType Directory -Force .claude/skills/sisih | Out-Null; Invoke-WebRequest ${skill} -OutFile .claude/skills/sisih/SKILL.md`}
             />
             <p>
-              <strong>3.</strong> Set the agent credential in that terminal only, then start <code>claude</code> there:
+              <strong>3.</strong> Keep owner credentials out of the agent process. Unset owner tokens and export only the restricted agent credential:
             </p>
-            <Shells label="agent credential" bash={`export SISIH_AGENT_TOKEN="<agent credential>"`} powershell={`$env:SISIH_AGENT_TOKEN = "<agent credential>"`} />
+            <Shells
+              label="agent credential"
+              bash={`unset SISIH_OWNER_TOKEN DEMO_TOKEN\nexport SISIH_AGENT_TOKEN="<agent credential>"`}
+              powershell={`Remove-Item Env:SISIH_OWNER_TOKEN, Env:DEMO_TOKEN -ErrorAction SilentlyContinue\n$env:SISIH_AGENT_TOKEN = "<agent credential>"`}
+            />
             <p>
-              <strong>4.</strong> Connection check (read only):
+              <strong>4.</strong> Connection check (tested <code>-p</code> read-only check with restricted flags):
             </p>
-            <Code label="connection check prompt">{CHECK_PROMPT}</Code>
+            <Shells
+              label="connection check"
+              bash={`${CLAUDE_FLAGS_BASH} \\\n  -p "${CHECK_PROMPT}"`}
+              powershell={`${CLAUDE_FLAGS_PWSH}\nclaude -p "${CHECK_PROMPT}" @sisih`}
+            />
+            <p className="detail-note">
+              <code>--tools</code> strips built-in filesystem and shell tools; <code>--allowedTools</code> allows only the Sisih MCP tools, Skill and ToolSearch.
+            </p>
             <p>
-              <strong>5.</strong> A task with live data (ChainScope reads your vault from Sui Testnet at purchase time):
+              <strong>5.</strong> A task with live data (ChainScope reads live Sui Testnet vault state):
             </p>
-            <Code label="task prompt">{TASK_PROMPT}</Code>
+            <Shells
+              label="task command"
+              bash={`${CLAUDE_FLAGS_BASH} \\\n  -p "${TASK_PROMPT}"`}
+              powershell={`${CLAUDE_FLAGS_PWSH}\nclaude -p "${TASK_PROMPT}" @sisih`}
+            />
+            <p className="detail-note">
+              <strong>Starting conditions:</strong> If the shared demo already remembers ChainScope, this request may be auto-approved immediately. A fresh first-approval learning demonstration starts from an owner reset (<code>pnpm sisih demo reset --yes</code>). Retries reuse the same idempotency key; new purchases require a unique key.
+            </p>
+            <p>
+              <strong>6.</strong> When finished, end the session or release the lease:
+            </p>
+            <p className="detail-note">
+              The agent calls <code>end_demo_session</code> upon completion, or the owner runs <code>pnpm sisih release</code> in their terminal to free the shared lease.
+            </p>
           </div>
         </Panel>
 
@@ -138,9 +169,12 @@ export function ConnectView() {
             </p>
             <Code label="status and limits">{`pnpm sisih status\npnpm sisih limits set --per-request 2.00 --per-day 6.00 --days 30\npnpm sisih prefs`}</Code>
             <p>
-              <strong>3.</strong> When the agent says a purchase is waiting for you:
+              <strong>3.</strong> When the agent says a purchase is waiting for your approval:
             </p>
             <Code label="approve from the terminal">{`pnpm sisih requests --held\npnpm sisih approve <request-id> --remember\npnpm sisih deny <request-id>`}</Code>
+            <p className="detail-note">
+              Approving releases funds and settles over x402. The agent polls with <code>get_request_status</code> using the same request ID; status checks never trigger another payment.
+            </p>
             <p>
               <strong>4.</strong> Check the result and the evidence, then hand the shared demo back:
             </p>
@@ -184,30 +218,20 @@ export function ConnectView() {
           </div>
         </Panel>
 
-        <Panel title="Prefer a browser?">
+        <Panel title="Shared demo readiness for judges" action={<Badge tone="memory">Preflight</Badge>}>
           <div className="connect-body">
             <p>
-              The workspace shows the same live state: held requests in{" "}
-              <Link href="/agent" className="text-button">
-                Agent &amp; requests
-              </Link>{" "}
-              (the agent&apos;s links open the request directly), receipts in{" "}
-              <Link href="/activity" className="text-button">
-                Onchain activity
-              </Link>{" "}
-              and memories in{" "}
-              <Link href="/memory" className="text-button">
-                Memory
-              </Link>
-              . Deciding there needs the same owner token.
+              <strong>Read-only exploration:</strong> Anyone can inspect the live dashboard, transaction evidence, and Walrus memories without credentials. The historical <Link href="/tour" className="text-button">Recorded run</Link> (from <code>sisih-hosted-6</code>) is always available as a static walkthrough.
+            </p>
+            <p>
+              <strong>Live agent execution:</strong> Requires the privately delivered owner token and an available shared demo lease.
             </p>
             <p className="detail-note">
-              One shared live workspace, one run at a time: others get a clear &quot;busy&quot; answer. End with the agent&apos;s <code>end_demo_session</code> or{" "}
-              <code>pnpm sisih release</code>.
+              At the final tested state (<code>sisih-hosted-9</code>), the vault held 1.60 free testnet USDC with ChainScope priced at 0.80 USDC. This permits at most two new purchases from the free pool. Free funds depend on previous runs and are not a persistent readiness guarantee.
             </p>
-            <Link className="text-button" href="/tour">
-              See a complete recorded run first <ArrowRight size={13} />
-            </Link>
+            <p className="detail-note">
+              <strong>Owner preflight check:</strong> Before a live judging test, check status with <code>pnpm sisih status</code>, <code>pnpm sisih limits</code>, and <code>pnpm sisih prefs</code>. If free funds are low, the owner can adjust reserves (<code>pnpm sisih reserve set &lt;id&gt; &lt;amount&gt;</code>) or deposit testnet USDC. The shared demo is never silently reset.
+            </p>
           </div>
         </Panel>
       </div>

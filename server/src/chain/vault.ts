@@ -327,3 +327,18 @@ export async function depositIncome(amount: bigint): Promise<WriteResult> {
     }),
   );
 }
+
+/**
+ * initialSharedVersion of the shared vault object, read once through Tatum and cached. Needed to
+ * build owner transactions as a fixed transaction kind (owner/tx.ts) on both sides of signing.
+ */
+export async function vaultSharedVersion(): Promise<string> {
+  const key = `vault_shared_version:${vaultId()}`;
+  const [row] = await db().select().from(schema.kv).where(eq(schema.kv.key, key));
+  if (row) return row.value;
+  const { object } = await suiClient().getObject({ objectId: vaultId() });
+  const owner = object.owner as { $kind: string; Shared?: { initialSharedVersion: string } };
+  if (owner.$kind !== "Shared" || !owner.Shared) throw new Error(`Vault ${vaultId()} is not a shared object`);
+  await kvPut(key, owner.Shared.initialSharedVersion);
+  return owner.Shared.initialSharedVersion;
+}

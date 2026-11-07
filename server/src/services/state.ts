@@ -1,6 +1,6 @@
 /** Sessions, the rules cache and settings (Postgres). Walrus is the source of truth for rules. */
 import { randomUUID } from "node:crypto";
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db, schema } from "../db/index";
 import type { Category, Rule } from "../domain/types";
 import { merchantKey } from "../policy/engine";
@@ -28,6 +28,19 @@ export async function kvRead(key: string): Promise<string | undefined> {
 
 export async function kvSet(key: string, value: string): Promise<void> {
   await db().insert(schema.kv).values({ key, value }).onConflictDoUpdate({ target: schema.kv.key, set: { value } });
+}
+
+/**
+ * Compare-and-swap: replace the value only if it still equals `expected`. Exactly one concurrent
+ * caller wins; returns whether this one did. Used for one-way state transitions (owner intents).
+ */
+export async function kvCompareAndSet(key: string, expected: string, next: string): Promise<boolean> {
+  const moved = await db()
+    .update(schema.kv)
+    .set({ value: next })
+    .where(and(eq(schema.kv.key, key), eq(schema.kv.value, expected)))
+    .returning({ key: schema.kv.key });
+  return moved.length === 1;
 }
 
 export async function kvDelete(key: string): Promise<void> {

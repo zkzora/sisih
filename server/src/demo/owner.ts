@@ -55,6 +55,7 @@ const T = () => [usdcType()];
  * new policy starts a fresh daily window (set_agent_policy keeps the window for the same agent).
  */
 export async function seedVault(opts: { firstDueInMs?: bigint } = {}): Promise<WriteResult> {
+  assertTestnet("Demo seed (server-held owner key)");
   const payees = payeeAddresses();
   const now = BigInt(Date.now());
   const cycle = demoCycleMs();
@@ -95,6 +96,7 @@ export async function seedVault(opts: { firstDueInMs?: bigint } = {}): Promise<W
 }
 
 export function emergencyWithdrawAll(): Promise<WriteResult> {
+  assertTestnet("Emergency withdraw (demo reset)");
   return signedWrite(owner(), "Emergency withdraw all (demo reset)", (tx) =>
     tx.moveCall({ target: target("emergency_withdraw_all"), typeArguments: T(), arguments: [tx.object(vaultId())] }),
   { source: "owner" });

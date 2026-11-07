@@ -12,10 +12,10 @@ export interface CommandSpec {
   required?: string[]; // required flags
   mutates: boolean;
   summary: string;
-  group: "Inspect" | "Configure" | "Decide" | "Agent permission" | "Session" | "Evidence" | "Demo (testnet demo plumbing)";
+  group: "Inspect" | "Configure" | "Decide" | "Agent permission" | "Session" | "Owner signing" | "Evidence" | "Demo (testnet demo plumbing)";
 }
 
-export const GLOBAL_FLAGS: Record<string, FlagKind> = { json: "bool", url: "string", hold: "bool", help: "bool" };
+export const GLOBAL_FLAGS: Record<string, FlagKind> = { json: "bool", url: "string", hold: "bool", help: "bool", yes: "bool" };
 
 export const COMMANDS: CommandSpec[] = [
   { path: ["status"], args: [], flags: {}, mutates: false, summary: "Budget, commitments, agent permission, held requests and preferences", group: "Inspect" },
@@ -44,6 +44,11 @@ export const COMMANDS: CommandSpec[] = [
   { path: ["revoke"], args: [], flags: {}, mutates: true, summary: "Revoke the agent's permission (grant again with limits set)", group: "Agent permission" },
 
   { path: ["session", "next"], args: [], flags: {}, mutates: true, summary: "Start the next session (rules rebuilt from Walrus recall)", group: "Session" },
+  { path: ["credential", "agent"], args: [], flags: {}, mutates: true, summary: "Show the spending agent's credential privately (Testnet demo; owner only)", group: "Session" },
+
+  { path: ["sign"], args: ["intent-id"], flags: { yes: "bool" }, mutates: true, summary: "Check an owner intent against your local config and sign it with your local owner key (--yes to sign)", group: "Owner signing" },
+  { path: ["intent"], args: ["intent-id"], flags: {}, mutates: false, summary: "Show an owner intent and its status", group: "Owner signing" },
+  { path: ["reconcile"], args: ["intent-id"], flags: {}, mutates: true, summary: "Look up an intent with an unknown outcome through Tatum (never re-signs)", group: "Owner signing" },
   { path: ["release"], args: [], flags: {}, mutates: true, summary: "Hand the shared demo run back to the next visitor or agent", group: "Session" },
 
   { path: ["evidence"], args: [], flags: {}, mutates: false, summary: "Recent verified transactions and stored memories", group: "Evidence" },
@@ -56,4 +61,4 @@ export const COMMANDS: CommandSpec[] = [
   { path: ["demo", "deposit"], args: ["amount"], flags: {}, mutates: true, summary: "Deposit testnet USDC from the demo owner (up to 1.00)", group: "Demo (testnet demo plumbing)" },
 ];
 
-export const VERSION = "1.0.0";
+export const VERSION = "1.1.0";

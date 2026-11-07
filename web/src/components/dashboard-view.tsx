@@ -1,5 +1,6 @@
 "use client";
 import { Overview } from "./overview";
+import { HomeView } from "./home";
 import { ObligationsView } from "./obligations";
 import { AgentView } from "./agent";
 import { MemoryView } from "./memory";
@@ -11,6 +12,7 @@ import { ConnectView } from "./connect";
 import type { View } from "@/lib/types";
 export function DashboardView({ view }: { view: View }) {
   const Component = {
+    home: HomeView,
     overview: Overview,
     obligations: ObligationsView,
     agent: AgentView,

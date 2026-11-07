@@ -14,7 +14,7 @@ export interface Merchant {
   price: bigint;
   demo: true;
   addressEnv: string;
-  /** "live": the response is fetched from Sui Testnet through Tatum at purchase time; "fixed": sample content. */
+  /** "live": the response is read from the configured Sui network through Tatum at purchase time; "fixed": sample content. */
   content: "live" | "fixed";
 }
 
@@ -22,8 +22,8 @@ export const MERCHANTS: readonly Merchant[] = [
   { slug: "datamart", name: "DataMart", item: "Historical token prices", path: "/merchants/datamart/token-history", category: "data", price: 500_000n, demo: true, addressEnv: "MERCHANT_DATAMART_ADDRESS", content: "fixed" },
   { slug: "searchbox", name: "SearchBox", item: "Premium search", path: "/merchants/searchbox/premium-search", category: "search", price: 1_200_000n, demo: true, addressEnv: "MERCHANT_SEARCHBOX_ADDRESS", content: "fixed" },
   { slug: "reportlab", name: "ReportLab", item: "Onchain research report", path: "/merchants/reportlab/onchain-report", category: "research", price: 3_000_000n, demo: true, addressEnv: "MERCHANT_REPORTLAB_ADDRESS", content: "fixed" },
-  // Live data: a report on the owner's Sisih vault read from Sui Testnet through Tatum at purchase time.
-  { slug: "chainscope", name: "ChainScope", item: "Live Sui Testnet vault report", path: "/merchants/chainscope/vault-report", category: "data", price: 800_000n, demo: true, addressEnv: "MERCHANT_CHAINSCOPE_ADDRESS", content: "live" },
+  // Live data: a report on the owner's Sisih vault read through Tatum at purchase time (network from config).
+  { slug: "chainscope", name: "ChainScope", item: "Live Sui vault report", path: "/merchants/chainscope/vault-report", category: "data", price: 800_000n, demo: true, addressEnv: "MERCHANT_CHAINSCOPE_ADDRESS", content: "live" },
 ];
 
 export function findMerchant(nameOrSlug: string): Merchant | undefined {

@@ -70,6 +70,7 @@ export async function sponsoredSend(holder: Keypair, to: string, amount: bigint,
 
 /** Sweep every demo holder to the operator. Logs and returns one record per transfer. */
 export async function recycle(opts: { includeAgent?: boolean; log?: (line: string) => void } = {}): Promise<SweepRecord[]> {
+  assertTestnet("Demo recycle");
   const log = opts.log ?? ((l: string) => console.log(l));
   const operator = keypair("operator").toSuiAddress();
   const out: SweepRecord[] = [];
@@ -93,6 +94,7 @@ export async function recycle(opts: { includeAgent?: boolean; log?: (line: strin
 
 /** Operator -> address USDC (operator pays its own gas). Used to top up the owner before seeding. */
 export async function operatorSendUsdc(to: string, amount: bigint): Promise<string> {
+  assertTestnet("Operator top-up");
   const operator = keypair("operator");
   const tx = new Transaction();
   tx.setSender(operator.toSuiAddress());

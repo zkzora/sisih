@@ -1,0 +1,63 @@
+{
+  "generated_at": "2026-11-07T06:42:56.389Z",
+  "network": "sui:mainnet",
+  "config_files": [
+    ".\\.env.mainnet"
+  ],
+  "rpc": "Tatum Sui Mainnet gRPC",
+  "chain": {
+    "chain_id": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S",
+    "checkpoint": "342552366",
+    "epoch": "1304"
+  },
+  "usdc": {
+    "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+    "symbol": "USDC",
+    "decimals": 6,
+    "name": "USDC"
+  },
+  "reference_gas_price_mist": "100",
+  "balances": {
+    "owner": {
+      "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+      "sui": "0.000000",
+      "usdc": "0.000000"
+    },
+    "operator": {
+      "address": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+      "sui": "0.000000",
+      "usdc": "0.000000"
+    },
+    "agent": {
+      "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+      "sui": "0.000000",
+      "usdc": "0.000000"
+    },
+    "facilitator": {
+      "address": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664",
+      "sui": "0.000000",
+      "usdc": "0.000000"
+    }
+  },
+  "sisih_package_id": null,
+  "vault_id": null,
+  "operator_cap_id": null,
+  "deployed": false,
+  "publish_estimate": {
+    "simulated": true,
+    "success": true,
+    "computation_mist": "100000",
+    "storage_mist": "76570000",
+    "rebate_mist": "0",
+    "net_sui": "0.076670",
+    "note": "Simulated with a mocked gas coin through Tatum; not broadcast. Actual cost can differ with the gas price at execution."
+  },
+  "not_estimable_before_publish": [
+    "create_vault (needs the published package)",
+    "deposit, add_obligation x N, set_agent_policy (need the vault)",
+    "release_to_agent, x402 settle, pause_agent (need funded vault and agent)"
+  ],
+  "problems": [
+    "DATABASE_URL is not set (Mainnet needs its own database; it never falls back to the Testnet PGlite)"
+  ]
+}

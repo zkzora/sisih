@@ -53,6 +53,9 @@ export function assertPaysFromCoin(txBase64: string, coinId: string): void {
   if (!objectInputs.map(norm).includes(norm(coinId))) throw new Error(`payment does not spend the released coin ${coinId}`);
 }
 
+/** The merchant answered without settling (non-200, no settlement receipt). */
+export class MerchantRefused extends Error {}
+
 export interface Paid {
   settleDigest: string;
   resource: unknown;
@@ -65,7 +68,7 @@ export async function payInvoice(inv: Invoice, coinId: string, requestId: string
   onSent?.();
   const res = await fetch(inv.url, { headers: { ...client().encodePaymentSignatureHeader(payload), "x-sisih-request-id": requestId } });
   const body = (await res.json()) as Record<string, unknown>;
-  if (res.status !== 200) throw new Error(`merchant refused payment (${res.status}): ${String(body.error ?? "")} ${String(body.message ?? "")}`.trim());
+  if (res.status !== 200) throw new MerchantRefused(`merchant refused payment (${res.status}): ${String(body.error ?? "")} ${String(body.message ?? "")}`.trim());
   const receipt = client().getPaymentSettleResponse((h) => res.headers.get(h));
   if (!receipt.success || !receipt.transaction) throw new Error(`settlement failed: ${receipt.errorReason ?? "no digest"}`);
   return { settleDigest: receipt.transaction, resource: body };

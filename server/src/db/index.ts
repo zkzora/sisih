@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { sql } from "drizzle-orm";
 import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { env } from "../lib/env";
+import { env, suiNetwork } from "../lib/env";
 import * as schema from "./schema";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -56,7 +56,13 @@ let exec: ((sql: string) => Promise<unknown>) | undefined;
 // Hosted: DATABASE_URL, or POSTGRES_URL as set by the Vercel x Supabase integration (transaction
 // pooler, 6543). Not the session pooler (5432): it caps clients at 15, and suspended serverless
 // instances keep theirs open. Every query must finish inside the request or background() (after()).
-const databaseUrl = () => env("DATABASE_URL") ?? env("POSTGRES_URL") ?? "pglite:./server/data/pglite";
+const databaseUrl = () => {
+  const url = env("DATABASE_URL") ?? env("POSTGRES_URL");
+  if (url) return url;
+  // Mainnet state never falls back to the Testnet demo's local database.
+  if (suiNetwork() === "mainnet") throw new Error("DATABASE_URL must be set explicitly for Mainnet (a database separate from the Testnet demo).");
+  return "pglite:./server/data/pglite";
+};
 const isPostgresUrl = (url: string) => /^postgres(ql)?:\/\//.test(url);
 
 function createPostgres(url: string): Db {

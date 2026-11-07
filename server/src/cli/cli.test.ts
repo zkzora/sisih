@@ -79,12 +79,13 @@ describe("owner CLI side effects", () => {
   });
   it("approve sends exactly one decision for the original request, then hands the demo run back", async () => {
     const request = { id: "req-1", session: 1, merchant: "ChainScope", item: "x", amount: "800000", status: "approved", code: "new_merchant", reasons: [], paymentStatus: "paid", paymentDigests: [] };
-    const { d, calls } = deps({ SISIH_OWNER_TOKEN: "owner" }, { "/api/requests/req-1/decision": { request, ruleId: "rule-1", ruleMemoryId: "mem-1" } });
+    const { d, calls } = deps({ SISIH_OWNER_TOKEN: "owner" }, { "/api/owner/actions": { status: "done", result: { request, ruleId: "rule-1", ruleMemoryId: "mem-1" } } });
     expect(await main(["approve", "req-1", "--remember"], d)).toBe(EXIT.ok);
-    const decisions = calls.filter((c) => c.url.endsWith("/decision"));
+    const decisions = calls.filter((c) => c.url.endsWith("/api/owner/actions"));
     expect(decisions).toHaveLength(1);
-    expect(decisions[0]!.body).toEqual({ action: "approve_and_remember" });
-    expect(calls.at(-1)!.url).toMatch(/\/api\/demo\/release$/);
+    expect(decisions[0]!.body).toEqual({ action: "decide_request", params: { request_id: "req-1", decision: "approve", remember: true } });
+    expect(calls.some((c) => c.url.endsWith("/decision") || c.url.includes("/api/demo/"))).toBe(false); // the shared owner route, not the legacy demo route
+    expect(calls.at(-1)!.url).toMatch(/\/api\/owner\/release$/);
   });
   it("maps server refusals to exit codes", async () => {
     const make = (status: number) => ({ d: { ...deps({ SISIH_OWNER_TOKEN: "o" }).d, fetch: (async () => new Response(JSON.stringify({ error: "nope" }), { status })) as unknown as typeof fetch } });
@@ -112,5 +113,63 @@ describe("gate-release: help and invalid arguments never reach a transaction", (
     const { g, release } = make();
     expect(await runGateRelease(["--yes", "--skip-success", "--amount", "1.20"], g)).toBe(0);
     expect(release).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("owner CLI on a local-signing deployment (Mainnet)", () => {
+  const intent = {
+    id: "oi-0123456789ab",
+    kind: "offchain",
+    status: "pending",
+    summary: "Automatic approval threshold 0.75 USDC",
+    action: { action: "set_threshold", max_amount: "750000" },
+    call: null,
+    target: { network: "mainnet", packageId: "0xpkg", vaultId: "0xvault", vaultSharedVersion: "1", usdcType: "0xusdc::usdc::USDC", ownerAddress: `0x${"1".repeat(64)}` },
+    gas_cap_mist: "50000000",
+    nonce: "n",
+    expires_at: Date.now() + 600_000,
+  };
+  const signature = { status: "owner_signature_required", intent_id: intent.id, summary: intent.summary, network: "sui:mainnet", expires_at: "later", sign_with: `pnpm sisih sign ${intent.id} --yes` };
+  const signer = (address = `0x${"1".repeat(64)}`, network: "mainnet" | "testnet" = "mainnet") => {
+    const signed: string[] = [];
+    return {
+      signed,
+      load: async () => ({
+        address: () => address,
+        config: () => ({ network, packageId: "0xpkg", vaultId: "0xvault", usdcType: "0xusdc::usdc::USDC", agentAddress: null }),
+        signText: async (t: string) => (signed.push(t), "sig-" + t.length),
+        signCall: async () => ({ tx_bytes: "AA==", signature: "sig" }),
+      }),
+    };
+  };
+
+  it("an owner command only creates an intent; nothing is signed or submitted without --yes", async () => {
+    const { d, calls, out } = deps({ SISIH_OWNER_TOKEN: "owner" }, { "/api/owner/actions": signature });
+    const s = signer();
+    expect(await main(["threshold", "set", "0.75"], { ...d, signer: s.load })).toBe(EXIT.ok);
+    expect(out.join(" ")).toContain(`pnpm sisih sign ${intent.id} --yes`);
+    expect(s.signed).toEqual([]);
+    expect(calls.some((c) => c.url.includes("/submit"))).toBe(false);
+  });
+
+  it("sign --yes checks the intent, signs locally and submits the signature (never the key)", async () => {
+    const { d, calls } = deps({ SISIH_OWNER_TOKEN: "owner" }, { [`/api/owner/intents/${intent.id}`]: intent, "/submit": { status: "executed" } });
+    const s = signer();
+    expect(await main(["sign", intent.id, "--yes"], { ...d, signer: s.load })).toBe(EXIT.ok);
+    expect(s.signed[0]).toContain("Sisih owner authorization");
+    expect(s.signed[0]).toContain("network: sui:mainnet");
+    const submit = calls.find((c) => c.url.endsWith("/submit"))!;
+    expect(Object.keys(submit.body as object)).toEqual(["signature"]);
+  });
+
+  it("refuses to sign an intent for another network or another owner, and without a local key", async () => {
+    for (const s of [signer(`0x${"1".repeat(64)}`, "testnet"), signer(`0x${"2".repeat(64)}`)]) {
+      const { d, calls } = deps({ SISIH_OWNER_TOKEN: "owner" }, { [`/api/owner/intents/${intent.id}`]: intent });
+      expect(await main(["sign", intent.id, "--yes"], { ...d, signer: s.load })).toBe(EXIT.failed);
+      expect(s.signed).toEqual([]);
+      expect(calls.some((c) => c.url.includes("/submit"))).toBe(false);
+    }
+    const { d } = deps({ SISIH_OWNER_TOKEN: "owner" }, { [`/api/owner/intents/${intent.id}`]: intent });
+    expect(await main(["sign", intent.id, "--yes"], { ...d, signer: async () => null })).toBe(EXIT.auth);
   });
 });

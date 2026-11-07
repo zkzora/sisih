@@ -1,12 +1,32 @@
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
 
-// The single .env lives at the repo root.
+/**
+ * Configuration source. By default the repo-root .env (the working Sui Testnet demo). A separate
+ * environment (the bounded Mainnet proof) is selected with SISIH_ENV_FILE, a comma-separated list
+ * of files relative to the repo root, for example ".env.mainnet,.env.mainnet.deployment". When
+ * SISIH_ENV_FILE is set the root .env is NOT loaded, so Testnet IDs can never leak into Mainnet.
+ * Values already in the process environment win (dotenv does not override).
+ */
 const here = dirname(fileURLToPath(import.meta.url));
-const rootEnv = resolve(here, "../../../.env");
-if (existsSync(rootEnv)) config({ path: rootEnv, quiet: true });
+export const REPO_ROOT = resolve(here, "../../..");
+export const ROOT_ENV_FILE = resolve(REPO_ROOT, ".env");
+
+function selectedFiles(): string[] {
+  const raw = process.env.SISIH_ENV_FILE?.trim();
+  if (!raw) return [ROOT_ENV_FILE];
+  return raw
+    .split(",")
+    .map((f) => f.trim())
+    .filter(Boolean)
+    .map((f) => (isAbsolute(f) ? f : resolve(REPO_ROOT, f)));
+}
+
+/** The env files actually loaded into this process (existing ones only). */
+export const loadedEnvFiles: string[] = selectedFiles().filter((f) => existsSync(f));
+for (const f of loadedEnvFiles) config({ path: f, quiet: true });
 
 export type SuiNetwork = "testnet" | "mainnet";
 
@@ -21,10 +41,36 @@ export function requireEnv(name: string): string {
   return v;
 }
 
+/**
+ * Mainnet must come from its own configuration: never from the repo-root .env (the Testnet demo).
+ * Pure, so it is unit tested; suiNetwork() applies it to this process.
+ */
+export function assertEnvIsolation(network: SuiNetwork, files: readonly string[], rootFile = ROOT_ENV_FILE): void {
+  if (network !== "mainnet") return;
+  if (files.some((f) => resolve(f) === resolve(rootFile))) {
+    throw new Error(
+      "SUI_NETWORK=mainnet while the repo-root .env (the Testnet demo) is loaded. Select the Mainnet configuration with SISIH_ENV_FILE (for example .env.mainnet,.env.mainnet.deployment).",
+    );
+  }
+}
+
 export function suiNetwork(): SuiNetwork {
   const n = env("SUI_NETWORK") ?? "testnet";
   if (n !== "testnet" && n !== "mainnet") throw new Error(`SUI_NETWORK must be testnet or mainnet, got ${n}`);
+  assertEnvIsolation(n, loadedEnvFiles);
   return n;
+}
+
+export const isMainnet = (): boolean => suiNetwork() === "mainnet";
+
+/** "Sui Testnet" / "Sui Mainnet", from validated config. */
+export function suiNetworkLabel(network: SuiNetwork = suiNetwork()): string {
+  return network === "mainnet" ? "Sui Mainnet" : "Sui Testnet";
+}
+
+/** "testnet USDC" on Testnet, "USDC" on Mainnet. */
+export function usdcLabel(network: SuiNetwork = suiNetwork()): string {
+  return network === "mainnet" ? "USDC" : "testnet USDC";
 }
 
 export const USDC_DECIMALS = 6;

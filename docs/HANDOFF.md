@@ -18,22 +18,23 @@ says "settled on Sui". No eligibility or bonus is claimed beyond that text.
 The judge never switches wallet networks for memory: the server writes Walrus Memory with its own
 delegate key.
 
-## Cancelled: mainnet funding and migration (historical, do not act on it)
+## Mainnet Status (Prepared Bounded Proof)
 
-The earlier Phase 5 plan moved the vault and x402 to Sui mainnet and asked for 23.50 USDC + 1.50 SUI
-on the mainnet owner address. **Cancelled on 2026-11-06. Do not send mainnet funds.** No mainnet
-transaction, deployment or funding was made. The fresh mainnet keys generated for it are kept,
-unused, in `.env.mainnet` (gitignored, never on Vercel). A 20.00 USDC transfer to that owner
-address landed on testnet and is untouched.
+A bounded Sui Mainnet proof package is prepared in `docs/mainnet/` and `docs/MAINNET_READINESS.md`:
+- **Current status:** **prepared · not deployed · not funded · not executed**.
+- **Manifest:** `docs/mainnet/MANIFEST.json` and `docs/mainnet/MANIFEST.md` specify the exact chain id, Tatum Mainnet RPC endpoint, native USDC contract, local-only owner key custody, and an aggregate gas cap of 0.5954 SUI with 3.20 USDC deposit.
+- **Strict Isolation:** Repo-root `.env` is protected against Mainnet writes. Mainnet operations are strictly separated to `.env.mainnet` on the owner's machine.
+- **Judge / Hackathon Environment:** The active submission deployment runs on **Sui Testnet** (vault, x402 settlement, testnet USDC via Tatum) and **Walrus Memory Mainnet**.
 
 ## Status
 
-The agent-first, terminal-first milestone is done (2026-11-07). Nothing has been pushed, published
-or submitted.
+The Unified Handoff milestone is complete (2026-11-07). Nothing has been pushed, published, or submitted.
 
-- Claude Code buys over MCP with its own credential.
-- The owner works from the terminal with `pnpm sisih`.
-- The dashboard is the optional workspace.
+- **3-Page Public Site:** Home (`/`), Connect (`/connect`), Proof (`/proof`).
+- **Dashboard removed from public view:** Legacy routes (`/workspace`, `/tour`, etc.) redirect automatically.
+- **Unified Role-Scoped MCP:** `/api/mcp` serves both Spending Agents (`SISIH_AGENT_TOKEN`) and Owner Assistants (`SISIH_OWNER_TOKEN`).
+- **Owner Companion CLI:** `pnpm sisih` provides terminal inspection, decisions, and local signing support.
+- **Recorded Proof:** `sisih-hosted-9` evidence with verified Suiscan tx and Walruscan blob links.
 
 The final run is `sisih-hosted-9`: docs/evidence/final-run-sisih-hosted-9 and docs/PROGRESS.md.
 

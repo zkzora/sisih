@@ -299,7 +299,7 @@ export function MemoryView() {
               <p className="detail-note">Decisions come from the rules cache (rebuilt from Walrus each session). Recall runs in parallel and is attached when it arrives.</p>
             </div>
           ) : (
-            <Empty title="Nothing recalled yet" description="Run a task from Demo controls; its recall query and results appear here." />
+            <Empty title="Nothing recalled yet" description="When an agent makes a request, related memories and preferences are recalled from Walrus Mainnet and appear here." />
           ))}
         <div className="table-footer">Every memory is a Walrus blob on mainnet; links open Walruscan</div>
       </Panel>

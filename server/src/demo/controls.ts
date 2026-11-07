@@ -55,6 +55,7 @@ export interface CycleResult {
  * the seconds until the next due time.
  */
 export async function advanceCycle(): Promise<CycleResult> {
+  assertTestnet("Demo billing cycle (simulated income)");
   const cycle = await demoCycle();
   const v = await vaultState();
   const now = Date.now();

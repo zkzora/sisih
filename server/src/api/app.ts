@@ -27,11 +27,22 @@ import { addLocalRule, cachedRule, cachedRules, currentSession, defaultThreshold
 import { isScenario, runTask, SCENARIOS } from "../agent/runner";
 import { advanceCycle, clock, resetDemo } from "../demo/controls";
 import { merchantRoutes } from "../x402/merchants";
-import { actionLock, allowedOrigins, clientIp, DEMO_CLIENT_HEADER, DEMO_TOKEN_HEADER, demoGuard, demoRunStatus, MCP_PATH, releaseDemoRun } from "./guard";
+import { actionLock, allowedOrigins, clientIp, DEMO_CLIENT_HEADER, DEMO_TOKEN_HEADER, demoGuard, demoHolder, demoRunStatus, MCP_PATH, releaseDemoRun } from "./guard";
 import { handleMcp } from "../mcp/server";
 import { baseUrl } from "../x402/merchants";
 import { background } from "../lib/background";
 import { demoOwnerAction, isDemoOwnerAction, type DemoOwnerBody } from "../demo/owner";
+import { AuthorityError, resolveAuth } from "../auth/context";
+import { rateHit } from "../lib/leases";
+import { addPreference, setPreferenceEnabled } from "../owner/apply";
+import { ownerStatus, performOwnerAction } from "../owner/actions";
+import { getIntent, intentView, reconcileIntent, submitIntent, type SubmitInput } from "../owner/intents";
+
+class HttpDenied extends Error {
+  constructor(public status: 401 | 403 | 429 | 503, message: string, public code: string) {
+    super(message);
+  }
+}
 
 export const walrusBlobUrl = (blobId: string) => `https://walruscan.com/mainnet/blob/${blobId}`;
 
@@ -95,7 +106,7 @@ export function createApp() {
     cors({
       origin: (o) => (o && origins.includes(o.replace(/\/$/, "")) ? o : null),
       allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
-      allowHeaders: ["content-type", DEMO_TOKEN_HEADER, DEMO_CLIENT_HEADER],
+      allowHeaders: ["content-type", "authorization", DEMO_TOKEN_HEADER, DEMO_CLIENT_HEADER],
       maxAge: 600,
     }),
   );
@@ -110,6 +121,8 @@ export function createApp() {
   }
 
   app.onError((err, c) => {
+    if (err instanceof HttpDenied) return c.json({ error: err.message, code: err.code }, err.status);
+    if (err instanceof AuthorityError) return c.json({ error: err.message, code: "not_authorized" }, 403);
     if (err instanceof ApiError) return c.json({ error: err.message, code: err.code }, err.status);
     if (err instanceof SyntaxError) return c.json({ error: "Invalid JSON body", code: "bad_json" }, 400);
     console.error(err);
@@ -270,37 +283,14 @@ export function createApp() {
     if (maxAmount <= 0n || maxAmount > 100_000_000n) throw new ApiError(400, "maxAmount must be between 0.000001 and 100.00 USDC");
     const days = Number(b.days ?? 30);
     if (!Number.isInteger(days) || days < 1 || days > 90) throw new ApiError(400, "days must be a whole number from 1 to 90");
-    const created = await createOwnerRule(
-      { merchant: m.name, category: m.category, maxAmount, action: b.action, expiresMs: Date.now() + days * 86_400_000 },
-      { session: await currentSession() },
-    );
-    return ok(c, { ruleId: created.ruleId, memoryId: created.memoryId, sentence: created.sentence }, 201);
+    return ok(c, await addPreference(m.name, b.action, maxAmount, days), 201);
   });
   app.patch("/api/rules/:id", async (c) => {
     const id = c.req.param("id");
-    const rule = await cachedRule(id);
-    if (!rule) throw new ApiError(404, `No rule ${id}`, "not_found");
     const { active } = await c.req.json<{ active: boolean }>();
-    if (active === rule.active) return ok(c, await ruleView(rule));
-    const session = await currentSession();
-    if (!active) {
-      const mem = await remember("rule_disabled", `Rule disabled: ${rule.sentence}`, { ruleId: id }, { session });
-      await setRuleActive(id, false);
-      return ok(c, { ...(await ruleView((await cachedRule(id))!)), disabledMemoryId: mem.id });
-    }
-    // Re-enabling writes the rule again under a new id (Walrus memories are never deleted).
-    const mem = await remember(
-      "rule",
-      rule.sentence,
-      { ruleId: `${id}-r`, merchant: rule.merchant, category: rule.category, maxAmount: rule.maxAmount.toString(), action: rule.action, expiresMs: rule.expiresMs },
-      { session },
-    );
-    const copy = await addLocalRule(
-      { merchant: rule.merchant, category: rule.category, maxAmount: rule.maxAmount, action: rule.action, expiresMs: rule.expiresMs, sentence: rule.sentence },
-      mem.id,
-      `${id}-r`,
-    );
-    return ok(c, await ruleView(copy));
+    await setPreferenceEnabled(id, active === true);
+    const now = (await cachedRules()).filter((r) => r.id === id || r.id === `${id}-r`).at(-1);
+    return ok(c, now ? await ruleView(now) : { id, active });
   });
 
   // --- memory -------------------------------------------------------------------------
@@ -430,7 +420,57 @@ export function createApp() {
     return ok(c, { events, latest: events.at(-1)?.id ?? Number(after) });
   });
 
-  // MCP for external agents (agent credential, not DEMO_TOKEN; see mcp/server.ts).
+  // --- owner routes (owner credential; the CLI and other owner clients) ------------------
+  /**
+   * The same owner domain as the owner MCP tools. Auth: Authorization: Bearer <owner credential>,
+   * resolved by auth/context.ts (never DEMO_TOKEN on Mainnet). On Mainnet, and on Testnet with
+   * SISIH_OWNER_SIGNING=local, actions return an owner intent that the owner signs locally.
+   */
+  const ownerCtx = async (c: Context) => {
+    const auth = resolveAuth((n) => c.req.header(n), { ownerHolder: demoHolder((n) => c.req.header(n)) });
+    if (!auth.ok) throw new HttpDenied(auth.status, auth.error, auth.code);
+    if (auth.ctx.role !== "owner") throw new HttpDenied(403, "This route needs the owner credential.", "not_owner");
+    const r = await rateHit(`owner:${clientIp(c)}`, 30, 60_000);
+    if (!r.allowed) throw new HttpDenied(429, "Too many owner requests. Try again shortly.", "rate_limited");
+    return auth.ctx;
+  };
+  app.get("/api/owner/status", async (c) => ok(c, await ownerStatus(await ownerCtx(c))));
+  app.post("/api/owner/actions", async (c) => {
+    const ctx = await ownerCtx(c);
+    const body = await c.req.json<{ action?: string; params?: Record<string, unknown> }>();
+    return ok(c, await performOwnerAction(ctx, String(body.action ?? ""), body.params ?? {}), 201);
+  });
+  app.get("/api/owner/intents/:id", async (c) => {
+    await ownerCtx(c);
+    return ok(c, await getIntent(c.req.param("id")));
+  });
+  /** The owner's local signature over an intent. The owner token alone cannot execute anything here. */
+  app.post("/api/owner/intents/:id/submit", async (c) => {
+    await ownerCtx(c);
+    const body = await c.req.json<SubmitInput>();
+    return ok(c, intentView(await submitIntent(c.req.param("id"), body)), 201);
+  });
+  app.post("/api/owner/intents/:id/reconcile", async (c) => {
+    await ownerCtx(c);
+    return ok(c, intentView(await reconcileIntent(c.req.param("id"))));
+  });
+  app.post("/api/owner/release", async (c) => {
+    await ownerCtx(c);
+    await releaseDemoRun((n) => c.req.header(n));
+    return ok(c, { ok: true });
+  });
+  /**
+   * Private bootstrap of the spending agent's credential for the owner (Testnet demo only). On
+   * Mainnet the owner configures both credentials locally; the server never hands one out.
+   */
+  app.post("/api/owner/agent-credential", async (c) => {
+    const ctx = await ownerCtx(c);
+    c.header("cache-control", "no-store");
+    if (ctx.network === "mainnet") throw new HttpDenied(403, "On Mainnet the agent credential is configured by the owner, not revealed by the server.", "mainnet_route_disabled");
+    return ok(c, { endpoint: `${baseUrl()}${MCP_PATH}`, token: env("SISIH_AGENT_TOKEN") ?? null, header: "Authorization: Bearer <token>" });
+  });
+
+  // MCP for external agents and owner assistants (one URL, role from the credential; see mcp/server.ts).
   app.all(MCP_PATH, (c) => handleMcp(c.req.raw, clientIp(c)));
 
   // Demo merchants (x402): /merchants/datamart/token-history, /merchants/searchbox/premium-search,

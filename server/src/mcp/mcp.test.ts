@@ -114,7 +114,7 @@ describe("connection and discovery", () => {
   it("refuses a missing or wrong agent credential, and never accepts the owner token instead", async () => {
     const r1 = await handleMcp(new Request("https://sisih.test/api/mcp", { method: "POST", body: "{}" }), "10.0.0.2");
     expect(r1.status).toBe(401);
-    expect((await r1.json()).error.message).toMatch(/agent credential/);
+    expect((await r1.json()).error.message).toMatch(/credential/);
     const r2 = await handleMcp(new Request("https://sisih.test/api/mcp", { method: "POST", headers: { "x-demo-token": "owner-secret" }, body: "{}" }), "10.0.0.2");
     expect(r2.status).toBe(401);
     await expect(connect("wrong")).rejects.toThrow();
@@ -156,7 +156,9 @@ describe("purchases, holds and continuation", () => {
     expect(first.outcome).toBe("awaiting_owner_approval");
     expect(first.paid).toBe(false);
     expect(first.message).toMatch(/NOT been made/);
-    expect(first.owner_dashboard_url).toBe(`https://sisih.test/agent?request=${first.request_id}`);
+    expect(first.owner_dashboard_url).toBeUndefined(); // the dashboard is gone; no approval link to a page that cannot approve
+    expect(first.receipt_url).toBe(`https://sisih.test/receipts/${first.request_id}`);
+    expect(first.owner_continuation.owner_assistant_tool).toEqual({ name: "decide_request", arguments: { request_id: first.request_id, decision: "approve", remember: true } });
     expect(first.next_step).toMatch(/get_request_status/);
     expect(charges).toEqual([]);
 
@@ -268,7 +270,7 @@ describe("terminal-first owner workflow and hard limits", () => {
       deny: `pnpm sisih deny ${held.request_id}`,
     });
     expect(held.next_step).toContain(`pnpm sisih approve ${held.request_id} --remember`);
-    expect(held.owner_dashboard_url).toContain(held.request_id); // the browser is optional, not the only path
+    expect(held.receipt_url).toContain(held.request_id); // read-only receipt, not an approval page
     const services = (await call(client, "list_services")).body.services;
     expect(services.find((s: { service: string }) => s.service === "chainscope").content).toMatch(/live/);
   });

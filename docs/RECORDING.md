@@ -15,8 +15,9 @@ browser-only story (the dashboard plus the dock) is kept at the end as an altern
 - **Credentials.** Set both before you start recording and never show their values. In the agent
   terminal, remove the owner token: `Remove-Item Env:SISIH_OWNER_TOKEN, Env:DEMO_TOKEN
   -ErrorAction SilentlyContinue`.
-- **Claude Code.** Start it with the README's `$sisih` flags, so it has only the Sisih tools.
-  Interactive `claude @sisih` reads better on camera than `-p`.
+- **Claude Code.** Run with the verified `-p` workflow using explicit restriction flags from the README:
+  `claude --setting-sources project --mcp-config .mcp.json --strict-mcp-config --tools Skill,ToolSearch --permission-mode dontAsk --allowedTools get_budget,list_services,request_purchase,get_request_status,end_demo_session,Skill,ToolSearch -p "<prompt>"`.
+  (Interactive mode was not verified in the handoff run; use the verified `-p` workflow unless interactive mode is tested).
 - **Browser (optional).** Use the dashboard for one closing shot of Onchain activity or Memory, at
   1440x900 and 100% zoom.
 - **Signing.** Owner transactions are signed on the server by "Demo owner (server-signed, testnet)",
@@ -61,9 +62,9 @@ Timings are what we observed on 2026-11-07 (`docs/evidence/final-run-sisih-hoste
 | 0:15 | Agent | Give the ChainScope task from the README or the Connect page | About 30 s. Claude reads the budget (3.50 free, largest payment 2.00) and the services, then requests ChainScope. Sisih answers `awaiting_owner_approval`, and Claude prints `pnpm sisih approve <id> --remember` |
 | 0:45 | Owner | `pnpm sisih requests --held`, then `pnpm sisih approve <id> --remember` | 12 s: vault release, x402 settle, both verified through Tatum; preference saved to Walrus Memory |
 | 1:00 | Agent | "I approved it from my terminal. Check the request and finish the task." | About 25 s. The same request is settled, with live data from a Sui Testnet checkpoint (committed vs free, the largest payment now), and the session ends |
-| 1:25 | Owner | `pnpm sisih demo cycle`, then `pnpm sisih session next` | Cycle 28 s (bills paid, simulated income). Session next 18 s: rules rebuilt from Walrus recall (2 s of recall) |
-| 1:45 | Agent | A fresh Claude session: "New day: run the vault health check again …" | Settled with no approval, through the remembered preference (`allow_rule`), with a new checkpoint. 30 to 90 s; cut the wait |
-| 2:10 | Owner | `pnpm sisih commitments`, then `pnpm sisih reserve set <savings id> 5.50` | Reserve raised; 0.60 free |
+| 1:25 | Owner | Wait until bills are actually due (a reset starts a 2-minute cycle). Run `pnpm sisih demo cycle`, then inspect suggestions: `pnpm sisih suggestions`. Accept the Inference API suggestion with `pnpm sisih suggestions accept <current-id>`, and then start the new session: `pnpm sisih session next`. | Cycle ~28 s (bills paid, simulated income). Raising Inference reserve from 6.00 to 7.00 is essential: omitting it leaves enough free funds for a purchase that the script expects to block later! Session next ~18 s: rules rebuilt from Walrus recall. Note: always obtain fresh suggestion IDs from `pnpm sisih suggestions`; do not hardcode old IDs. |
+| 1:45 | Agent | A fresh Claude session: run the vault health check with the verified flags. | Settled with no approval, through the remembered preference (`allow_rule`), with a new checkpoint. Cut the wait. |
+| 2:10 | Owner | Inspect balances with `pnpm sisih status`, then commitments with `pnpm sisih commitments`. Identify the current savings commitment ID, then run `pnpm sisih reserve set <savings-id> 5.50`. | Verify that raising the reserve leaves free funds below the 0.80 ChainScope price (in the recorded run: 18.00 total, 17.40 committed, leaving 0.60 free). Note: 5.50 was the target for the recorded run to drop free funds below 0.80; inspect your actual balances. |
 | 2:20 | Agent | Ask for the report once more | `blocked`, `would_cut_reserve`. The preference does not unlock committed funds, and Claude does not work around it |
 | 2:35 | Owner | `pnpm sisih pause`; in the agent terminal ask for DataMart | `blocked`, `agent_paused`; Claude relays the `owner_hint` `pnpm sisih resume` (observed in the post-deploy check, A7) |
 | 2:50 | Owner | `pnpm sisih resume`, `pnpm sisih evidence`, `pnpm sisih release` | Verified transactions and stored memories with Walrus links; lease released |
@@ -92,9 +93,7 @@ testnet, not by my own wallet.
 the chain says right now: the checkpoint, committed versus free, and the largest payment it could
 make.
 
-**1:25 Next day.** Bills come due and are paid from their reserves. A new session rebuilds the
-rules from Walrus. A fresh Claude session asks for the report again, and this time it goes through
-without me, because of the memory I created.
+**1:25 Next day.** Bills come due and are paid from their reserves. The inference bill ran over, so I accept the suggestion to raise its reserve. A new session rebuilds the rules from Walrus. A fresh Claude session asks for the report again, and this time it goes through without me, because of the memory I created.
 
 **2:10 Hard rules.** I raise my savings reserve, and only 0.60 is free. Claude asks again, and the
 preference is still active, but Sisih blocks it: the payment would touch committed money, and the

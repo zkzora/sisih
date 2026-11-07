@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -14,14 +14,14 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useSisih } from "./context";
-import { Badge, Button, Empty, PageHeading, Panel, TextButton } from "./ui";
+import { Badge, Button, CopyButton, Empty, PageHeading, Panel } from "./ui";
 import { freeFunds, money, reserved, sessionStats } from "@/lib/engine";
 import { RequestDrawer } from "./request-drawer";
 import { ActivityTable } from "./activity";
 import { VerifiedBadge, Countdown } from "./live-bits";
 import { WhatChanged } from "./memory";
 export function Overview() {
-  const { state, setMoneyModal, act, canOwner, refreshVault } = useSisih();
+  const { state, setMoneyModal, act, canOwner, refreshVault, ownerSigner } = useSisih();
   const [requestId, setRequestId] = useState<string | null>(null);
   const held = state.requests.filter((r) => r.status === "held");
   const live = state.live;
@@ -34,16 +34,14 @@ export function Overview() {
   return (
     <>
       <PageHeading
-        title="Your money, already spoken for."
-        description="Commitments protected. Your agent spends only what’s left."
+        eyebrow="Owner workspace"
+        title="Your vault, at a glance."
+        description="Monitor commitments, review your agent’s requests and inspect the evidence."
         action={
-          <Button onClick={() => setMoneyModal("deposit")} disabled={!canOwner("deposit")} title={canOwner("deposit") ? undefined : "Connect the owner wallet, or unlock the demo dock, to sign"}>
-            <Plus size={16} />
-            Deposit
-          </Button>
+          <><Badge tone={ownerSigner ? "success" : "neutral"}>{ownerSigner ? "Owner controls enabled" : "Read-only view"}</Badge><Link className="button button-primary" href="/connect">Connect your agent <ArrowUpRight size={15} aria-hidden /></Link></>
         }
       />
-      <IntroCard />
+      <div className="workspace-terminal" aria-label="Owner terminal shortcut"><div><strong>Manage from your terminal</strong><span>Use the same vault and rules from the Sisih CLI. New purchases that need your decision appear below.</span></div><div><code>pnpm sisih status</code><CopyButton value="pnpm sisih status" label="Copy owner status command" /></div></div>
       <section className="balance-card" aria-label="Vault balance" id="workspace">
         <div className="balance-card-heading">
           <span>
@@ -233,7 +231,7 @@ export function Overview() {
               <div>
                 <h3>You’re all caught up.</h3>
                 <p>
-                  Run a task from Demo controls to see your agent in action.
+                  Give your connected agent a task. Purchases that need your approval will appear here.
                 </p>
               </div>
             </div>
@@ -341,64 +339,4 @@ export function Overview() {
 }
 function FlaskLabel() {
   return <span className="status-dot" />;
-}
-
-const INTRO_KEY = "sisih-intro-dismissed";
-
-/** First-visit introduction: what Sisih protects, how an agent uses it, how to start. */
-function IntroCard() {
-  const [hidden, setHidden] = useState(true);
-  useEffect(() => {
-    try {
-      setHidden(localStorage.getItem(INTRO_KEY) === "1");
-    } catch {
-      setHidden(false);
-    }
-  }, []);
-  if (hidden) return null;
-  const facts = [
-    ["What Sisih protects", "Money you already promised to bills and savings is reserved in a Move vault on Sui Testnet. Your agent can only be paid from what is left."],
-    ["How your agent uses it", "Claude Code connects over MCP, picks a paid service for its task and asks Sisih to buy it. Known purchases within your limits go through; new ones wait for you."],
-    ["How you stay in charge", "From your terminal: pnpm sisih status, approve or deny, set limits, pause. Your decisions are remembered on Walrus Memory Mainnet; they never raise a hard limit."],
-    ["What you can inspect now", "A recorded run with every transaction and memory linked, and this workspace: live balances, requests, memories and Tatum-verified activity."],
-  ];
-  return (
-    <section className="intro-card" aria-label="Get started with Sisih">
-      <div className="intro-main">
-        <h2>Your AI agent can only spend money you haven&apos;t promised.</h2>
-        <div className="intro-facts">
-          {facts.map(([t, d]) => (
-            <div key={t}>
-              <h3>{t}</h3>
-              <p>{d}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="intro-actions">
-        <Link className="button button-primary" href="/connect">
-          Connect your agent
-        </Link>
-        <Link className="button button-secondary" href="/tour">
-          Explore a recorded run
-        </Link>
-        <a className="button button-ghost" href="#workspace">
-          Open workspace
-        </a>
-        <button
-          className="text-button"
-          onClick={() => {
-            setHidden(true);
-            try {
-              localStorage.setItem(INTRO_KEY, "1");
-            } catch {
-              /* storage unavailable: hide for this page view */
-            }
-          }}
-        >
-          Hide this introduction
-        </button>
-      </div>
-    </section>
-  );
 }

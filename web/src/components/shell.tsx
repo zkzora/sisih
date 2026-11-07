@@ -33,7 +33,7 @@ import { TatumDot, useNow } from "./live-bits";
 import { MoneyDialog } from "./money-dialog";
 import { DemoDock } from "./demo-dock";
 const navigation = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
+  { href: "/workspace", label: "Overview", icon: LayoutDashboard },
   { href: "/obligations", label: "Commitments", icon: CalendarRange },
   { href: "/agent", label: "Agent & requests", icon: Bot },
   { href: "/memory", label: "Memory", icon: Brain },
@@ -56,6 +56,26 @@ export function Shell({ children }: { children: ReactNode }) {
   const [help, setHelp] = useState(false);
   const current = [...navigation, ...tryNavigation].find((n) => n.href === pathname) || navigation[0];
   const held = state.requests.filter((r) => r.status === "held").length;
+  if (pathname === "/" || pathname === "/connect" || pathname === "/tour") {
+    return (
+      <div className="public-shell">
+        <a className="skip-link" href="#main-content">Skip to content</a>
+        <header className="public-header">
+          <div className="public-header-inner">
+            <Link href="/" aria-label="Sisih home"><Image src="/brand/sisih-logo.png" alt="sisih" width={120} height={40} priority /></Link>
+            <nav aria-label="Main navigation">
+              <Link href="/connect" aria-current={pathname === "/connect" ? "page" : undefined}>Connect your agent</Link>
+              <Link href="/tour" aria-current={pathname === "/tour" ? "page" : undefined}>Recorded run</Link>
+              <Link className="public-workspace-link" href="/workspace">Open workspace <ChevronRight size={15} aria-hidden /></Link>
+            </nav>
+          </div>
+        </header>
+        <main id="main-content" className={`public-content ${pathname === "/" ? "public-content-home" : ""}`}>{children}</main>
+        <footer className="public-footer"><span>Sisih · Your money has a purpose. Your agent has a limit.</span><span>Sui Testnet · Tatum · Walrus Memory Mainnet</span></footer>
+        {pathname === "/connect" && <DemoDock />}
+      </div>
+    );
+  }
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main-content">
@@ -70,7 +90,7 @@ export function Shell({ children }: { children: ReactNode }) {
       )}
       <aside className={`sidebar ${mobile ? "mobile-open" : ""}`}>
         <div className="sidebar-brand">
-          <Link href="/" aria-label="Sisih overview">
+          <Link href="/" aria-label="Sisih home">
             <Image
               src="/brand/sisih-logo.png"
               alt="sisih"
@@ -92,8 +112,8 @@ export function Shell({ children }: { children: ReactNode }) {
             <Wallet size={17} />
           </span>
           <span>
-            <strong>Personal vault</strong>
-            <small>Research Agent</small>
+            <strong>Shared demo vault</strong>
+            <small>Owner workspace</small>
           </span>
           <ChevronDown size={14} />
         </button>
@@ -112,7 +132,7 @@ export function Shell({ children }: { children: ReactNode }) {
             </Link>
           ))}
         </nav>
-        <div className="nav-heading">WORKSPACE · OPTIONAL</div>
+        <div className="nav-heading">OWNER WORKSPACE</div>
         <nav aria-label="Main navigation">
           {navigation.map((n) => (
             <Link
