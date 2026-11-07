@@ -22,6 +22,8 @@ import { baseUrl } from "../x402/merchants";
 import { AGENT_HOLDER, DEMO_RUN_IDLE_MS, DEMO_RUN_LEASE, withActionLock } from "../api/guard";
 import { explorerTxUrl } from "../chain/activity";
 import { db, schema } from "../db/index";
+import { eq } from "drizzle-orm";
+import { namespace } from "../memory/memwal";
 
 export const NETWORKS = "Vault and x402 on Sui Testnet (testnet USDC, through Tatum); memory on Walrus Mainnet";
 const DEMO_NOTE = "Demo merchant run by the Sisih team; payments use testnet USDC.";
@@ -229,11 +231,14 @@ export async function requestPurchase(input: PurchaseInput) {
   const held = await lease();
   if (!held.ok) return busy(held.retryAfterSeconds, "Another visitor is running the shared demo right now.");
 
-  const session = await currentSession();
-  const key = createHash("sha256").update(input.idempotency_key?.trim() || `${m.slug}|${task.toLowerCase()}|session-${session}`).digest("hex").slice(0, 32);
+  const [session, ns] = await Promise.all([currentSession(), namespace()]);
+  // Scoped to the active namespace: a key from an earlier (reset) run never matches this run.
+  const key = createHash("sha256").update(`${ns}|${input.idempotency_key?.trim() || `${m.slug}|${task.toLowerCase()}|session-${session}`}`).digest("hex").slice(0, 32);
   const locked = await withActionLock(async () => {
     const existing = await kvRead(idemKey(key));
-    if (existing) return { ...(await statusOf(existing)), duplicate: true, duplicate_note: "Same purchase as before: returned the existing request, nothing new was paid." };
+    if (existing && (await requestExists(existing))) {
+      return { ...(await statusOf(existing)), duplicate: true, duplicate_note: "Same purchase as before: returned the existing request, nothing new was paid." };
+    }
     const invoice = await fetchInvoice(`${baseUrl()}${m.path}`); // the merchant's own 402 invoice
     const view = await submitRequest({
       merchant: m.name,
@@ -248,6 +253,11 @@ export async function requestPurchase(input: PurchaseInput) {
   });
   if (!locked.ok) return busy(locked.retryAfterSeconds, "Another payment in the demo is still being processed.");
   return locked.value;
+}
+
+async function requestExists(id: string): Promise<boolean> {
+  const [row] = await db().select({ id: schema.requests.id }).from(schema.requests).where(eq(schema.requests.id, id));
+  return Boolean(row);
 }
 
 /** Status of one of this agent's requests. Read only: it never starts or retries a payment. */

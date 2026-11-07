@@ -2,7 +2,7 @@
  * Demo controls (dock + headless run). Everything here is demo plumbing on testnet:
  * simulated income, scripted usage bills, recycled funds, 2-minute demo cycles.
  */
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { depositIncome, fundReserves, payObligation, readVault, vaultState } from "../chain/vault";
 import { db, schema } from "../db/index";
 import { publish } from "../lib/bus";
@@ -135,6 +135,8 @@ export async function resetDemo() {
   const d = db();
   for (const t of [schema.requests, schema.decisions, schema.rulesCache, schema.memories, schema.suggestions, schema.txLog, schema.sessions, schema.events]) await d.delete(t);
   for (const k of ["last_recall", "demo_cycle"]) await d.delete(schema.kv).where(eq(schema.kv.key, k));
+  // Per-run MCP state: idempotency mappings, request ownership, stored results and payment errors.
+  for (const prefix of ["mcp:", "purchase_result:", "payment_error:"]) await d.delete(schema.kv).where(like(schema.kv.key, `${prefix}%`));
   const ns = await nextNamespace();
   await kvSet("memwal_namespace", ns);
   await currentSession(); // session 1

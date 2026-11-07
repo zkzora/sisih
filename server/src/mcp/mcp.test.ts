@@ -33,6 +33,7 @@ vi.mock("../memory/memwal", () => ({
   remember: async (type: string) => ({ id: `mem-${type}-${Math.random().toString(36).slice(2, 8)}`, status: "writing" }),
   recall: async () => ({ query: "", ms: 1, results: [] }),
   recallQueryFor: () => "q",
+  namespace: async () => "test-namespace",
 }));
 vi.mock("../x402/agentPay", async () => {
   const { findMerchant, MERCHANTS } = await import("../merchants/registry");
@@ -73,11 +74,11 @@ setPaymentExecutor({
   },
 });
 
-async function connect(token = "agent-secret") {
+async function connect(token = "agent-secret", ip = "10.0.0.1") {
   const client = new Client({ name: "test-agent", version: "1.0.0" });
   const transport = new StreamableHTTPClientTransport(new URL("https://sisih.test/api/mcp"), {
     requestInit: { headers: { authorization: `Bearer ${token}` } },
-    fetch: (url, init) => handleMcp(new Request(url, init as RequestInit), "10.0.0.1"),
+    fetch: (url, init) => handleMcp(new Request(url, init as RequestInit), ip),
   });
   await client.connect(transport);
   return client;
@@ -323,5 +324,17 @@ describe("terminal-first owner workflow and hard limits", () => {
     expect((await app.request("/api/demo/owner-action", { method: "POST", headers: { authorization: "Bearer agent-secret", "x-forwarded-for": "10.0.6.7" } })).status).toBe(401);
     expect((await app.request("/api/rules", { method: "POST", headers: { authorization: "Bearer agent-secret", "x-forwarded-for": "10.0.6.7" } })).status).toBe(401);
     await releaseLease("demo_run", "agent:demo");
+  });
+});
+
+describe("idempotency across resets", () => {
+  it("a key whose request no longer exists (after a reset) starts a new purchase instead of failing", async () => {
+    const client = await connect("agent-secret", "10.0.1.1");
+    const first = (await call(client, "request_purchase", { service: "searchbox", task: "Reset scope check", idempotency_key: "same-key-every-run" })).body;
+    await db().delete(schema.requests).where(eq(schema.requests.id, first.request_id)); // what a demo reset does
+    const again = (await call(client, "request_purchase", { service: "searchbox", task: "Reset scope check", idempotency_key: "same-key-every-run" }));
+    expect(again.isError).toBe(false);
+    expect(again.body.request_id).not.toBe(first.request_id);
+    expect(again.body.duplicate).toBe(false);
   });
 });
