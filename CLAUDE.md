@@ -8,8 +8,8 @@ Sisih lets an external agent buy registered services only from funds not reserve
 - One `/api/mcp` supports separate spending-agent and owner-assistant credentials. Role comes only from the credential.
 - `pnpm sisih` is the owner companion and local Mainnet signer. The server never receives `OWNER_PRIVATE_KEY` on Mainnet.
 - Codex CLI completed the Mainnet MCP task; Claude Code completed the historical Testnet task. Antigravity and a model owner-assistant session remain unverified.
-- Hosted Testnet is `https://sisih-azure.vercel.app`; historical evidence under `docs/evidence/final-run-sisih-hosted-9` is immutable.
-- Mainnet proof executed on 8 November: two 0.80-USDC x402 purchases, Walrus recall, reserve refusal and final revoke. Evidence: `docs/evidence/mainnet-20261108`. No public Mainnet server is deployed.
+- Public `https://sisih-azure.vercel.app` is Mainnet-only. Retired networks remain in immutable repository archives, not public page flows.
+- Mainnet proof executed on 8 November: two 0.80-USDC x402 purchases, Walrus recall, reserve refusal and final revoke. The completed run is published read-only with no wallet signers, isolated PostgreSQL schema `sisih_mainnet_proof_20261107`, Mainnet role credentials and namespace. `docs/mainnet/PUBLIC_DEPLOYMENT.json` records publication separately from financial authorization.
 
 ## Non-negotiable boundaries
 

@@ -13,7 +13,7 @@ Draft. Use the completed local Mainnet run in `evidence/mainnet-20261108`: real 
 | 1:35–2:00 | Preference remains active but the third 0.80 report exceeds 0.60 free. Show refusal and `EExceedsFree`. | Actual application refusal plus unsigned Mainnet simulation; no refusal broadcast |
 | 2:00–2:30 | Proof: receipt links, memory provenance and limits. Close on what was established and the current network. | Read-only proof, not current mutable state |
 
-Suggested closing: “One remembered approval changed a later decision. It did not unlock the owner's commitments. These payments and memories are on Mainnet. Permission is now revoked, with 1.40 USDC left in the vault.” Show 0.083418818 SUI net gas and four verified memories. State that the hosted interactive demo remains Testnet.
+Suggested closing: “One remembered approval changed a later decision. It did not unlock the owner's commitments. These payments, memories and public connection are on Mainnet. Permission is now revoked, with 1.40 USDC left in the vault.” Show 0.083418818 SUI net gas and four verified memories. The public connection is read-only; do not imply that another purchase is currently enabled.
 
 ## Preserve the completed Mainnet run
 

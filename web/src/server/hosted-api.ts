@@ -11,9 +11,12 @@ import { createApp } from "../../../server/src/api/app";
 import { demoAccess, type Denied } from "../../../server/src/api/guard";
 import { initDb } from "../../../server/src/db/index";
 import { drainBackground } from "../../../server/src/lib/background";
+import { mainnetReadOnly, assertNoPublishedSigners } from "../../../server/src/mainnet/publication";
+import { assertRuntimeBudgetsReady } from "../../../server/src/mainnet/runtime";
 
 /** The server's demo checks (token, shared rate limits, demo-run lease) for routes outside Hono. */
 export async function guardRequest(req: Request, path: string): Promise<Denied | null> {
+  if (mainnetReadOnly()) return { status: 403, body: { error: "Published Mainnet proof is read-only", code: "mainnet_read_only" } };
   await initDb();
   return demoAccess({ method: req.method, path, header: (n) => req.headers.get(n) });
 }
@@ -25,6 +28,11 @@ export async function handle(req: Request): Promise<Response> {
   if (!process.env.PUBLIC_BASE_URL && !process.env.VERCEL_PROJECT_PRODUCTION_URL) process.env.PUBLIC_BASE_URL = new URL(req.url).origin;
   app ??= createApp();
   try {
+    if (mainnetReadOnly()) {
+      assertNoPublishedSigners();
+      await initDb();
+      await assertRuntimeBudgetsReady();
+    }
     return await app.fetch(req);
   } finally {
     after(drainBackground);

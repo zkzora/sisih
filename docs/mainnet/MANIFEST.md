@@ -1,12 +1,12 @@
 # Sisih Mainnet proof manifest
 
-Status: **approved, funded and executed locally on 8 November 2026**; see [authorization](EXECUTION_AUTHORIZATION.md) and [verified evidence](../evidence/mainnet-20261108/README.md). The immutable machine-validated [`MANIFEST.json`](./MANIFEST.json) retains the original proposal and exact limits for plan `sisih-mainnet-proof-20261107-v1`; it is not an execution-status database. Two 0.80-USDC purchases completed, the third was refused, and permission is revoked. Net gas: 0.083418818 SUI. No public Mainnet deployment occurred.
+Status: **approved, funded and executed on 8 November 2026**; see [authorization](EXECUTION_AUTHORIZATION.md) and [verified evidence](../evidence/mainnet-20261108/README.md). The immutable [`MANIFEST.json`](./MANIFEST.json) retains the original financial proposal and local target; it is not an execution-status database. Two 0.80-USDC purchases completed, the third was refused, and permission is revoked. Net gas: 0.083418818 SUI. The later explicit Mainnet-only publication request is recorded separately in [PUBLIC_DEPLOYMENT.json](PUBLIC_DEPLOYMENT.json), with no new spending authority.
 
 ## Deployment and isolation
 
 - Live proof execution target: isolated local runtime at `http://127.0.0.1:8788`, MCP `http://127.0.0.1:8788/api/mcp`, explicit PGlite state `server/data/mainnet-proof-20261107`, and Walrus prefix `sisih-mainnet-proof-20261107`.
-- Prepared public target: separate Vercel project `sisih-mainnet-proof-zkzora`, proposed origin `https://sisih-mainnet-proof-zkzora.vercel.app`. It requires a separate Mainnet Postgres URL and separate deployment authorization; it is not deployed.
-- The working historical Testnet deployment `https://sisih-azure.vercel.app` is unchanged.
+- The original proposed second Vercel project was not used. The owner subsequently requested replacing the canonical `https://sisih-azure.vercel.app` runtime with Mainnet only. Completed state is published read-only in an isolated PostgreSQL schema on the existing managed instance, with no wallet keys. No old tables are read or overwritten.
+- The former public runtime is retired; original network receipts remain unchanged in repository archives.
 - Network: Sui Mainnet, chain ID `4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S`.
 - Asset: native Circle USDC `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`, 6 decimals.
 - Selected primitive: Sisih custom vault; see [`VAULT_DECISION.md`](./VAULT_DECISION.md).

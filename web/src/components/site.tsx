@@ -9,7 +9,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { Check, Copy, Moon, Sun } from "lucide-react";
 
-export const NETWORK_LABEL = "Sui Testnet · Walrus Memory Mainnet";
+export const NETWORK_LABEL = "Sui Mainnet proof verified";
 const PREFS_KEY = "sisih-prefs-v1"; // the theme preference visitors already had
 
 const NAV = [
@@ -72,9 +72,9 @@ export function SiteHeader() {
           </ul>
         </nav>
         <div className="site-header-end">
-          <span className="network-badge" title="The networks of the hosted demo">
+          <Link href="/proof#mainnet-trace" className="network-badge" title="Native-USDC payments and the public connection use Sui Mainnet">
             {NETWORK_LABEL}
-          </span>
+          </Link>
           <ThemeToggle />
         </div>
       </div>
@@ -87,8 +87,8 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="site-footer-inner">
         <p>
-          Hosted demo: {NETWORK_LABEL}. Testnet USDC has no monetary value. All merchants are operated by the Sisih project; ChainScope returns live onchain data and
-          the others return labeled examples. A hackathon build, not audited.
+          Sui Mainnet · Walrus Memory Mainnet. The completed proof is published read-only, with agent permission revoked.
+          Project-operated merchants. An unaudited hackathon build.
         </p>
         <nav aria-label="Footer">
           <Link href="/connect">Connect</Link>

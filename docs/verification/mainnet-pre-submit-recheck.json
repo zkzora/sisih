@@ -1,0 +1,791 @@
+{
+  "checked_at": "2026-11-08T14:05:38.999Z",
+  "network": "mainnet",
+  "chain_id": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S",
+  "observations": [
+    {
+      "id": "publish-package",
+      "expected": {
+        "id": "publish-package",
+        "digest": "3VML59yGq63WndkVmTpyp1gqS5mRDty1RrnGSqGfHR8T",
+        "expected_success": true,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gas_owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "max_gas_budget_mist": "100000000",
+        "move_calls": [],
+        "balance_changes": [],
+        "events": [],
+        "created_type_contains": [
+          "package",
+          "::package::UpgradeCap"
+        ]
+      },
+      "actual": {
+        "digest": "3VML59yGq63WndkVmTpyp1gqS5mRDty1RrnGSqGfHR8T",
+        "success": true,
+        "error": null,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasOwner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasBudget": "100000000",
+        "calls": [],
+        "balanceChanges": [
+          {
+            "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "-75682000"
+          }
+        ],
+        "events": [],
+        "createdTypes": [
+          "0x0000000000000000000000000000000000000000000000000000000000000002::package::UpgradeCap",
+          "package"
+        ]
+      },
+      "checkpoint": "343006298",
+      "timestamp_ms": 1794142990585,
+      "errors": [],
+      "gas": {
+        "computation_mist": "100000",
+        "storage_mist": "75582000",
+        "storage_rebate_mist": "0",
+        "net_mist": "75682000"
+      }
+    },
+    {
+      "id": "create-vault",
+      "expected": {
+        "id": "create-vault",
+        "digest": "5ARUwMy8tKxN6imQ8MmsYkqSvnMGpg7xsr52ALMpZAgS",
+        "expected_success": true,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gas_owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "max_gas_budget_mist": "20000000",
+        "move_calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "create_vault",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::VaultCreated",
+            "json_contains": {
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+              "operator": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+              "operator_cap_id": "0xa26d752f4841e3a320efa7d7b13f611cf93419f6d49f91565a65c5bc4b96b593"
+            }
+          }
+        ],
+        "created_type_contains": [
+          "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::Vault<",
+          "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::OperatorCap"
+        ]
+      },
+      "actual": {
+        "digest": "5ARUwMy8tKxN6imQ8MmsYkqSvnMGpg7xsr52ALMpZAgS",
+        "success": true,
+        "error": null,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasOwner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasBudget": "20000000",
+        "calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "create_vault",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "-3945600"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::VaultCreated",
+            "json": {
+              "operator": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+              "operator_cap_id": "0xa26d752f4841e3a320efa7d7b13f611cf93419f6d49f91565a65c5bc4b96b593",
+              "owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc"
+            }
+          }
+        ],
+        "createdTypes": [
+          "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::Vault<0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC>",
+          "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::OperatorCap"
+        ]
+      },
+      "checkpoint": "343006357",
+      "timestamp_ms": 1794143004571,
+      "errors": [],
+      "gas": {
+        "computation_mist": "100000",
+        "storage_mist": "3845600",
+        "storage_rebate_mist": "0",
+        "net_mist": "3945600"
+      }
+    },
+    {
+      "id": "setup-vault",
+      "expected": {
+        "id": "setup-vault",
+        "digest": "5WoyMkuMtWTMSB71PWfnJxNv8PQuHRfuLt64CtTq6gb5",
+        "expected_success": true,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gas_owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "max_gas_budget_mist": "25000000",
+        "move_calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "deposit",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "add_obligation",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "set_agent_policy",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [
+          {
+            "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+            "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "-3000000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::Deposited",
+            "json_contains": {
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "from": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+              "amount": "3000000",
+              "free_after": "3000000"
+            }
+          },
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::ObligationAdded",
+            "json_contains": {
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "payee": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+              "target": "800000",
+              "reserved": "800000",
+              "free_after": "2200000"
+            }
+          },
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::AgentPolicySet",
+            "json_contains": {
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+              "max_per_request": "1000000",
+              "max_per_day": "3000000",
+              "expires_ms": "1794647357715"
+            }
+          }
+        ],
+        "created_type_contains": []
+      },
+      "actual": {
+        "digest": "5WoyMkuMtWTMSB71PWfnJxNv8PQuHRfuLt64CtTq6gb5",
+        "success": true,
+        "error": null,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasOwner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasBudget": "25000000",
+        "calls": [
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "coin",
+            "function": "redeem_funds",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "coin",
+            "function": "send_funds",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "deposit",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "add_obligation",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "set_agent_policy",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "-1399829"
+          },
+          {
+            "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+            "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "-3000000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::Deposited",
+            "json": {
+              "amount": "3000000",
+              "free_after": "3000000",
+              "from": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc"
+            }
+          },
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::ObligationAdded",
+            "json": {
+              "cadence_label": "Monthly",
+              "cycle_ms": "2592000000",
+              "id": "0",
+              "name": "Savings reserve",
+              "next_due_ms": "1796634557715",
+              "reserved": "800000",
+              "free_after": "2200000",
+              "kind": 0,
+              "payee": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+              "priority": 0,
+              "target": "800000",
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc"
+            }
+          },
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::AgentPolicySet",
+            "json": {
+              "max_per_request": "1000000",
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+              "expires_ms": "1794647357715",
+              "max_per_day": "3000000"
+            }
+          }
+        ],
+        "createdTypes": []
+      },
+      "checkpoint": "343006453",
+      "timestamp_ms": 1794143027921,
+      "errors": [],
+      "gas": {
+        "computation_mist": "100000",
+        "storage_mist": "3587200",
+        "storage_rebate_mist": "2287371",
+        "net_mist": "1399829"
+      }
+    },
+    {
+      "id": "purchase-1-release",
+      "expected": {
+        "id": "purchase-1-release",
+        "digest": "6C3oTgnJYb2TH1jJiRxLR1DE87GVvY1mmfcsX2goJcms",
+        "expected_success": true,
+        "sender": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "gas_owner": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "max_gas_budget_mist": "20000000",
+        "move_calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "release_to_agent",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::ReleasedToAgent",
+            "json_contains": {
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+              "amount": "800000",
+              "request_id": "cmVxLWQ4OTUyNWU2LTg3Zg==",
+              "free_after": "1400000",
+              "spent_in_window": "800000"
+            }
+          }
+        ],
+        "created_type_contains": []
+      },
+      "actual": {
+        "digest": "6C3oTgnJYb2TH1jJiRxLR1DE87GVvY1mmfcsX2goJcms",
+        "success": true,
+        "error": null,
+        "sender": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "gasOwner": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "gasBudget": "20000000",
+        "calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "release_to_agent",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "-1422915"
+          },
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::ReleasedToAgent",
+            "json": {
+              "amount": "800000",
+              "free_after": "1400000",
+              "request_id": "cmVxLWQ4OTUyNWU2LTg3Zg==",
+              "spent_in_window": "800000",
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5"
+            }
+          }
+        ],
+        "createdTypes": [
+          "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC>"
+        ]
+      },
+      "checkpoint": "343007225",
+      "timestamp_ms": 1794143215311,
+      "errors": [],
+      "gas": {
+        "computation_mist": "100000",
+        "storage_mist": "6467600",
+        "storage_rebate_mist": "5144685",
+        "net_mist": "1422915"
+      }
+    },
+    {
+      "id": "purchase-1-settle",
+      "expected": {
+        "id": "purchase-1-settle",
+        "digest": "8JyrP75EGse2BSTE4ty7afEPskptMYt6h3bv8hAjAyXB",
+        "expected_success": true,
+        "sender": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+        "gas_owner": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664",
+        "max_gas_budget_mist": "0",
+        "move_calls": [
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "balance",
+            "function": "send_funds",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "-800000"
+          },
+          {
+            "address": "0xb00fbd9da3208cfba9034178439f3c9dc6685d38db47845c0b9bedc6e8262ce5",
+            "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [],
+        "created_type_contains": []
+      },
+      "actual": {
+        "digest": "8JyrP75EGse2BSTE4ty7afEPskptMYt6h3bv8hAjAyXB",
+        "success": true,
+        "error": null,
+        "sender": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+        "gasOwner": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664",
+        "gasBudget": "0",
+        "calls": [
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "coin",
+            "function": "into_balance",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "coin",
+            "function": "send_funds",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "balance",
+            "function": "send_funds",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "-800000"
+          },
+          {
+            "address": "0xb00fbd9da3208cfba9034178439f3c9dc6685d38db47845c0b9bedc6e8262ce5",
+            "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [],
+        "createdTypes": []
+      },
+      "checkpoint": "343007249",
+      "timestamp_ms": 1794143221194,
+      "errors": [],
+      "gas": {
+        "computation_mist": "1322268",
+        "storage_mist": "0",
+        "storage_rebate_mist": "1322268",
+        "net_mist": "0"
+      }
+    },
+    {
+      "id": "purchase-2-release",
+      "expected": {
+        "id": "purchase-2-release",
+        "digest": "Gm1Rtgd2ty6sJ1gWxx1LSfVqNYnKnSwTkxDchfjECVE3",
+        "expected_success": true,
+        "sender": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "gas_owner": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "max_gas_budget_mist": "20000000",
+        "move_calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "release_to_agent",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::ReleasedToAgent",
+            "json_contains": {
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+              "amount": "800000",
+              "request_id": "cmVxLTdkZDkwMjYzLTc1ZQ==",
+              "free_after": "600000",
+              "spent_in_window": "1600000"
+            }
+          }
+        ],
+        "created_type_contains": []
+      },
+      "actual": {
+        "digest": "Gm1Rtgd2ty6sJ1gWxx1LSfVqNYnKnSwTkxDchfjECVE3",
+        "success": true,
+        "error": null,
+        "sender": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "gasOwner": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+        "gasBudget": "20000000",
+        "calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "release_to_agent",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "-1422915"
+          },
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::ReleasedToAgent",
+            "json": {
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+              "amount": "800000",
+              "free_after": "600000",
+              "request_id": "cmVxLTdkZDkwMjYzLTc1ZQ==",
+              "spent_in_window": "1600000",
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc"
+            }
+          }
+        ],
+        "createdTypes": [
+          "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC>"
+        ]
+      },
+      "checkpoint": "343007609",
+      "timestamp_ms": 1794143309019,
+      "errors": [],
+      "gas": {
+        "computation_mist": "100000",
+        "storage_mist": "6467600",
+        "storage_rebate_mist": "5144685",
+        "net_mist": "1422915"
+      }
+    },
+    {
+      "id": "purchase-2-settle",
+      "expected": {
+        "id": "purchase-2-settle",
+        "digest": "8ywcKQZpHDpFsZnBq4yCusuLiibDfWws6nF8FWQTBhS9",
+        "expected_success": true,
+        "sender": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+        "gas_owner": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664",
+        "max_gas_budget_mist": "0",
+        "move_calls": [
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "balance",
+            "function": "send_funds",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "-800000"
+          },
+          {
+            "address": "0xb00fbd9da3208cfba9034178439f3c9dc6685d38db47845c0b9bedc6e8262ce5",
+            "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [],
+        "created_type_contains": []
+      },
+      "actual": {
+        "digest": "8ywcKQZpHDpFsZnBq4yCusuLiibDfWws6nF8FWQTBhS9",
+        "success": true,
+        "error": null,
+        "sender": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+        "gasOwner": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664",
+        "gasBudget": "0",
+        "calls": [
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "coin",
+            "function": "into_balance",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "coin",
+            "function": "send_funds",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          },
+          {
+            "package": "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "module": "balance",
+            "function": "send_funds",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "-800000"
+          },
+          {
+            "address": "0xb00fbd9da3208cfba9034178439f3c9dc6685d38db47845c0b9bedc6e8262ce5",
+            "coinType": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [],
+        "createdTypes": []
+      },
+      "checkpoint": "343007633",
+      "timestamp_ms": 1794143314831,
+      "errors": [],
+      "gas": {
+        "computation_mist": "1322268",
+        "storage_mist": "0",
+        "storage_rebate_mist": "1322268",
+        "net_mist": "0"
+      }
+    },
+    {
+      "id": "revoke-agent",
+      "expected": {
+        "id": "revoke-agent",
+        "digest": "3ijG4jsAk9QcV4jvffUAF3RTmwn7np39pc697PJf5LH1",
+        "expected_success": true,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gas_owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "max_gas_budget_mist": "20000000",
+        "move_calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "revoke_agent",
+            "type_arguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::AgentRevoked",
+            "json_contains": {
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5"
+            }
+          }
+        ],
+        "created_type_contains": []
+      },
+      "actual": {
+        "digest": "3ijG4jsAk9QcV4jvffUAF3RTmwn7np39pc697PJf5LH1",
+        "success": true,
+        "error": null,
+        "sender": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasOwner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "gasBudget": "20000000",
+        "calls": [
+          {
+            "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+            "module": "vault",
+            "function": "revoke_agent",
+            "typeArguments": [
+              "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "454441"
+          }
+        ],
+        "events": [
+          {
+            "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::AgentRevoked",
+            "json": {
+              "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+              "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc"
+            }
+          }
+        ],
+        "createdTypes": []
+      },
+      "checkpoint": "343008013",
+      "timestamp_ms": 1794143407020,
+      "errors": [],
+      "gas": {
+        "computation_mist": "100000",
+        "storage_mist": "3032400",
+        "storage_rebate_mist": "3586841",
+        "net_mist": "-454441"
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "protected-reserve",
+      "broadcast": false,
+      "expected_abort": "EExceedsFree",
+      "artifact": "docs/evidence/mainnet-20261108/reserve-simulation.json"
+    }
+  ],
+  "failures": [],
+  "passed": true
+}

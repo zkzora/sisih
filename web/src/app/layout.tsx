@@ -10,7 +10,7 @@ const mono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", dis
 export const metadata: Metadata = {
   title: "Sisih: your agent spends only money you haven't promised",
   description:
-    "Sisih reserves money for bills and savings in a Move vault on Sui, lets an AI agent spend only the free remainder within hard limits, and recalls the owner's preferences through Walrus Memory. Hosted demo: Sui Testnet · Walrus Memory Mainnet.",
+    "Sisih protects committed funds while an agent buys services. Verified Sui Mainnet x402 payments, owner preferences on Walrus Memory, and a reserve boundary that memory cannot override.",
   icons: { icon: "/brand/sisih-icon.png" },
 };
 

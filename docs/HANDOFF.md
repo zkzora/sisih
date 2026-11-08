@@ -1,13 +1,13 @@
 # Sisih current handoff
 
-Updated 8 November 2026. Execution used the working tree based on `1109d5b`; its source hashes are preserved in the evidence archive. Git history identifies the resulting source milestone. No public Mainnet web server has been deployed.
+Updated 8 November 2026. The user explicitly requested retiring the public legacy runtime and publishing Mainnet only. Execution-time source hashes remain in the immutable evidence archive; Git history identifies later presentation/publication changes.
 
 ## Current state
 
 - Public product: Home / Connect / Proof, one role-scoped MCP endpoint, CLI companion/local signer.
-- Public pages deployed on 8 November from `bcee8ee` to `sisih-azure.vercel.app`; Proof now records Mainnet and historical Testnet separately. Runtime remains Testnet. [Production verification](verification/deployed-site-20261108/README.md).
-- Hosted demo: `https://sisih-azure.vercel.app`, Sui Testnet and Walrus Memory Mainnet. Historical primary evidence: [sisih-hosted-9](evidence/final-run-sisih-hosted-9/README.md), real Claude Code task, owner CLI, 13 stored memories.
-- Mainnet: published and executed locally on 8 November; two real Codex x402 purchases, stored Walrus recall, reserve refusal and final revoke. [Verified evidence](evidence/mainnet-20261108/README.md). Public Mainnet server not deployed.
+- Current target: `https://sisih-azure.vercel.app`, Mainnet-only public pages and MCP. The earlier `bcee8ee` deployment verification is historical and superseded by this migration.
+- Mainnet: two real Codex x402 purchases, stored Walrus recall, reserve refusal and revoke. Completed state is copied to dedicated hosted PostgreSQL schema `sisih_mainnet_proof_20261107`. Read-only public-origin binding preserves the immutable local financial manifest; all signing keys are excluded from production. [Publication config](mainnet/PUBLIC_DEPLOYMENT.json).
+- Original earlier-network evidence remains in repository archives with its exact receipt networks. It is removed from public page flows, not destroyed or relabeled. The 13 earlier memories remain verified Walrus Mainnet storage evidence.
 - Selected primitive: existing tested Sisih custom vault; [decision and sources](mainnet/VAULT_DECISION.md).
 
 ## Mainnet implementation
@@ -22,7 +22,7 @@ The server-only env generator excludes owner keys and preserves generated role t
 
 See [MANIFEST.md](mainnet/MANIFEST.md) and [authorization](mainnet/EXECUTION_AUTHORIZATION.md). Approved deposit: 3.000000 native USDC; gas ceiling: 0.205000000 SUI. Actual merchant outflow: 1.600000 USDC; actual net gas: 0.083418818 SUI. Verified final vault: 0.600000 free + 0.800000 reserved; permission revoked. Owner wallet retains 0.015780 USDC and 0.089427012 SUI; operator 0.057154170 SUI. No funds were withdrawn/refunded.
 
-Local execution target: `http://127.0.0.1:8788/api/mcp`, isolated PGlite and `sisih-mainnet-proof-20261107` prefix. The proposed separate public Vercel project requires isolated Postgres and separate authorization. Keep the Testnet origin operational.
+Original execution target: `http://127.0.0.1:8788/api/mcp`, isolated PGlite. The later explicit Mainnet-only request authorizes the existing canonical domain to publish completed state read-only. A dedicated PostgreSQL schema on the existing managed instance provides isolation; old public tables are not used or overwritten. No new blockchain action is enabled, and the historical proposed second Vercel project is unused.
 
 The exact checkpoint was presented before spending; the owner then said “lanjut udh gw kirim semua”. Funding was verified through Tatum before execution. Do not rerun purchases: the two-report allocation is consumed. Four memory jobs/blobs are stored and independently checked. MCP rule-source links were added after payment and validated by a read-only Codex follow-up. Its initial refusal summary confused the default threshold with a remembered rule; the follow-up corrected that distinction. A model owner-assistant session remains unverified.
 

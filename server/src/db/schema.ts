@@ -4,7 +4,10 @@
  * Chain state is never stored as truth here: the vault is read through Tatum; tx_log keeps the
  * digests we know about plus what Tatum returned for them.
  */
-import { bigint, bigserial, boolean, integer, pgTable, text } from "drizzle-orm/pg-core";
+import { bigint, bigserial, boolean, integer, pgTable as publicTable, pgSchema, text, type PgTableFn } from "drizzle-orm/pg-core";
+import { databaseSchema } from "./namespace";
+
+const pgTable: PgTableFn<string | undefined> = databaseSchema === "public" ? publicTable : pgSchema(databaseSchema).table;
 
 const ms = (name: string) => bigint(name, { mode: "number" });
 

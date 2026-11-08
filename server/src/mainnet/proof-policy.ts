@@ -23,7 +23,11 @@ export async function proofManifest(): Promise<MainnetManifest> {
     if (address(role).toLowerCase() !== manifest.roles[role].address.toLowerCase()) throw new Error(`${role} differs from the reviewed Mainnet identity`);
   }
   if (env("USDC_COIN_TYPE") !== manifest.asset.coin_type || env("MERCHANT_CHAINSCOPE_ADDRESS") !== manifest.merchant.recipient) throw new Error("Mainnet asset or merchant differs from the reviewed manifest");
-  if (env("PUBLIC_BASE_URL") !== manifest.deployment.execution_origin) throw new Error("Mainnet origin differs from the reviewed execution target");
+  if (env("PUBLIC_BASE_URL") !== manifest.deployment.execution_origin) {
+    const publicBinding = await kvRead(`mainnet_public_deployment:${plan}`);
+    const binding = publicBinding ? JSON.parse(publicBinding) : null;
+    if (env("MAINNET_READ_ONLY") !== "true" || !binding || binding.origin !== env("PUBLIC_BASE_URL") || binding.plan_id !== plan || binding.network !== "sui:mainnet" || binding.read_only !== true) throw new Error("Mainnet origin differs from the reviewed execution target and has no read-only publication binding");
+  }
   return manifest;
 }
 

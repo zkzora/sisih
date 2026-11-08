@@ -1,0 +1,9 @@
+﻿namespace sisih-mainnet-proof-20261107: 4 memory rows recorded by C:\Sisih\docs\evidence\mainnet-20261108\memories.json
+  stored  decision           job 7884f4e1 relayer done   blob TnwJqTlovSbUz5852akt4BIpHJElg2-i4CF3048d42M
+  stored  session_summary    job a36d1849 relayer done   blob dBSVlVrox0Qt2-UrRd-LN7pbhjryIEY4XAI-KiQWNzA
+  stored  decision           job dd8d6ec2 relayer done   blob _VGxDTDGcawBrMyDL48cDjUpUfaSEje8NoCZEFaqHBk
+  stored  rule               job 3c62c83c relayer done   blob dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds
+
+per-memory relayer check: 4 of 4 done with a matching blob id
+full account listing (3 pages, unfiltered): 4 memories in sisih-mainnet-proof-20261107; 4 of 4 recorded blob ids present
+recall sample (top 5, sources only): TnwJqTlovS d=0.250, _VGxDTDGca d=0.279, dAU_UeyCw3 d=0.447, dBSVlVrox0 d=0.655

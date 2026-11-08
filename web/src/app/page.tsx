@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { ArrowRight, Brain, Coins, Cpu, LockKeyhole, PlugZap, ShieldCheck, Terminal, Zap } from "lucide-react";
-import { NETWORK_LABEL } from "@/components/site";
 
 export default function Home() {
   return (
@@ -17,16 +16,15 @@ export default function Home() {
           promised. Sisih does: it reserves your commitments first, lets the agent spend only what is left, and remembers your decisions for the next session.
         </p>
         <div className="actions">
-          <Link className="btn btn-primary" href="/connect">
-            Connect your agent <ArrowRight size={16} aria-hidden />
+          <Link className="btn btn-primary" href="/proof#mainnet-trace">
+            See the Mainnet proof <ArrowRight size={16} aria-hidden />
           </Link>
-          <Link className="btn btn-secondary" href="/proof">
-            See the proof
+          <Link className="btn btn-secondary" href="/connect">
+            Connect your agent
           </Link>
         </div>
         <p className="network-line">
-          Hosted demo: <strong>{NETWORK_LABEL}</strong>
-          {" · "}<Link href="/proof#mainnet-trace">Recorded Mainnet proof</Link>
+          Verified on <strong>Sui Mainnet · Walrus Memory Mainnet</strong>. Two x402 purchases, one recalled approval, reserves protected.
         </p>
       </section>
 
@@ -67,7 +65,7 @@ export default function Home() {
             </div>
             <h3>Cross-Session Memory</h3>
             <p>
-              Stores owner approvals, trusted merchants, and soft preferences in Walrus Memory. Fresh agent sessions automatically recall past decisions, avoiding repetitive manual reviews.
+              Stores owner approvals and merchant preferences in Walrus Memory. In the verified run, one recalled preference allowed the next purchase without another review.
             </p>
             <span className="feature-tag">Walrus Mainnet</span>
           </div>
@@ -87,9 +85,9 @@ export default function Home() {
             <div className="feature-icon">
               <Cpu size={22} aria-hidden />
             </div>
-            <h3>Zero-Key Role-Scoped MCP</h3>
+            <h3>Separate Agent and Owner Roles</h3>
             <p>
-              Connect Claude Code or any MCP client via remote HTTP. The agent receives only a restricted delegated token and never holds private wallet signing keys.
+              Connect an external MCP client with a restricted token. The model receives no wallet key; a scoped server signer executes permitted payments. Codex and Claude Code have recorded runs.
             </p>
             <span className="feature-tag">Model Context Protocol</span>
           </div>
@@ -100,7 +98,7 @@ export default function Home() {
             </div>
             <h3>Terminal & Assistant Control</h3>
             <p>
-              Instantly pause spending, resume, approve held purchases, or adjust reserves using the companion CLI (<code>pnpm sisih</code>) or an owner-authorized assistant session.
+              Review purchases and control permission through the companion CLI or owner MCP. Mainnet owner actions require a local signature. The recorded proof ends with permission revoked.
             </p>
             <span className="feature-tag">Owner Companion</span>
           </div>
@@ -128,7 +126,7 @@ export default function Home() {
           </div>
         </div>
         <p className="fine">
-          This example is illustrative. <Link href="/proof">Proof</Link> records real Mainnet purchases, a labeled reserve-refusal simulation, and earlier Testnet evidence.
+          This example is illustrative. <Link href="/proof">Proof</Link> records real Mainnet purchases and a labeled reserve-refusal simulation.
         </p>
       </section>
 

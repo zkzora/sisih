@@ -340,6 +340,27 @@ describe("terminal-first owner workflow and hard limits", () => {
 });
 
 describe("idempotency across resets", () => {
+  it("published Mainnet mode permits reads but refuses new requests without charging or inserting", async () => {
+    const publication = await import("../mainnet/publication");
+    const guard = vi.spyOn(publication, "mainnetReadOnly").mockReturnValue(true);
+    try {
+      const client = await connect("agent-secret", "10.99.0.1");
+      expect((await call(client, "get_budget")).body.vault).toBeDefined();
+      const before = (await db().select().from(schema.requests)).length;
+      const refusal = await call(client, "request_purchase", { service: "chainscope", task: "Publication cannot initiate another payment" });
+      expect(refusal.body).toMatchObject({ outcome: "blocked", paid: false, decision_code: "agent_no_permission" });
+      expect((await db().select().from(schema.requests)).length).toBe(before);
+      expect(charges).toEqual([]);
+      const { createApp } = await import("../api/app");
+      const published = createApp();
+      for (const path of ["/api/owner/actions", "/api/demo/reset", "/api/requests", "/api/settings"]) {
+        const response = await published.request(path, { method: "POST", headers: { authorization: "Bearer owner-secret", "content-type": "application/json" }, body: "{}" });
+        expect(response.status).toBe(403);
+        expect(await response.json()).toMatchObject({ code: "mainnet_read_only" });
+      }
+      expect((await published.request("/merchants/chainscope/vault-report")).status).toBe(410);
+    } finally { guard.mockRestore(); }
+  });
   it("a key whose request no longer exists (after a reset) starts a new purchase instead of failing", async () => {
     const client = await connect("agent-secret", "10.0.1.1");
     const first = (await call(client, "request_purchase", { service: "searchbox", task: "Reset scope check", idempotency_key: "same-key-every-run" })).body;

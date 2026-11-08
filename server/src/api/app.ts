@@ -29,6 +29,7 @@ import { advanceCycle, clock, resetDemo } from "../demo/controls";
 import { merchantRoutes } from "../x402/merchants";
 import { actionLock, allowedOrigins, clientIp, DEMO_CLIENT_HEADER, DEMO_TOKEN_HEADER, demoGuard, demoHolder, demoRunStatus, MCP_PATH, releaseDemoRun } from "./guard";
 import { handleMcp } from "../mcp/server";
+import { mainnetReadOnly, assertNoPublishedSigners } from "../mainnet/publication";
 import { baseUrl } from "../x402/merchants";
 import { background } from "../lib/background";
 import { demoOwnerAction, isDemoOwnerAction, type DemoOwnerBody } from "../demo/owner";
@@ -99,6 +100,7 @@ function housekeeping(): void {
 }
 
 export function createApp() {
+  assertNoPublishedSigners();
   const app = new Hono();
   const origins = allowedOrigins();
   app.use(
@@ -110,7 +112,9 @@ export function createApp() {
       maxAge: 600,
     }),
   );
-  app.use("*", async (_c, next) => {
+  app.use("*", async (c, next) => {
+    if (mainnetReadOnly() && c.req.path.startsWith("/merchants/")) return c.json({ error: "The Mainnet proof is complete; merchant settlement is closed. Inspect recorded x402 receipts on Proof.", code: "proof_complete", network: "mainnet" }, 410);
+    if (mainnetReadOnly() && !["GET", "HEAD", "OPTIONS"].includes(c.req.method) && c.req.path !== "/api/mcp") return c.json({ error: "Mainnet proof is complete and published read-only. No transaction or configuration change is enabled.", code: "mainnet_read_only" }, 403);
     await initDb();
     await next();
   });
@@ -150,7 +154,7 @@ export function createApp() {
   app.get("/api/state", async (c) => {
     housekeeping();
     const [vault, mem, held, session, ns] = await Promise.all([
-      vaultState(),
+      mainnetReadOnly() ? readVault() : vaultState(),
       db().select({ status: schema.memories.status }).from(schema.memories),
       db().select({ id: schema.requests.id }).from(schema.requests).where(eq(schema.requests.status, "held")),
       currentSession(),

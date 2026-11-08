@@ -8,7 +8,7 @@ const git = (args, input) => {
   return r.stdout;
 };
 const secretValues = [];
-for (const file of [".env", ".env.mainnet", ".env.mainnet.server"]) {
+for (const file of [".env", ".env.mainnet", ".env.mainnet.server", ".env.mainnet.public", ".env.vercel.production.previous"]) {
   if (!existsSync(file)) continue;
   for (const line of readFileSync(file, "utf8").split(/\r?\n/)) {
     const match = /^([A-Z0-9_]+)=(.*)$/.exec(line);

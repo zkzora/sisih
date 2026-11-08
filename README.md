@@ -4,11 +4,11 @@
 
 A builder funds an agent's API and data purchases from the same USDC balance that must cover hosting, inference and savings. A wallet balance or static cap cannot tell which money is already committed; Sisih reserves those promises in a Sui Move vault first, releases only the live free balance, and recalls owner preferences from Walrus without letting memory override the contract.
 
-- [Live Testnet demo](https://sisih-azure.vercel.app) — public pages are read-only without credentials.
-- [Recorded Proof](https://sisih-azure.vercel.app/proof) — verified Codex Mainnet task, native-USDC x402 receipts and Walrus provenance, alongside historical Claude Code Testnet evidence.
+- [Mainnet site](https://sisih-azure.vercel.app) — completed proof and current Mainnet state; public connection is read-only.
+- [Recorded Proof](https://sisih-azure.vercel.app/proof) — verified Codex Mainnet task, native-USDC x402 receipts and Walrus provenance.
 - [Connect](https://sisih-azure.vercel.app/connect) — client-neutral MCP contract, separate agent/owner roles, and the local owner signer.
 - [Repository](https://github.com/zkzora/sisih) — currently private; public visibility requires the owner's separate decision before submission.
-- [Verified Mainnet proof](docs/evidence/mainnet-20261108/README.md) — real Codex purchases, native-USDC x402 settlement, local owner signing and Walrus recall; executed locally on 8 November. The hosted demo remains Testnet; no public Mainnet server is deployed.
+- [Verified Mainnet proof](docs/evidence/mainnet-20261108/README.md) — real Codex purchases, native-USDC x402 settlement, local owner signing and Walrus recall, executed on 8 November. The completed state is now published through a signer-free Mainnet runtime; [publication configuration](docs/mainnet/PUBLIC_DEPLOYMENT.json).
 
 Sisih is a Consumer Finance Apps entry for Tatum x Walrus “Total Recall”. No video, published blog or public repository URL is claimed here until each exists.
 
@@ -36,7 +36,7 @@ The [Mainnet archive](docs/evidence/mainnet-20261108/README.md) contains transcr
 No clone or credential is needed to understand the result:
 
 1. Read [Home](https://sisih-azure.vercel.app), then [Proof](https://sisih-azure.vercel.app/proof).
-2. Open the Mainnet receipts in this README or the hosted Proof page, then compare the recorded refusal simulation. Home/Connect/Proof were updated on 8 November; the interactive runtime remains Testnet, and historical receipt links retain `/testnet/`.
+2. Open the Mainnet receipts in this README or hosted Proof, then compare the recorded refusal simulation. Home, Connect and Proof use Mainnet; historical evidence remains in the repo with its original networks.
 3. Compare the remembered rule provenance with the fresh-session decision and the later reserve refusal.
 
 The hosted workspace has shared capacity: one agent run can hold its lease at a time. Private judge credentials belong in the submission form or another private channel, never in URLs, screenshots or this repository.
@@ -59,15 +59,15 @@ Minimal client-neutral configuration:
 }
 ```
 
-Start with the harmless task: “Use Sisih to show my free balance, commitments, limits and available services. Do not buy anything.” The verified Testnet recipe uses Claude Code; [Connect](https://sisih-azure.vercel.app/connect) gives its constrained command and the equivalent owner connection.
+Start with the harmless task: “Use Sisih to show the current Mainnet vault balance, permission state and available services. Do not buy anything.” [Connect](https://sisih-azure.vercel.app/connect) gives the Codex setup and separate owner role.
 
-For the purchase task, ask for a ChainScope vault-health report. If the result is `awaiting_owner_approval`, keep the request ID. The owner continues from a separate terminal:
+The published run is complete: permission is revoked and its two-purchase allocation is consumed. Retrieve `req-7dd90263-75e` with `get_request_status` to inspect the delivered live report, recalled rule and settlement; retrieve `req-f37bacb5-c6a` to inspect the reserve refusal. No new purchase is enabled. The following command is for a separately authorized future spending deployment, not the current read-only publication:
 
 ```powershell
 $env:SISIH_URL = 'https://sisih-azure.vercel.app'
 $env:SISIH_OWNER_TOKEN = '<private owner credential>'
 pnpm sisih request <request-id>
-pnpm sisih approve <request-id> --remember
+pnpm sisih approve '<request-id>' --remember
 ```
 
 The agent then calls `get_request_status` on the same request. That read never bills again. Only an outcome of `settled` with a verified settlement receipt means payment completed; `processing`, `failed` and `unknown` must not be described as paid.
@@ -83,7 +83,7 @@ The agent then calls `get_request_status` on the same request. That read never b
 
 There is no operational dashboard and no browser route that gives the spending agent owner authority. Hidden tool names, legacy owner routes and missing credentials fail closed.
 
-The executed Mainnet proof limits owner changes to its exact purchases, session transitions and final revoke. Its spending authorization is now consumed and permission revoked. Further Mainnet configuration or spending requires a revised reviewed plan; the existing Testnet configuration workflow remains available.
+The executed Mainnet proof limited owner changes to its exact purchases, session transitions and final revoke. Its allocation is consumed and permission revoked. The public runtime has no wallet signing keys and rejects new purchases, owner writes and merchant settlement. Further spending requires a new reviewed plan.
 
 ## How a purchase works
 
@@ -126,9 +126,9 @@ Relevant code: [vault.move](contracts/sisih/sources/vault.move), [policy engine]
 
 | Environment | Vault / asset / x402 | Tatum | Walrus | Status |
 | --- | --- | --- | --- | --- |
-| Hosted demo | Sui Testnet package `0x37a551…886e9`, vault `0xbfb099…e962`, testnet USDC, x402 Testnet | Tatum Sui Testnet gRPC | Walrus Memory Mainnet, historical namespace `sisih-hosted-9` | Deployed; historical Claude Code run |
+| Public runtime | Sui Mainnet package `0xc894db…f55d`, vault `0x24649e…32fc`, native USDC | Tatum Sui Mainnet gRPC; current vault reads | Walrus Memory Mainnet, `sisih-mainnet-proof-20261107` | Read-only completed proof, agent revoked; no signers deployed |
 | Mainnet proof | Native Circle USDC; package `0xc894db…f55d`, vault `0x24649e…32fc`; two x402 settlements | All eight receipts independently read through Tatum | `sisih-mainnet-proof-20261107`, four stored memories | Executed locally with Codex; final permission revoked; primary verified run |
-| Proposed public Mainnet | separate project `sisih-mainnet-proof-zkzora` | Mainnet | same proof prefix, separate state DB | Prepared target only; needs explicit deploy authorization and Postgres |
+| Historical archive | Earlier payment networks remain labeled in immutable evidence | Original gateway/network retained in records | Earlier Mainnet memory inventories: 13 and 35 verified | Repository archive only; no public legacy runtime |
 
 The executed authorization deposited 3.000000 USDC, reserved 0.800000, paid two 0.800000 reports and ended with 0.600000 free and revoked permission. Actual net gas was 0.083418818 SUI under the 0.205-SUI ceiling. See [authorization](docs/mainnet/EXECUTION_AUTHORIZATION.md); further spending requires a revised reviewed plan.
 
@@ -137,7 +137,7 @@ The executed authorization deposited 3.000000 USDC, reserved 0.800000, paid two 
 - Testnet release and settlement receipts are real chain transactions; the reserve refusal is an intentional failed transaction. ChainScope returned live vault data. Other demo merchants return labeled fixed fixtures.
 - The merchants and bill payees are project-operated. Payments to them are not customer revenue. Testnet “income” is simulated.
 - Walrus storage is Mainnet. The new Mainnet namespace has four independently verified memories; historical `sisih-hosted-9` has 13. No artificial writes are used to reach a threshold.
-- The historical Testnet owner is server-signed and explicitly labeled. The Mainnet design keeps the owner key local but holds operator, agent and facilitator keys in the deployment, so it is not fully non-custodial.
+- The actual spending run used local owner signing and scoped local runtime operator/agent/facilitator keys. The public read-only runtime now holds no wallet signing key. Neither arrangement is a blanket noncustodial or production-readiness claim.
 - Project contracts have Move/unit/integration evidence but no claimed third-party audit or production readiness.
 - A release can succeed before merchant settlement. A timeout may leave funds at the agent or already settled. Sisih records this, refuses duplicate payment and requires read-back reconciliation.
 - The learning result is narrow. In the earlier five-session run, manual reviews were **2, 1, 1, 2, 2**. Recall removed one repeated review; later reserve increases caused more holds. This proves persistence changed a decision and hard rules still won—not that memory monotonically improves review counts or beats every well-designed static policy.

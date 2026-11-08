@@ -2,7 +2,8 @@
  * Postgres access. DATABASE_URL = postgres://... (Supabase, transaction pooler) in production;
  * anything else (default) uses embedded PGlite under server/data/pglite for local dev, or
  * ":memory:" for tests. Tables are created on first use (CREATE TABLE IF NOT EXISTS).
- * Call `await initDb()` once before queries (the API middleware and scripts do).
+ * DATABASE_SCHEMA isolates hosted Mainnet tables with fully qualified identifiers. It does not
+ * rely on a pooled session's search_path. Call `await initDb()` once before queries.
  */
 import { mkdirSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
@@ -12,6 +13,7 @@ import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { env, suiNetwork } from "../lib/env";
 import * as schema from "./schema";
+import { databaseSchema, namespacedDdl } from "./namespace";
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 
@@ -71,6 +73,7 @@ const databaseUrl = () => {
 const isPostgresUrl = (url: string) => /^postgres(ql)?:\/\//.test(url);
 
 function createPostgres(url: string): Db {
+  if (suiNetwork() === "mainnet" && databaseSchema === "public") throw new Error("Mainnet Postgres requires an explicit isolated DATABASE_SCHEMA");
   // node-postgres, not postgres-js: with prepare: false postgres-js sends every parameterized query
   // in two round trips (Parse/Describe/Flush, then Bind/Execute/Sync). Through Supabase's
   // transaction pooler on Vercel, backends got stuck between the two ("active / ClientRead") while
@@ -116,7 +119,7 @@ const SCHEMA_OBJECTS = ["sessions", "requests", "decisions", "rules_cache", "mem
 export async function schemaExists(): Promise<boolean> {
   const res = (await instance!.execute(
     sql`select count(*)::int as n from pg_class c join pg_namespace s on s.oid = c.relnamespace
-        where s.nspname = current_schema() and c.relname in ${SCHEMA_OBJECTS}`,
+        where s.nspname = ${databaseSchema} and c.relname in ${SCHEMA_OBJECTS}`,
   )) as unknown as { n: number }[] | { rows: { n: number }[] };
   const rows = Array.isArray(res) ? res : res.rows; // node-postgres and PGlite both return { rows }
   return Number(rows[0]?.n) === SCHEMA_OBJECTS.length;
@@ -131,7 +134,8 @@ export function initDb(): Promise<void> {
     // events, so on every serverless cold start it queued behind any open writer and then blocked
     // every later events query until the statement timeout (2026-11-06). Catalog reads take no locks.
     if (await schemaExists()) return;
-    for (const stmt of DDL) await exec!(stmt);
+    if (databaseSchema !== "public") await exec!(`CREATE SCHEMA IF NOT EXISTS "${databaseSchema}"`);
+    for (const stmt of DDL) await exec!(namespacedDdl(stmt));
   })();
   return ready;
 }

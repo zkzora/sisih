@@ -1,6 +1,6 @@
 # Giving an agent the part of a wallet that is actually free
 
-Draft, unpublished. Verified local demonstration: real Sui Mainnet x402 payments and Walrus Memory Mainnet, 8 November 2026. Hosted Home/Connect/Proof now display the recorded evidence; the interactive runtime remains Sui Testnet.
+Draft, unpublished. Verified demonstration: Sui Mainnet x402 payments and Walrus Memory Mainnet, 8 November 2026. Public Home/Connect/Proof and MCP are Mainnet-only; the completed run is published read-only without signing keys.
 
 A builder gives an agent 20 USDC for data and APIs. The same balance also covers hosting, inference and savings. A daily spending cap can approve a useful report while leaving the next bill short: it knows the amount spent, but not what the balance has already promised.
 
@@ -24,7 +24,7 @@ It requested a 0.80-USDC ChainScope report to assess the owner's vault. ChainSco
 
 After the application started its next session, a fresh model conversation made a new request. Walrus recall rebuilt the owner preference, so `req-e2e8e0e4-b03` settled without a second manual approval. Later the owner increased a savings reserve until only 0.60 remained free. The same 0.80 report was blocked with the preference still active. A direct operator release failed onchain with `EExceedsFree`.
 
-The full [recorded proof](https://sisih-azure.vercel.app/proof) links the receipts and memory provenance. The repository evidence directory preserves transcripts, owner commands and 13 checked memory jobs/blobs. Those links remain Testnet links; Mainnet memory does not make a Testnet payment a Mainnet payment.
+The historical repository evidence directory preserves those original transcripts, receipts and 13 checked memory jobs/blobs. Payment links keep their original network. The public [Proof](https://sisih-azure.vercel.app/proof) now focuses on the newer Mainnet run; historical records are archived rather than relabeled.
 
 ## What Tatum does
 

@@ -1,6 +1,6 @@
 # Mainnet execution status
 
-8 November 2026: **the authorized local Mainnet proof is executed and verified**. [Exact receipts and transcripts](evidence/mainnet-20261108/README.md), [authorization](mainnet/EXECUTION_AUTHORIZATION.md). Public Mainnet server not deployed.
+8 November 2026: **the authorized Mainnet proof is executed and verified**. [Exact receipts and transcripts](evidence/mainnet-20261108/README.md), [financial authorization](mainnet/EXECUTION_AUTHORIZATION.md). The owner's later request removes the public legacy runtime and publishes only Mainnet; [publication configuration](mainnet/PUBLIC_DEPLOYMENT.json).
 
 Start with [the runbook](mainnet/RUNBOOK.md), [machine manifest](mainnet/MANIFEST.json), [funding checkpoint](mainnet/MANIFEST.md) and [vault decision](mainnet/VAULT_DECISION.md). Old 3.20-USDC / 0.5954-SUI preparation figures are superseded.
 
@@ -10,4 +10,4 @@ Initial preflight/publish simulation remain historical preparation artifacts. Fu
 
 Implemented controls include explicit environment layers, server-only credential allowlist, local owner signatures, durable execution budgets, pre-submission release digests, restart journal for publish/setup, unknown-outcome reconciliation and exact evidence matching. Mainnet scope is deliberately limited by the reviewed proof manifest; expanding owner configuration requires a revised plan.
 
-The local proof uses isolated PGlite and port 8788. A public instance needs separate Mainnet Postgres and authorization. Testnet deployment/database/namespace are unchanged; historical receipts retain their network. Remaining wallet balances: owner 0.015780 USDC + 0.089427012 SUI; operator 0.057154170 SUI; merchant 1.60 USDC. No withdrawal/refund occurred. The two-report allocation is consumed; do not reset budgets or make new purchases without a revised reviewed plan.
+The execution source remains isolated PGlite. Public Mainnet state uses a dedicated PostgreSQL schema on the existing managed instance, fully qualified table queries and preserved consumed budgets. It is signer-free/read-only; owner writes, new purchase requests and merchant settlement are closed. The original manifest remains bound to local financial execution; a separate explicit public-origin record permits only read-only publication. Old database tables and historical receipts remain archived with their networks. Remaining wallets: owner 0.015780 USDC + 0.089427012 SUI; operator 0.057154170 SUI; merchant 1.60 USDC. No withdrawal/refund or new gas spend occurred during migration.

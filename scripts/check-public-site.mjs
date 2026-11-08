@@ -102,8 +102,46 @@ try {
   const skill = await context.request.get(`${origin}/skills/sisih/SKILL.md`);
   assert.equal(skill.status(), 200);
   assert.doesNotMatch(await skill.text(), /dashboard link/);
+  // The published site and connection must both be Mainnet, never relabeled fallback data.
+  await page.goto(`${origin}/connect`, { waitUntil: "networkidle" });
+  assert.equal(await page.locator('.network-badge').textContent(), "Sui Mainnet proof verified");
+  await page.getByText("Native USDC on Sui Mainnet", { exact: false }).waitFor();
+  await page.getByText("This public connection is read-only", { exact: false }).waitFor();
+  for (const fixture of [
+    { body: { network: "testnet", vault: { free: "100000", readAtMs: 1794017050385 }, session: 2 }, text: "Retry status" },
+    { body: { network: "mainnet", vault: { free: "600000" }, session: 2 }, text: "Sui Mainnet" },
+    { body: { network: "unexpected", vault: { free: "0" }, session: 2 }, text: "Retry status" },
+  ]) {
+    await context.unroute("**/api/state");
+    await context.route("**/api/state", route => route.fulfill({ contentType: "application/json", body: JSON.stringify(fixture.body) }));
+    await page.reload({ waitUntil: "networkidle" });
+    assert.ok(await page.locator('.live-box').getByText(fixture.text, { exact: false }).count());
+  }
+  // Expanded instructions and historical evidence must also fit narrow screens.
+  for (const path of ["/connect", "/proof"]) {
+    await page.goto(`${origin}${path}`, { waitUntil: "networkidle" });
+    await page.evaluate(() => document.querySelectorAll('details').forEach(el => { el.open = true; }));
+    for (const width of [375, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `${path} expanded overflows ${width}`);
+      await checkContrast(`${path}:expanded-dark-${width}`);
+    }
+    if (path === "/connect") {
+      const psSnippets = await page.locator('pre[aria-label$="(PowerShell)"]').allTextContents();
+      await writeFile(resolve(output, 'connect-powershell-snippets.json'), JSON.stringify(psSnippets, null, 2));
+      for (const tab of await page.getByRole('tab', { name: 'Bash / zsh' }).all()) await tab.click();
+      const bashSnippets = await page.locator('pre[aria-label$="(Bash)"]').allTextContents();
+      await writeFile(resolve(output, 'connect-bash-snippets.json'), JSON.stringify(bashSnippets, null, 2));
+    }
+  }
+  const dev = await context.request.get(`${origin}/dev/states`);
+  assert.equal(dev.status(), 404, "development fixtures must not be public in production");
+  for (const path of ["/", "/connect", "/proof"]) {
+    await page.goto(`${origin}${path}`, { waitUntil: "networkidle" });
+    assert.doesNotMatch(await page.locator('body').innerText(), /testnet|shared sandbox/i, `${path} exposes retired network flow`);
+  }
   assert.deepEqual(errors, []);
-  const report = { origin, revision: process.env.SISIH_CHECK_REVISION ?? "working-tree-based-on-1109d5b", mutable_api: "intercepted with isolated 503 fixture; no payments or memory writes", viewports: [375, 768, 1280, 1440], captures, contrast, checks: ["routes and read-only navigation", "no horizontal overflow", "API error and retry", "arrow-key shell tabs", "copy success and failure", "keyboard focus", "dark theme and persistence", "legacy redirects", "served skill", "text contrast in both themes"], page_errors: errors };
+  const report = { origin, revision: process.env.SISIH_CHECK_REVISION ?? "working-tree-based-on-1109d5b", mutable_api: "intercepted with isolated fixtures; no payments or memory writes", viewports: [375, 768, 1280, 1440], captures, contrast, checks: ["routes and read-only navigation", "no horizontal overflow, closed and expanded", "API error and retry", "actual Testnet/Mainnet/unknown API state labels", "arrow-key shell tabs", "copy success and failure", "keyboard focus", "dark theme and persistence", "legacy redirects", "served skill", "development fixtures return 404", "text contrast in both themes"], page_errors: errors };
   await writeFile(resolve(output, "report.json"), JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report, null, 2));
 } finally {

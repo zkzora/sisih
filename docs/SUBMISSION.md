@@ -7,7 +7,7 @@ Unsubmitted; no credentials in this file. Rules checked 8 November 2026 at the [
 | Requirement | Evidence / outstanding action |
 | --- | --- |
 | Walrus Memory writes on Mainnet, at least ten stored memories | Historical `sisih-hosted-9`: 13 stored, per-job/blob checks; earlier `sisih-hosted-6`: 35. New Sui Mainnet proof has four verified memories; do not claim it alone meets ten. |
-| Tatum onchain data where relevant | Application Sui reads, builds, simulations, submissions and receipt checks use Tatum gRPC. Eight actual Mainnet receipts verified, including two x402 settlements. Hosted interactive demo remains Testnet. |
+| Tatum onchain data where relevant | Application Sui reads, builds, simulations, submissions and receipt checks use Tatum gRPC. Eight actual Mainnet receipts verified, including two x402 settlements. Public runtime reads the actual Mainnet vault and completed state. |
 | Working demo and public repository | Demo: https://sisih-azure.vercel.app. Repository https://github.com/zkzora/sisih was verified private on 8 November; public visibility still needs authorization. |
 | Published blog | `BLOG.md` is a draft; publication URL still required. |
 | Short video | Rules list two to three minutes; `RECORDING.md` is the capture script. Uploaded URL still required. |
@@ -22,7 +22,7 @@ The current demonstrated task uses Codex CLI over a restricted MCP credential an
 
 Tatum provides every Sui read, simulation, transaction submission and read-back. Walrus Memory Mainnet stores decisions/rules/outcomes/summaries and supplies provenance for the changed next-session decision. Async jobs are tracked to stored status. Manual reviews in the older five-session run were 2, 1, 1, 2, 2; persistence is demonstrated, monotonic improvement is not.
 
-The historical payments are Sui Testnet; the new local proof is verified Sui Mainnet. Hosted Home/Connect/Proof now display this evidence, while the interactive runtime remains Testnet. Merchants are project-operated, so 1.60 USDC paid is not customer revenue. Net gas was 0.083418818 SUI; 1.40 USDC remains in the revoked vault. Owner keys stayed local; scoped operator/agent/facilitator keys are server-held. No broad audit, production-readiness or fully non-custodial claim is made.
+Home/Connect/Proof and the public MCP runtime are Mainnet-only. The completed proof is read-only with revoked permission, consumed spending allocation, no deployed signing keys and isolated hosted state. Earlier-network evidence stays in the repository archive with original labels. Merchants are project-operated, so 1.60 USDC paid is not customer revenue. Net gas was 0.083418818 SUI; 1.40 USDC remains in the revoked vault. No broad audit, production-readiness or fully non-custodial claim is made.
 
 ## Personal fields requiring the entrant
 
@@ -30,6 +30,6 @@ The rules list email, Discord, LinkedIn, discovery source, first-Web3-project an
 
 ## Private judge access
 
-Supply privately: owner credential, separate agent credential or owner bootstrap instructions, exact current network and shared-capacity limits. Public read path: Home → Proof → receipts/memory. Live path: Connect → harmless budget/services check → one purchase → owner continuation → same-request status. `pnpm sisih credential agent` is Testnet owner bootstrap; Mainnet credentials are provisioned separately. No dashboard unlock is needed.
+Supply the current Mainnet credentials privately, with separate owner/agent roles. Public path: Home → Proof → actual receipts and Walrus memory. MCP path: Connect → harmless Mainnet budget/services check → status of `req-7dd90263-75e` and `req-f37bacb5-c6a`. The publication is read-only; no judge should be told to initiate another payment or change owner policy. Do not use old shared-demo credentials. No dashboard unlock is needed.
 
 Do not submit, change repository visibility, deploy or publish this draft without the user's separate authorization.

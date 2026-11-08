@@ -39,6 +39,18 @@ describe("reviewed Mainnet proof runtime", () => {
     await expect(namespace()).rejects.toThrow(/differs/);
     await kvDelete("memwal_namespace");
   });
+  it("permits a new public origin only with a persisted read-only binding", async () => {
+    process.env.PUBLIC_BASE_URL = "https://mainnet.example.test";
+    await expect(proofManifest()).rejects.toThrow(/publication binding/);
+    await kvSet(`mainnet_public_deployment:${m.plan_id}`, JSON.stringify({ plan_id: m.plan_id, origin: process.env.PUBLIC_BASE_URL, network: "sui:mainnet", read_only: true }));
+    await expect(proofManifest()).rejects.toThrow(/publication binding/);
+    process.env.MAINNET_READ_ONLY = "true";
+    await expect(proofManifest()).resolves.toMatchObject({ plan_id: m.plan_id });
+    process.env.PUBLIC_BASE_URL = "https://wrong.example.test";
+    await expect(proofManifest()).rejects.toThrow(/publication binding/);
+    process.env.PUBLIC_BASE_URL = m.deployment.execution_origin;
+    delete process.env.MAINNET_READ_ONLY;
+  });
   it("allows two exact purchases, retains unknown funds, reconciles and refuses a third", async () => {
     const first = await reservePurchaseBudget("fixture-1", 800_000n);
     await recordReleaseBudget(first, 800_000n, 2_000_000n, "fixture-release-1");

@@ -2,7 +2,7 @@
 
 ## Current phase
 
-Mainnet proof executed and verified (8 November 2026), based on `1109d5b`. The evidence archive preserves execution-time source identities; Git history identifies the resulting source/documentation milestone. No public Mainnet web deployment.
+Mainnet proof executed and verified (8 November 2026), based on `1109d5b`; the owner subsequently requested Mainnet-only publication on the canonical site. Original execution-time identities remain in the immutable evidence archive; Git history identifies subsequent publication changes.
 
 - Current product is Home / Connect / read-only Proof, one MCP URL with separate agent and owner roles, and the owner CLI/local signer. Server owner credential is `SISIH_OWNER_MCP_TOKEN`; CLI alias is `SISIH_OWNER_TOKEN`.
 - Selected the tested Sisih Move vault after checking native Allowance functions directly through Tatum Mainnet and comparing OpenZeppelin source reuse. See `mainnet/VAULT_DECISION.md` and `primitive-inspection.json`.
@@ -14,6 +14,7 @@ Mainnet proof executed and verified (8 November 2026), based on `1109d5b`. The e
 - **Real Codex Mainnet task completed:** first purchase held, local owner approval remembered, two 0.80-USDC x402 settlements delivered useful live reports, fresh-session rule recalled, third purchase refused with 0.60 free. Unsigned contract simulation confirmed `EExceedsFree`. Owner revoked permission; final vault 1.40 USDC. All eight receipts passed exact read-back; unrelated Mainnet digest failed. Four of four Walrus jobs/blobs verified.
 - Actual net gas: 0.083418818 SUI under the 0.205-SUI ceiling. Claude Code hit its weekly quota before tool use; Codex performed the task. Evidence: `evidence/mainnet-20261108/README.md`. No extra payment was made for screenshots or provenance checks.
 - At the owner's later request, pushed the verified Mainnet milestone to GitHub and deployed public Home/Connect/Proof from `bcee8ee` to Vercel. Production pages now expose the recorded Mainnet trace and Codex client details. Live runtime stays Testnet, same vault/session/namespace; no env migration or purchase. Production browser checks and HTTP auth/x402 invoice probes passed; see `verification/deployed-site-20261108`.
+- That intermediate deployment is superseded by the owner's explicit “just delete the testnet we are full mainnet” instruction. Public flows now contain only Mainnet evidence/connection. Completed proof state and consumed budgets were migrated to a dedicated hosted PostgreSQL schema, all wallet signing keys removed from production config, and a read-only public-origin binding added without changing the original financial manifest. Owner writes, new purchases and merchant settlement are closed. Eight receipts and four memories were independently rechecked, plus the earlier 13-memory inventory for submission evidence. No new gas or merchant payment occurred.
 
 ## Historical implementation log
 
