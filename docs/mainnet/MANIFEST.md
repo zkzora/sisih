@@ -1,53 +1,44 @@
-# Sisih Mainnet proof: funding and transaction manifest
+# Sisih Mainnet proof manifest
 
-Status: **prepared · not deployed · not funded · not executed**. Generated 2026-11-07T08:17:12.365Z by `server/scripts/mainnet/manifest.ts` from
-`docs/mainnet/preflight.json` (read-only, through Tatum). Nothing in this file has been executed.
+Status: **approved, funded and executed locally on 8 November 2026**; see [authorization](EXECUTION_AUTHORIZATION.md) and [verified evidence](../evidence/mainnet-20261108/README.md). The immutable machine-validated [`MANIFEST.json`](./MANIFEST.json) retains the original proposal and exact limits for plan `sisih-mainnet-proof-20261107-v1`; it is not an execution-status database. Two 0.80-USDC purchases completed, the third was refused, and permission is revoked. Net gas: 0.083418818 SUI. No public Mainnet deployment occurred.
 
-- Network: sui:mainnet (chain id `4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S`), every call through Tatum.
-- Asset: native USDC `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC` (USDC, 6 decimals, read from chain metadata).
-- Current role balances: all 0 SUI and 0 USDC (unfunded).
+## Deployment and isolation
 
-## Funding request
+- Live proof execution target: isolated local runtime at `http://127.0.0.1:8788`, MCP `http://127.0.0.1:8788/api/mcp`, explicit PGlite state `server/data/mainnet-proof-20261107`, and Walrus prefix `sisih-mainnet-proof-20261107`.
+- Prepared public target: separate Vercel project `sisih-mainnet-proof-zkzora`, proposed origin `https://sisih-mainnet-proof-zkzora.vercel.app`. It requires a separate Mainnet Postgres URL and separate deployment authorization; it is not deployed.
+- The working historical Testnet deployment `https://sisih-azure.vercel.app` is unchanged.
+- Network: Sui Mainnet, chain ID `4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S`.
+- Asset: native Circle USDC `0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC`, 6 decimals.
+- Selected primitive: Sisih custom vault; see [`VAULT_DECISION.md`](./VAULT_DECISION.md).
 
-| Role | Address | USDC | SUI gas cap |
-| --- | --- | --- | --- |
-| owner (local key) | `0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990` | 3.20 | 0.4901 |
-| operator | `0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc` | 0 | 0.1024 |
-| facilitator | `0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664` | 0 | 0.0028 |
+## Exact funding checkpoint
 
-Aggregate SUI gas cap: **0.5954 SUI** (3x the gross estimates plus each role's largest gas budget; budgets are caps, not charges).
-Maximum USDC allocation: **3.20 USDC**. To the project-operated merchant: 1.60 USDC
-(our own funds coming back to us, not revenue). Expected to remain in the vault: 1.60 USDC
-(0.60 free).
+All amounts below are maximum authorizations, not predicted charges. 1 SUI = 1,000,000,000 MIST; 1 USDC = 1,000,000 base units.
 
-## Operations
+| Role | Public funding address | USDC | SUI / gas authorization |
+| --- | --- | ---: | ---: |
+| owner, local key only | `0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990` | 3.000000 | 0.165000000 |
+| operator, deployment-held | `0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc` | 0 | 0.040000000 |
+| agent, deployment-held | `0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5` | 0 | 0 |
+| facilitator, deployment-held | `0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664` | 0 | 0 |
 
-1. **owner (local)**: publish contracts/sisih (UpgradeCap to owner) (gas estimate 0.0767 SUI, Mainnet simulation (mocked gas), preflight.json)
-2. **owner (local)**: create_vault<USDC>(operator) (gas estimate 0.0039 SUI, Testnet measurement BPpnht7M5SKmzETvfYH11FhqkBCUsQqVxe7oZPEZPuDL)
-3. **owner (local)**: setup: deposit 3.20 USDC, one commitment 1.00 USDC to the owner's own address, set_agent_policy 1.00 per request / 3.00 per day / 7 days (gas estimate 0.0059 SUI, Testnet measurement 7qCqTe8nTKZktPZxqAkQkrcEQELKND9FdrWHfscaxUp2 (4 commitments: upper bound))
-4. **spending agent + owner**: P1: ChainScope 0.80 held (new merchant) -> owner approves and remembers via pnpm sisih approve <id> --remember --yes (local signature) (gas estimate 0.0089 SUI)
-5. **owner**: start_next_session (offchain, owner-signed): rules rebuilt from Walrus recall
-6. **spending agent (fresh session)**: P2: ChainScope 0.80 approved by the recalled preference (gas estimate 0.0089 SUI)
-7. **spending agent**: P3: ChainScope 0.80 refused: free 0.60 < 0.80 despite the allow preference (would_cut_reserve). Refused by the policy engine before any transaction; the contract boundary is shown by simulation only (labeled simulated), no gas spent.
-8. **owner (optional)**: pause_agent then resume_agent (owner intents) (gas estimate 0.0102 SUI)
-9. **anyone**: verify-memories.ts <namespace> and mainnet/verify-evidence.ts (read only)
+Maximum allocation: **3.000000 USDC and 0.205000000 SUI aggregate**. The ChainScope merchant recipient is the project-operated address `0xb00fbd9da3208cfba9034178439f3c9dc6685d38db47845c0b9bedc6e8262ce5`. Its maximum receipt is 1.600000 USDC across exactly two 0.800000-USDC purchases. Those are the project's own funds returning to a project-operated address, not revenue.
 
-## Gas method
+Native-USDC x402 at this amount follows the installed library's gasless path and sets facilitator gas budget to zero; both actual settlements confirmed zero net gas. Owner authorization sums publish 100,000,000 MIST, create 20,000,000, setup 25,000,000 and revoke 20,000,000. Operator authorization is two 20,000,000-MIST release limits. Initial publish simulation measured 76,670,000 MIST gross; other caps used labeled Testnet-derived bounds. Actual computation/storage/rebate/net are now recorded per receipt in the evidence: aggregate net 83,418,818 MIST.
 
-Gross gas (computation + storage, rebates ignored). Computation is rescaled from Testnet measurements to the Mainnet reference gas price; storage is unchanged; publish is simulated on Mainnet. Per-role cap = 3x the gross estimates + the largest single gas budget that role sets (it must hold that budget when signing). Budgets are caps, not charges. Mainnet reference gas price 100 MIST; Testnet 1000 MIST.
+## Exact scenario
 
-## Key custody (trust model)
+1. Owner publishes the selected package and retains UpgradeCap.
+2. Owner creates `Vault<USDC>`; OperatorCap is sent to the reviewed operator.
+3. Owner deposits 3.000000 USDC, creates a 0.800000-USDC savings commitment payable only to the owner, and grants the reviewed agent 1.000000 per request / 3.000000 per day until `1794647357715` ms.
+4. A new 0.800000-USDC ChainScope request is held. Owner approves that exact request and remembers the preference. One release and one x402 settlement occur.
+5. After Walrus reports the rule stored, a fresh application and agent session recalls it. A new 0.800000-USDC request is allowed and settles once.
+6. A third request is refused: 0.600000 is free while 0.800000 remains reserved. The contract boundary is demonstrated only by a labeled simulation, not a deliberately failing broadcast.
+7. Owner revokes the agent policy. Final vault expectation: 1.400000 total = 0.600000 free + 0.800000 reserved.
+8. The exact verifier checks sender, gas owner/budget, package/function/type arguments, recipient/asset/amount balance changes, events and created types. A valid unrelated digest fails.
 
-- **owner**: Local only (.env.mainnet on the owner's machine). Signs publish, create_vault, setup and every owner intent via pnpm sisih sign. Never on the server or Vercel.
-- **operator**: Server (deployment env). Can only call release_to_agent through the OperatorCap, from free funds, within the agent's caps.
-- **agent**: Server (deployment env): the x402 payer for released coins. The spending agent process (Claude Code) never holds it; it has only SISIH_AGENT_TOKEN.
-- **facilitator**: Server (deployment env): co-signs x402 settlements as gas owner.
-- **note**: Sisih is not fully non-custodial: the operator, agent and facilitator keys are held by the deployment. The owner key stays local, and the contract limits what the others can do.
+## Custody and approval boundary
 
-## Decisions required before any live step
+The owner private key remains only in the ignored local `.env.mainnet` and signs publication, setup and owner intents locally. A server receives only the public owner address plus scoped operator/agent/facilitator keys. Persistent database budgets cap Mainnet merchant outflow at 1.600000 USDC and operator gas at 40,000,000 MIST; unknown outcomes retain their reservation until read-back.
 
-- Approve the funding request above (amounts and addresses).
-- Choose the Mainnet deployment origin (separate from the Testnet demo).
-- Provide a Mainnet DATABASE_URL (separate database).
-- Confirm the project-operated ChainScope recipient address for Mainnet.
-- Confirm the Walrus Memory Mainnet proof namespace prefix (current: sisih-rehearsal).
+The document alone never authorizes spending. The later [user authorization](EXECUTION_AUTHORIZATION.md) covered this exact plan, which is now executed. Live commands require the manifest, `--execute` and acknowledgement. Its two-purchase allocation is consumed; additional spending or withdrawal needs a new reviewed authorization.

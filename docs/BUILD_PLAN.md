@@ -1,4 +1,6 @@
-# Sisih: Build Plan for Claude Code
+# Sisih: historical build plan
+
+This November 5 plan is historical. Current requirements are in [SPEC.md](SPEC.md), current state in [HANDOFF.md](HANDOFF.md), and bounded Mainnet execution in [mainnet/RUNBOOK.md](mainnet/RUNBOOK.md). Dashboard and cancelled-Mainnet instructions below are superseded.
 
 Nov 5, 2026 · @zora (translated from the original Indonesian plan; product renamed from BillFirst to Sisih)
 

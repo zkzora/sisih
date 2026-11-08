@@ -1,0 +1,86 @@
+{
+  "network": "mainnet",
+  "vault": {
+    "vaultId": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+    "version": 1,
+    "owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+    "free": "600000",
+    "reserved": "800000",
+    "total": "1400000",
+    "obligations": [
+      {
+        "id": 0,
+        "name": "Savings reserve",
+        "payee": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "target": "800000",
+        "reserve": "800000",
+        "kind": "fixed",
+        "priority": "must",
+        "cycleMs": 2592000000,
+        "nextDueMs": 1796634557715,
+        "cadenceLabel": "Monthly",
+        "status": "funded"
+      }
+    ],
+    "policy": null,
+    "readAtMs": 1794143408849,
+    "explorerUrl": "https://suiscan.xyz/mainnet/object/0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+    "operatorCapId": "0xa26d752f4841e3a320efa7d7b13f611cf93419f6d49f91565a65c5bc4b96b593"
+  },
+  "verifiedVia": "Tatum Sui gRPC",
+  "agentAddress": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+  "readAtMs": 1794143408849,
+  "session": 2,
+  "heldRequests": 1,
+  "memory": {
+    "namespace": "sisih-mainnet-proof-20261107",
+    "stored": 4,
+    "writing": 0,
+    "failed": 0
+  },
+  "tatum": {
+    "level": "green",
+    "host": "sui-mainnet-grpc.gateway.tatum.io:443",
+    "network": "mainnet",
+    "lastOkAt": 1794143408849,
+    "lastLatencyMs": 46,
+    "calls": 41,
+    "failures": 5,
+    "retries": 1,
+    "byMethod": {
+      "GetServiceInfo": 3,
+      "BatchGetObjects": 7,
+      "GetEpoch": 1,
+      "SimulateTransaction": 8,
+      "ExecuteTransaction": 5,
+      "GetTransaction": 13,
+      "GetBalance": 2,
+      "ListOwnedObjects": 2
+    },
+    "lastError": {
+      "at": 1794143407178,
+      "code": "UNAVAILABLE",
+      "message": "Received HTTP status code 429"
+    }
+  },
+  "demo": {
+    "merchants": [
+      {
+        "name": "DataMart",
+        "demo": true
+      },
+      {
+        "name": "SearchBox",
+        "demo": true
+      },
+      {
+        "name": "ReportLab",
+        "demo": true
+      },
+      {
+        "name": "ChainScope",
+        "demo": true
+      }
+    ]
+  }
+}

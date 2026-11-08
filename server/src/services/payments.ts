@@ -16,12 +16,18 @@ import { publish } from "../lib/bus";
 import { formatUsdc } from "../lib/env";
 import { address } from "../lib/wallets";
 import { findMerchant, merchantAddress } from "../merchants/registry";
+import { markReleaseBudgetUnknown, recordFailedReleaseBudget, recordReleaseBudget, releasePurchaseBudget, reservePurchaseBudget, resolveReleaseBudget, type PurchaseBudgetReservation } from "../mainnet/runtime";
+import { verifyTransaction } from "../lib/tatum";
+import { isMainnet, suiNetwork } from "../lib/env";
+import { verifyMainnetSettlement } from "../mainnet/settlement";
 import { MerchantRefused, payInvoice, type Invoice } from "../x402/agentPay";
 import { kvRead, kvSet } from "./state";
 
 export const purchaseResultKey = (requestId: string) => `purchase_result:${requestId}`;
 export const paymentErrorKey = (requestId: string) => `payment_error:${requestId}`;
 export const paymentRecoveryKey = (requestId: string) => `payment_recovery:${requestId}`;
+export const merchantResultKey = (requestId: string) => `merchant_result:${requestId}`;
+export const merchantPendingResultKey = (requestId: string) => `merchant_pending_result:${requestId}`;
 
 /**
  * What actually happened to the money when a payment did not finish. Release (vault -> agent) and
@@ -40,7 +46,7 @@ export const paymentRecoveryKey = (requestId: string) => `payment_recovery:${req
  *   settlement and the coin through Tatum before any manual action. Sisih never pays again for
  *   this request automatically.
  */
-export type PaymentRecoveryState = "not_released" | "released_not_sent" | "merchant_refused" | "sent_outcome_unknown";
+export type PaymentRecoveryState = "not_released" | "release_outcome_unknown" | "released_not_sent" | "merchant_refused" | "sent_outcome_unknown";
 export interface PaymentRecovery {
   state: PaymentRecoveryState;
   release_digest: string | null;
@@ -64,6 +70,59 @@ export async function paymentError(requestId: string): Promise<string | null> {
 export async function purchaseResult(requestId: string): Promise<unknown | null> {
   const raw = await kvRead(purchaseResultKey(requestId));
   return raw === null || raw === undefined ? null : JSON.parse(raw);
+}
+
+/**
+ * Read-only chain reconciliation for a stopped payment. It never signs, broadcasts or retries.
+ * A release timeout is resolved from its known digest. A lost merchant response is resolved from
+ * the merchant's durable result plus its verified settlement tx_log row.
+ */
+export async function reconcilePaymentRecovery(requestId: string): Promise<PaymentRecovery | null> {
+  let recovery = await paymentRecovery(requestId);
+  if (!recovery) {
+    const prepared = await kvRead(`release_prepared:${requestId}`);
+    const [request] = await db().select().from(schema.requests).where(eq(schema.requests.id, requestId));
+    if (prepared && request?.paymentStatus === "pending") {
+      recovery = { state: "release_outcome_unknown", release_digest: JSON.parse(prepared).digest, released_coin_id: null, agent_address: address("agent"), amount: request.amount, reason: "Process stopped after preparing release; read-back required.", at: Date.now() };
+    }
+  }
+  if (!recovery) return null;
+  if (recovery.state === "release_outcome_unknown" && recovery.release_digest) {
+    const v = await verifyTransaction(recovery.release_digest, { network: suiNetwork(), tries: 3 });
+    const coin = v.created.find((c) => c.type.includes("::coin::Coin<") && c.type.includes(usdcType().split("::")[0]!.replace(/^0x/, "")));
+    await resolveReleaseBudget(requestId, { spent: v.success, amount: BigInt(recovery.amount), gasMist: v.gasMist, digest: recovery.release_digest });
+    const next: PaymentRecovery = v.success
+      ? { ...recovery, state: "released_not_sent", released_coin_id: coin?.objectId ?? null, reason: "Release verified onchain after an unknown transport outcome; no merchant payment was sent." }
+      : { ...recovery, state: "not_released", release_digest: recovery.release_digest, released_coin_id: null, agent_address: null, reason: "Release transaction was found and failed onchain; no funds left the vault." };
+    await kvSet(paymentRecoveryKey(requestId), JSON.stringify(next));
+    await kvSet(paymentErrorKey(requestId), next.reason);
+    return next;
+  }
+  if (recovery.state === "sent_outcome_unknown") {
+    const prepared = await kvRead(`settlement_prepared:${requestId}`);
+    if (isMainnet() && prepared) {
+      const [request] = await db().select().from(schema.requests).where(eq(schema.requests.id, requestId));
+      if (!request?.invoice) throw new Error("Cannot reconcile without the exact stored invoice");
+      const digest = JSON.parse(prepared).digest as string;
+      await verifyMainnetSettlement(digest, reviveInvoice(request.invoice));
+      await recordTx(digest, { source: "our", label: "x402 settle: ChainScope (reconciled)", requestId, refreshVault: false });
+      const pending = await kvRead(merchantPendingResultKey(requestId));
+      if (pending) await kvSet(merchantResultKey(requestId), JSON.stringify({ ...JSON.parse(pending), settlement: digest }));
+    }
+    const settlements = await db().select().from(schema.txLog).where(and(eq(schema.txLog.requestId, requestId), eq(schema.txLog.status, "verified")));
+    const settle = settlements.find((r) => r.label?.startsWith("x402 settle:"));
+    const result = await kvRead(merchantResultKey(requestId));
+    if (settle && result !== undefined) {
+      await kvSet(purchaseResultKey(requestId), result);
+      await setPayment(requestId, "paid", [
+        ...(recovery.release_digest ? [{ step: "release" as const, digest: recovery.release_digest, verified: true }] : []),
+        { step: "x402_settle", digest: settle.digest, verified: true },
+      ]);
+      await kvSet(paymentErrorKey(requestId), "");
+      return null;
+    }
+  }
+  return recovery;
 }
 
 export interface PaymentTarget {
@@ -114,8 +173,10 @@ export const x402PaymentExecutor: PaymentExecutor = {
     let coinId: string | null = null;
     let sent = false;
     let refused = false;
+    let releaseUnknown = false;
+    let budget: PurchaseBudgetReservation | null = null;
     const fail = async (reason: string, digests: Digest[] = []) => {
-      const state: PaymentRecoveryState = !releaseDigest ? "not_released" : !sent ? "released_not_sent" : refused ? "merchant_refused" : "sent_outcome_unknown";
+      const state: PaymentRecoveryState = releaseUnknown ? "release_outcome_unknown" : !releaseDigest ? "not_released" : !sent ? "released_not_sent" : refused ? "merchant_refused" : "sent_outcome_unknown";
       const recovery: PaymentRecovery = { state, release_digest: releaseDigest, released_coin_id: coinId, agent_address: releaseDigest ? address("agent") : null, amount: t.amount.toString(), reason, at: Date.now() };
       // Recovery first: it must survive even if the status update below is lost.
       await kvSet(paymentRecoveryKey(t.requestId), JSON.stringify(recovery));
@@ -145,23 +206,59 @@ export const x402PaymentExecutor: PaymentExecutor = {
     }
     await setPayment(t.requestId, "pending", []);
 
+    try {
+      budget = await reservePurchaseBudget(t.requestId, t.amount);
+    } catch (err) {
+      return fail(`Mainnet execution budget refused this purchase: ${(err as Error).message}`);
+    }
+
     // 1. Release exactly the amount from the vault's free pool to the agent.
-    const rel = await releaseToAgent(t.amount, t.requestId);
-    if (!rel.ok) return fail(`Vault refused the release (${rel.code}): ${rel.reason}`, rel.digest ? [{ step: "release", digest: rel.digest, verified: false }] : []);
+    let rel;
+    try {
+      rel = await releaseToAgent(t.amount, t.requestId);
+    } catch (err) {
+      // The submission helper converts all post-submit transport errors to stage=unknown.
+      // A throw here is a build/read error before submission; no replacement is attempted.
+      await releasePurchaseBudget(budget);
+      return fail(`Release could not be built: ${(err as Error).message}`);
+    }
+    if (!rel.ok) {
+      if (rel.stage === "unknown" && rel.digest) {
+        releaseDigest = rel.digest;
+        releaseUnknown = true;
+        await markReleaseBudgetUnknown(budget, rel.digest);
+      } else if (rel.digest && budget) {
+        const verified = await verifyTransaction(rel.digest, { tries: 3 });
+        await recordFailedReleaseBudget(budget, verified.gasMist, rel.digest);
+      } else {
+        await releasePurchaseBudget(budget);
+      }
+      return fail(`Vault refused or could not confirm the release (${rel.code}): ${rel.reason}`, rel.digest ? [{ step: "release", digest: rel.digest, verified: false }] : []);
+    }
     const agent = address("agent");
     const coin = rel.created.find((c) => c.type.includes("::coin::Coin<") && c.type.includes(usdcType().split("::")[0]!.replace(/^0x/, "")));
     const digests: Digest[] = [{ step: "release", digest: rel.digest, verified: rel.tx.status === "verified" }];
     releaseDigest = rel.digest;
     coinId = coin?.objectId ?? null;
+    try {
+      await recordReleaseBudget(budget, t.amount, rel.tx.gasMist ?? budget?.gasMaximum ?? 0n, rel.digest);
+    } catch (err) {
+      return fail(`Release succeeded, but its persistent budget accounting needs reconciliation: ${(err as Error).message}`, digests);
+    }
     if (!coin) return fail("Release succeeded but the released coin was not found in its effects.", digests);
+    if (rel.tx.status !== "verified") return fail("Release executed, but independent Tatum read-back has not verified it. Reconcile before merchant settlement.", digests);
+    await kvSet(paymentRecoveryKey(t.requestId), JSON.stringify({ state: "released_not_sent", release_digest: rel.digest, released_coin_id: coin.objectId, agent_address: agent, amount: t.amount.toString(), reason: "Release completed; merchant payment not sent yet.", at: Date.now() } satisfies PaymentRecovery));
     publish("x402.funds_released", { id: t.requestId, digest: rel.digest, coinId: coin.objectId, agent, amount: t.amount.toString() });
 
     // 2-3. Pay the invoice from that coin; the merchant settles through the facilitator.
     try {
-      const paid = await payInvoice(inv, coin.objectId, t.requestId, () => {
+      const paid = await payInvoice(inv, coin.objectId, t.requestId, async (digest) => {
+        await kvSet(`settlement_prepared:${t.requestId}`, JSON.stringify({ digest }));
+        await kvSet(paymentRecoveryKey(t.requestId), JSON.stringify({ state: "sent_outcome_unknown", release_digest: rel.digest, released_coin_id: coin.objectId, agent_address: agent, amount: t.amount.toString(), reason: "Signed payment is being sent; reconcile if the process stops.", at: Date.now() } satisfies PaymentRecovery));
         sent = true;
         publish("x402.payment_sent", { id: t.requestId, coinId: coin.objectId });
       });
+      if (isMainnet()) await verifyMainnetSettlement(paid.settleDigest, inv);
       // 4. Settlement proven through Tatum (the merchant recorded it; re-read only if missing).
       const [logged] = await db().select().from(schema.txLog).where(eq(schema.txLog.digest, paid.settleDigest));
       const verified =

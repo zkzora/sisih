@@ -30,7 +30,10 @@ import { normalizeSuiAddress } from "@mysten/sui/utils";
 import { fromBase64 } from "@mysten/sui/utils";
 import { cachedVault, vaultState } from "../chain/vault";
 import { explorerTxUrl } from "../chain/activity";
-import { formatUsdc, suiNetwork } from "../lib/env";
+import { formatUsdc, isMainnet, suiNetwork } from "../lib/env";
+import { assertProofOwnerAction, proofManifest } from "../mainnet/proof-policy";
+import { markUnknown, recordSpent, reserveOperation, resolveUnknownSpent } from "../mainnet/budget";
+import { mainnetPlanId } from "../mainnet/runtime";
 import { executeSigned, verifyTransaction } from "../lib/tatum";
 import { ApiError } from "../services/requests";
 import { kvCompareAndSet, kvRead, kvSet } from "../services/state";
@@ -71,6 +74,7 @@ export function authorizationText(i: Pick<OwnerIntent, "id" | "action" | "target
     `network: sui:${i.target.network}`,
     `package: ${i.target.packageId}`,
     `vault: ${i.target.vaultId}`,
+    `asset: ${i.target.usdcType}`,
     `owner: ${normalizeSuiAddress(i.target.ownerAddress)}`,
     `action: ${JSON.stringify(i.action)}`,
     `summary: ${i.summary}`,
@@ -89,6 +93,11 @@ async function assertOwnerMatchesVault(t: OwnerTxTarget): Promise<void> {
 
 /** Step 1: validate, resolve and store a pending intent. No effect yet. */
 export async function createIntent(a: OwnerAction, nowMs = Date.now()): Promise<OwnerIntent> {
+  if (isMainnet() && a.action === "decide_request" && a.remember) {
+    const m = await proofManifest();
+    a = { ...a, max_amount: a.max_amount ?? m.merchant.price_base_units, days: a.days ?? 7 };
+  }
+  await assertProofOwnerAction(a);
   const target = await ownerTxTarget();
   await assertOwnerMatchesVault(target);
   const onchain = isOnchain(a);
@@ -100,7 +109,7 @@ export async function createIntent(a: OwnerAction, nowMs = Date.now()): Promise<
     summary: describeOwnerAction(a),
     call: onchain ? await resolveOnchainCall(a, nowMs) : null,
     target,
-    gas_cap_mist: OWNER_GAS_CAP_MIST.toString(),
+    gas_cap_mist: isMainnet() ? (await proofManifest()).operations.find((op) => op.id === "revoke-agent")!.gas_budget_mist : OWNER_GAS_CAP_MIST.toString(),
     nonce: randomBytes(16).toString("hex"),
     created_at: nowMs,
     expires_at: nowMs + INTENT_TTL_MS,
@@ -154,6 +163,13 @@ export async function submitIntent(id: string, input: SubmitInput): Promise<Owne
   if (i.status === "expired") throw new ApiError(410, "This intent expired. Ask again to create a new one.", "intent_expired");
   if (i.status !== "pending") throw new ApiError(409, `This intent is already ${i.status}; it cannot be used again.`, "intent_used");
   if (i.target.network !== suiNetwork()) throw new ApiError(409, `Intent is for sui:${i.target.network}, this deployment is sui:${suiNetwork()}.`, "wrong_network");
+  if (isMainnet()) {
+    await assertProofOwnerAction(i.action);
+    const current = await ownerTxTarget();
+    for (const k of ["packageId", "vaultId", "usdcType", "ownerAddress"] as const) {
+      if (current[k].toLowerCase() !== i.target[k].toLowerCase()) throw new ApiError(409, "Deployment changed after this intent was created", "intent_target_changed");
+    }
+  }
   if (typeof input.signature !== "string" || input.signature.length < 20) throw new ApiError(400, "signature is required", "bad_signature");
   const owner = normalizeSuiAddress(i.target.ownerAddress);
 
@@ -175,6 +191,9 @@ export async function submitIntent(id: string, input: SubmitInput): Promise<Owne
   await assertOwnerMatchesVault(i.target);
 
   // Use the intent once: exactly one submitter wins.
+  if (isMainnet() && txBytes) {
+    await reserveOperation(`owner-intent:${i.id}`, `${mainnetPlanId()}:owner-runtime-gas`, BigInt(i.gas_cap_mist));
+  }
   const submitting: OwnerIntent = { ...i, status: "submitting", digest: txBytes ? txDigestFromBytes(txBytes) : null };
   if (!(await transition(i, submitting))) throw new ApiError(409, "This intent was already submitted.", "intent_used");
 
@@ -196,6 +215,7 @@ export async function submitIntent(id: string, input: SubmitInput): Promise<Owne
   try {
     executed = await executeSigned(txBytes!, input.signature, i.target.network);
   } catch (err) {
+    if (isMainnet()) await markUnknown(`owner-intent:${i.id}`, submitting.digest!);
     const unknown: OwnerIntent = {
       ...submitting,
       status: "unknown",
@@ -209,6 +229,14 @@ export async function submitIntent(id: string, input: SubmitInput): Promise<Owne
 }
 
 async function finishOnchain(prev: OwnerIntent, digest: string, success: boolean, error: string | null): Promise<OwnerIntent> {
+  if (isMainnet()) {
+    const verified = await verifyTransaction(digest, { network: "mainnet", tries: 3 });
+    success = verified.success;
+    error = verified.error;
+    const operation = await import("../mainnet/budget").then((m) => m.getOperation(`owner-intent:${prev.id}`));
+    if (operation?.status === "unknown") await resolveUnknownSpent(`owner-intent:${prev.id}`, verified.gasMist < 0n ? 0n : verified.gasMist, digest);
+    else await recordSpent(`owner-intent:${prev.id}`, verified.gasMist < 0n ? 0n : verified.gasMist, digest);
+  }
   if (!success) {
     const failed: OwnerIntent = { ...prev, status: "failed", digest, explorer_url: explorerTxUrl(digest, prev.target.network), error: error ?? "aborted" };
     await transition(prev, failed);

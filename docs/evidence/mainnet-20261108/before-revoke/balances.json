@@ -1,0 +1,30 @@
+{
+  "captured_at": "2026-11-08T13:09:39.486Z",
+  "balances": {
+    "owner": {
+      "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+      "sui_mist": "88972571",
+      "usdc_base_units": "15780"
+    },
+    "operator": {
+      "address": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+      "sui_mist": "57154170",
+      "usdc_base_units": "0"
+    },
+    "agent": {
+      "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+      "sui_mist": "0",
+      "usdc_base_units": "0"
+    },
+    "facilitator": {
+      "address": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664",
+      "sui_mist": "0",
+      "usdc_base_units": "0"
+    },
+    "merchant": {
+      "address": "0xb00fbd9da3208cfba9034178439f3c9dc6685d38db47845c0b9bedc6e8262ce5",
+      "sui_mist": "0",
+      "usdc_base_units": "1600000"
+    }
+  }
+}

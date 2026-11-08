@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Brain, LockKeyhole, PlugZap, ShieldCheck } from "lucide-react";
+import { ArrowRight, Brain, Coins, Cpu, LockKeyhole, PlugZap, ShieldCheck, Terminal, Zap } from "lucide-react";
 import { NETWORK_LABEL } from "@/components/site";
 
 export default function Home() {
@@ -26,7 +26,85 @@ export default function Home() {
         </div>
         <p className="network-line">
           Hosted demo: <strong>{NETWORK_LABEL}</strong>
+          {" · "}<Link href="/proof#mainnet-trace">Recorded Mainnet proof</Link>
         </p>
+      </section>
+
+      <section className="features" aria-labelledby="features-title">
+        <div className="features-head">
+          <p className="eyebrow">CAPABILITIES</p>
+          <h2 id="features-title">What Sisih can do</h2>
+          <p className="lead">
+            Concrete guardrails combining Sui Move smart contracts with Walrus Memory so your AI agent pays for what it needs without risking your reserved funds.
+          </p>
+        </div>
+        <div className="features-grid">
+          <div className="feature-card">
+            <div className="feature-icon">
+              <Coins size={22} aria-hidden />
+            </div>
+            <h3>Onchain Commitment Reserves</h3>
+            <p>
+              Ring-fences funds for hosting, inference bills, and savings directly in a Move contract on Sui. Hard contract invariants prevent any agent or prompt from touching committed funds.
+            </p>
+            <span className="feature-tag">Sui Move Contract</span>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">
+              <Zap size={22} aria-hidden />
+            </div>
+            <h3>Autonomous x402 Micropayments</h3>
+            <p>
+              Allows your AI agent to pay for on-demand data feeds and API services via x402 invoices in real time, settled onchain on Sui and verified through Tatum.
+            </p>
+            <span className="feature-tag">x402 Protocol</span>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">
+              <Brain size={22} aria-hidden />
+            </div>
+            <h3>Cross-Session Memory</h3>
+            <p>
+              Stores owner approvals, trusted merchants, and soft preferences in Walrus Memory. Fresh agent sessions automatically recall past decisions, avoiding repetitive manual reviews.
+            </p>
+            <span className="feature-tag">Walrus Mainnet</span>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">
+              <ShieldCheck size={22} aria-hidden />
+            </div>
+            <h3>Hard Spending Caps</h3>
+            <p>
+              Enforces strict per-request limits, 24-hour daily caps, and permission expiration. Even with a remembered preference, hard limits cannot be bypassed.
+            </p>
+            <span className="feature-tag">Policy Engine</span>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">
+              <Cpu size={22} aria-hidden />
+            </div>
+            <h3>Zero-Key Role-Scoped MCP</h3>
+            <p>
+              Connect Claude Code or any MCP client via remote HTTP. The agent receives only a restricted delegated token and never holds private wallet signing keys.
+            </p>
+            <span className="feature-tag">Model Context Protocol</span>
+          </div>
+
+          <div className="feature-card">
+            <div className="feature-icon">
+              <Terminal size={22} aria-hidden />
+            </div>
+            <h3>Terminal & Assistant Control</h3>
+            <p>
+              Instantly pause spending, resume, approve held purchases, or adjust reserves using the companion CLI (<code>pnpm sisih</code>) or an owner-authorized assistant session.
+            </p>
+            <span className="feature-tag">Owner Companion</span>
+          </div>
+        </div>
       </section>
 
       <section className="example" aria-labelledby="example-title">
@@ -38,7 +116,7 @@ export default function Home() {
           <div className="example-col">
             <h3>A spending cap alone</h3>
             <p>
-              Your wallet holds 20.00 USDC. 16.50 is due this week for inference, hosting and savings. Your agent has a 5.00 daily cap, has already spent 1.70, and asks
+              You start with 20.00 USDC. 16.50 is due this week for inference, hosting and savings. Your agent has a 5.00 daily cap, has already spent 1.70, and asks
               for a 3.00 report.
             </p>
             <p className="verdict verdict-bad">The cap allows it. Your bills are now 1.20 short.</p>
@@ -50,7 +128,7 @@ export default function Home() {
           </div>
         </div>
         <p className="fine">
-          This example is illustrative. The recorded run on the <Link href="/proof">Proof</Link> page shows the same boundary with real Testnet transactions.
+          This example is illustrative. <Link href="/proof">Proof</Link> records real Mainnet purchases, a labeled reserve-refusal simulation, and earlier Testnet evidence.
         </p>
       </section>
 
@@ -84,8 +162,8 @@ export default function Home() {
         <h2 id="alt-title">Why not a separate agent wallet?</h2>
         <p>
           A separately funded wallet with a static budget is the strongest simple alternative, and it works if you keep refilling it by hand. Sisih&apos;s claim is
-          narrower: the agent spends from the money you already hold, the amount it can reach changes with your actual commitments, and the approvals you give once are
-          not asked again next session. The <Link href="/proof">recorded run</Link> shows both.
+          narrower: the agent spends from the money you already hold, and the amount it can reach changes with your actual commitments. A remembered preference can
+          remove a repeated review when the purchase still fits every hard limit. The <Link href="/proof">recorded run</Link> shows one such decision.
         </p>
       </section>
     </div>

@@ -3,7 +3,7 @@
  * release_to_agent just sent: the signed payload is decoded and refused unless it spends that
  * coin object and draws nothing from the agent's address balance.
  */
-import { Transaction } from "@mysten/sui/transactions";
+import { Transaction, TransactionDataBuilder } from "@mysten/sui/transactions";
 import { fromBase64 } from "@mysten/sui/utils";
 import type { ClientSuiSigner } from "@tentaclepay/sui-x402";
 import { ExactSuiScheme as ExactSuiClientScheme } from "@tentaclepay/sui-x402/exact/client";
@@ -62,10 +62,11 @@ export interface Paid {
 }
 
 /** Steps 3-4: sign the payment from the released coin, send it, read the settlement. */
-export async function payInvoice(inv: Invoice, coinId: string, requestId: string, onSent?: () => void): Promise<Paid> {
+export async function payInvoice(inv: Invoice, coinId: string, requestId: string, onSent?: (digest: string) => void | Promise<void>): Promise<Paid> {
   const payload = await client().createPaymentPayload(inv.paymentRequired);
   assertPaysFromCoin(String((payload.payload as { transaction: string }).transaction), coinId);
-  onSent?.();
+  const digest = TransactionDataBuilder.getDigestFromBytes(fromBase64(String((payload.payload as { transaction: string }).transaction)));
+  await onSent?.(digest);
   const res = await fetch(inv.url, { headers: { ...client().encodePaymentSignatureHeader(payload), "x-sisih-request-id": requestId } });
   const body = (await res.json()) as Record<string, unknown>;
   if (res.status !== 200) throw new MerchantRefused(`merchant refused payment (${res.status}): ${String(body.error ?? "")} ${String(body.message ?? "")}`.trim());

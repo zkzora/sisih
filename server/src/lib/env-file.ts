@@ -15,7 +15,7 @@ const PROTECTED = new Set([".env.mainnet"]);
  */
 export function upsertEnv(values: Record<string, string>, path = ROOT_ENV_PATH): void {
   if (PROTECTED.has(basename(path))) throw new Error(`${basename(path)} is protected; write deployment output to a separate file`);
-  if (resolve(path) === resolve(ROOT_ENV_PATH) && process.env.SUI_NETWORK === "mainnet") {
+  if (resolve(/*turbopackIgnore: true*/ path) === resolve(ROOT_ENV_PATH) && process.env.SUI_NETWORK === "mainnet") {
     throw new Error("Refusing to write Mainnet values into the repo-root .env (the Testnet demo configuration)");
   }
   let text = readFileSync(/*turbopackIgnore: true*/ path, "utf8");

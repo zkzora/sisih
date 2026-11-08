@@ -1,0 +1,70 @@
+{
+  "origin": "http://127.0.0.1:3000",
+  "revision": "working-tree-based-on-1109d5b",
+  "mutable_api": "intercepted with isolated 503 fixture; no payments or memory writes",
+  "viewports": [
+    375,
+    768,
+    1280,
+    1440
+  ],
+  "captures": [
+    "home-375.png",
+    "connect-375.png",
+    "proof-375.png",
+    "home-768.png",
+    "connect-768.png",
+    "proof-768.png",
+    "home-1280.png",
+    "connect-1280.png",
+    "proof-1280.png",
+    "home-1440.png",
+    "connect-1440.png",
+    "proof-1440.png"
+  ],
+  "contrast": [
+    {
+      "label": "/:light",
+      "checked": 63,
+      "failures": []
+    },
+    {
+      "label": "/connect:light",
+      "checked": 123,
+      "failures": []
+    },
+    {
+      "label": "/proof:light",
+      "checked": 203,
+      "failures": []
+    },
+    {
+      "label": "/connect:dark",
+      "checked": 123,
+      "failures": []
+    },
+    {
+      "label": "/:dark",
+      "checked": 63,
+      "failures": []
+    },
+    {
+      "label": "/proof:dark",
+      "checked": 203,
+      "failures": []
+    }
+  ],
+  "checks": [
+    "routes and read-only navigation",
+    "no horizontal overflow",
+    "API error and retry",
+    "arrow-key shell tabs",
+    "copy success and failure",
+    "keyboard focus",
+    "dark theme and persistence",
+    "legacy redirects",
+    "served skill",
+    "text contrast in both themes"
+  ],
+  "page_errors": []
+}

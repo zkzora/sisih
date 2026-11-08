@@ -7,8 +7,9 @@ description: Buy paid services for a task through Sisih, the owner's spending co
 
 Sisih protects money the owner has already committed to bills and savings. You may only spend the
 free remainder, within limits the owner set. You cannot change those limits, approve your own
-purchases, or move committed funds. Networks: vault and x402 payments on Sui Testnet (testnet USDC,
-read through Tatum); memory on Walrus Mainnet.
+purchases, or move committed funds. The hosted demo uses Sui Testnet and testnet USDC; a separate
+recorded local proof uses Sui Mainnet and native USDC. Read the connected server's `networks` field
+to identify its actual environment. Every Sui operation uses Tatum; memory uses Walrus Mainnet.
 
 ## Tools (MCP server "sisih")
 
@@ -34,7 +35,7 @@ with prices. Do not call `request_purchase` during a connection check.
 3. Act on `outcome`:
    - `settled`: paid and verified through Tatum. Use `result` in your answer.
    - `awaiting_owner_approval`: NOT paid. Tell the user the reason and give them the terminal
-     command from `owner_cli` (usually `pnpm sisih approve <id> --remember`) or the dashboard link.
+     command from `owner_cli` (usually `pnpm sisih approve <id> --remember`).
      Then stop or wait. When they say they decided, call `get_request_status` with the same
      `request_id`. Never submit the purchase again.
    - `processing`: approved and being paid. Check again with `get_request_status` after a few seconds.
@@ -43,7 +44,8 @@ with prices. Do not call `request_purchase` during a connection check.
      terminal command; only the owner can run it. Do not retry, split the purchase, or switch to
      another service to get around it.
    - `denied`: the owner or a remembered owner preference refused it. Continue without it.
-   - `failed`: nothing was settled. Report the reason; do not retry on your own.
+   - `failed`: no verified settlement completed. Read `payment.state`: a vault release may already
+     have happened or may be unknown. Report it exactly and do not retry on your own.
    - `busy`: someone else is using the shared demo. Wait and retry later, or tell the user.
 
 Never say a payment happened unless the outcome is `settled`.
@@ -61,7 +63,7 @@ Never say a payment happened unless the outcome is `settled`.
 ## Evidence to report
 
 After a settled purchase, list: `request_id`, amount, the receipt links (`receipts.release`,
-`receipts.settlement`, Sui Testnet explorer), and `memory_evidence` (Walrus blob IDs or links of the
+`receipts.settlement`, the explorer for the reported network), and `memory_evidence` (Walrus blob IDs or links of the
 decision and rule memories; a memory may still say "writing" for about 20 seconds).
 
 ## Finishing

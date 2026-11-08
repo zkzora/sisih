@@ -1,0 +1,108 @@
+[
+  {
+    "id": "mem-ccf086ff-12e",
+    "type": "decision",
+    "text": "[sisih:v1:decision] ChainScope (demo) data \"Live Sui vault report\" 0.80 USDC: approved automatically. Approved by your remembered rule: Always allow data from ChainScope up to 0.80 USDC until 2026-11-15. All vault limits passed. {\"requestId\":\"req-7dd90263-75e\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"amount\":\"800000\",\"decision\":\"auto_allow\",\"by\":\"auto\",\"code\":\"allow_rule\",\"session\":2,\"ruleId\":\"rule-dfbf7042\"}",
+    "payload": {
+      "requestId": "req-7dd90263-75e",
+      "merchant": "ChainScope",
+      "category": "data",
+      "amount": "800000",
+      "decision": "auto_allow",
+      "by": "auto",
+      "code": "allow_rule",
+      "session": 2,
+      "ruleId": "rule-dfbf7042"
+    },
+    "session": 2,
+    "status": "stored",
+    "jobId": "7884f4e1-6a18-4628-9263-17cf366f4bdb",
+    "blobId": "TnwJqTlovSbUz5852akt4BIpHJElg2-i4CF3048d42M",
+    "walrusUrl": "https://walruscan.com/mainnet/blob/TnwJqTlovSbUz5852akt4BIpHJElg2-i4CF3048d42M",
+    "namespace": "sisih-mainnet-proof-20261107",
+    "error": null,
+    "usedInDecisions": [
+      "req-7dd90263-75e"
+    ],
+    "createdAt": 1794143308230,
+    "storedAt": 1794143327877
+  },
+  {
+    "id": "mem-7f446a5f-691",
+    "type": "session_summary",
+    "text": "[sisih:v1:session_summary] Session 1: 1 requests, 1 held, 0 automatic, 1 new rules. {\"session\":1,\"requests\":1,\"held\":1,\"automatic\":0,\"approved\":1,\"denied\":0,\"newRules\":1}",
+    "payload": {
+      "session": 1,
+      "requests": 1,
+      "held": 1,
+      "automatic": 0,
+      "approved": 1,
+      "denied": 0,
+      "newRules": 1
+    },
+    "session": 1,
+    "status": "stored",
+    "jobId": "a36d1849-1dfe-42d8-b7c9-fbfaade93743",
+    "blobId": "dBSVlVrox0Qt2-UrRd-LN7pbhjryIEY4XAI-KiQWNzA",
+    "walrusUrl": "https://walruscan.com/mainnet/blob/dBSVlVrox0Qt2-UrRd-LN7pbhjryIEY4XAI-KiQWNzA",
+    "namespace": "sisih-mainnet-proof-20261107",
+    "error": null,
+    "usedInDecisions": [],
+    "createdAt": 1794143281428,
+    "storedAt": 1794143309288
+  },
+  {
+    "id": "mem-eddf98b2-064",
+    "type": "decision",
+    "text": "[sisih:v1:decision] ChainScope (demo) data \"Live Sui vault report\" 0.80 USDC: approved by the owner. New merchant. Free funds are sufficient, but ChainScope has no approved rule yet. {\"requestId\":\"req-d89525e6-87f\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"amount\":\"800000\",\"decision\":\"approve_and_remember\",\"by\":\"owner\",\"code\":\"new_merchant\",\"session\":1,\"ruleId\":\"rule-dfbf7042\"}",
+    "payload": {
+      "requestId": "req-d89525e6-87f",
+      "merchant": "ChainScope",
+      "category": "data",
+      "amount": "800000",
+      "decision": "approve_and_remember",
+      "by": "owner",
+      "code": "new_merchant",
+      "session": 1,
+      "ruleId": "rule-dfbf7042"
+    },
+    "session": 1,
+    "status": "stored",
+    "jobId": "dd8d6ec2-d1e4-424a-86d3-7f1c25aa249d",
+    "blobId": "_VGxDTDGcawBrMyDL48cDjUpUfaSEje8NoCZEFaqHBk",
+    "walrusUrl": "https://walruscan.com/mainnet/blob/_VGxDTDGcawBrMyDL48cDjUpUfaSEje8NoCZEFaqHBk",
+    "namespace": "sisih-mainnet-proof-20261107",
+    "error": null,
+    "usedInDecisions": [
+      "req-d89525e6-87f"
+    ],
+    "createdAt": 1794143214246,
+    "storedAt": 1794143237203
+  },
+  {
+    "id": "mem-af193926-5b8",
+    "type": "rule",
+    "text": "[sisih:v1:rule] Always allow data from ChainScope up to 0.80 USDC until 2026-11-15 {\"ruleId\":\"rule-dfbf7042\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"maxAmount\":\"800000\",\"action\":\"allow\",\"expiresMs\":1794748014232,\"requestId\":\"req-d89525e6-87f\"}",
+    "payload": {
+      "ruleId": "rule-dfbf7042",
+      "merchant": "ChainScope",
+      "category": "data",
+      "maxAmount": "800000",
+      "action": "allow",
+      "expiresMs": 1794748014232,
+      "requestId": "req-d89525e6-87f"
+    },
+    "session": 1,
+    "status": "stored",
+    "jobId": "3c62c83c-87c6-4a33-99fd-3e1619afc00b",
+    "blobId": "dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+    "walrusUrl": "https://walruscan.com/mainnet/blob/dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+    "namespace": "sisih-mainnet-proof-20261107",
+    "error": null,
+    "usedInDecisions": [
+      "req-d89525e6-87f"
+    ],
+    "createdAt": 1794143214236,
+    "storedAt": 1794143234687
+  }
+]

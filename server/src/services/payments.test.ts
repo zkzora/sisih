@@ -25,9 +25,9 @@ vi.mock("../x402/agentPay", () => {
   class MerchantRefused extends Error {}
   return {
     MerchantRefused,
-    payInvoice: async (_inv: unknown, _coin: string, requestId: string, onSent?: () => void) => {
+    payInvoice: async (_inv: unknown, _coin: string, requestId: string, onSent?: (digest: string) => void | Promise<void>) => {
       if (pay.mode === "before_send") throw new Error("could not build the payment payload");
-      onSent?.();
+      await onSent?.(`set-${requestId}`);
       if (pay.mode === "refused") throw new MerchantRefused("merchant refused payment (503): live_data_unavailable");
       if (pay.mode === "lost") throw new Error("fetch failed: socket hang up");
       return { settleDigest: `set-${requestId}`, resource: { content_type: "live onchain data" } };

@@ -12,7 +12,7 @@ import type { Category, RecalledMemory, Rule } from "../domain/types";
 import { background } from "../lib/background";
 import { publish } from "../lib/bus";
 import { acquireLease } from "../lib/leases";
-import { env, formatUsdc, requireEnv } from "../lib/env";
+import { env, formatUsdc, requireEnv, isMainnet } from "../lib/env";
 import { parseMemory, serializeMemory, type MemoryType } from "./format";
 
 export const RELAYER_URL = "https://relayer.memory.walrus.xyz";
@@ -20,6 +20,12 @@ export const RELAYER_URL = "https://relayer.memory.walrus.xyz";
 /** Active namespace: kv override (set by demo reset) or MEMWAL_NAMESPACE. */
 export async function namespace(): Promise<string> {
   const [row] = await db().select().from(schema.kv).where(eq(schema.kv.key, "memwal_namespace"));
+  if (isMainnet()) {
+    const reviewed = requireEnv("MEMWAL_NAMESPACE_PREFIX");
+    if (!/^sisih-mainnet-proof-[a-z0-9-]+$/.test(reviewed)) throw new Error("Mainnet requires its isolated proof namespace");
+    if (row && row.value !== reviewed) throw new Error("Database namespace differs from the reviewed Mainnet namespace");
+    return reviewed;
+  }
   return row?.value ?? env("MEMWAL_NAMESPACE") ?? "sisih-demo-1";
 }
 

@@ -1,0 +1,114 @@
+{
+  "checked_at": "2026-11-08T03:48:46.793Z",
+  "network": "testnet",
+  "chain_id": "69WiPg3DAQiwdxfncX6wYQ2siKwAe6L9BZthQea3JNMD",
+  "observations": [
+    {
+      "id": "historical-release-success-control",
+      "expected": {
+        "id": "historical-release-success-control",
+        "digest": "BPpnht7M5SKmzETvfYH11FhqkBCUsQqVxe7oZPEZPuDL",
+        "expected_success": true,
+        "sender": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+        "gas_owner": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+        "max_gas_budget_mist": "50000000",
+        "move_calls": [
+          {
+            "package": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9",
+            "module": "vault",
+            "function": "release_to_agent",
+            "type_arguments": [
+              "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [
+          {
+            "address": "0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba",
+            "coin_type": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::ReleasedToAgent",
+            "json_contains": {
+              "vault_id": "0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962",
+              "agent": "0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba",
+              "amount": "800000"
+            }
+          }
+        ],
+        "created_type_contains": [
+          "::coin::Coin<"
+        ]
+      },
+      "actual": {
+        "digest": "BPpnht7M5SKmzETvfYH11FhqkBCUsQqVxe7oZPEZPuDL",
+        "success": true,
+        "error": null,
+        "sender": "0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+        "gasOwner": "0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+        "gasBudget": "50000000",
+        "calls": [
+          {
+            "package": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9",
+            "module": "vault",
+            "function": "create_vault",
+            "typeArguments": [
+              "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "-4845600"
+          }
+        ],
+        "events": [
+          {
+            "type": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::VaultCreated",
+            "json": {
+              "operator": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+              "operator_cap_id": "0xd6c6f6fa29a22c63ae566ee30ecccc160bb81809146d441a2c2605744723b5db",
+              "owner": "0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+              "vault_id": "0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962"
+            }
+          }
+        ],
+        "createdTypes": [
+          "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::Vault<0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC>",
+          "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::OperatorCap"
+        ]
+      },
+      "checkpoint": "403085788",
+      "timestamp_ms": 1793869520998,
+      "errors": [
+        "sender mismatch: 0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+        "gas owner mismatch: 0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+        "missing exact call 0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::release_to_agent",
+        "missing balance change 0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba 800000 0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+        "missing event 0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::ReleasedToAgent with reviewed fields",
+        "missing created type containing ::coin::Coin<"
+      ],
+      "gas": {
+        "computation_mist": "1000000",
+        "storage_mist": "3845600",
+        "storage_rebate_mist": "0",
+        "net_mist": "4845600"
+      }
+    }
+  ],
+  "simulations": [],
+  "failures": [
+    "historical-release-success-control: sender mismatch: 0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+    "historical-release-success-control: gas owner mismatch: 0x85fe8337bd6329f10d291923b12ca641589eadba04bd5974a34f9bb65ac9ea70",
+    "historical-release-success-control: missing exact call 0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::release_to_agent",
+    "historical-release-success-control: missing balance change 0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba 800000 0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+    "historical-release-success-control: missing event 0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::ReleasedToAgent with reviewed fields",
+    "historical-release-success-control: missing created type containing ::coin::Coin<"
+  ],
+  "passed": false
+}

@@ -1,0 +1,15 @@
+{
+  "broadcast": false,
+  "signed": false,
+  "network": "sui:mainnet",
+  "plan_id": "sisih-mainnet-proof-20261107-v1",
+  "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+  "vault": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+  "operator": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+  "amount": "800000",
+  "expected_abort": "EExceedsFree",
+  "actual_abort": "EExceedsFree",
+  "free": "600000",
+  "reserved": "800000",
+  "error": "{\"$kind\":\"MoveAbort\",\"message\":\"MoveAbort in 1st command, 'EExceedsFree': Amount exceeds free funds; reserves are locked, in '0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::release_to_agent' (line 464)\",\"command\":0,\"MoveAbort\":{\"abortCode\":\"13836185948054749199\",\"location\":{\"package\":\"0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d\",\"module\":\"vault\",\"function\":15,\"instruction\":137,\"functionName\":\"release_to_agent\"},\"cleverError\":{\"errorCode\":4,\"lineNumber\":464,\"constantName\":\"EExceedsFree\",\"value\":\"Amount exceeds free funds; reserves are locked\"}}}"
+}

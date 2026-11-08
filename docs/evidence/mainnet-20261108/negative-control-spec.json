@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "network": "mainnet",
+  "chain_id": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S",
+  "package_id": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+  "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+  "asset": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+  "transactions": [
+    {
+      "id": "purchase-1-release",
+      "digest": "3VML59yGq63WndkVmTpyp1gqS5mRDty1RrnGSqGfHR8T",
+      "sender": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+      "gas_owner": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
+      "expected_success": true,
+      "max_gas_budget_mist": "20000000",
+      "move_calls": [
+        {
+          "package": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+          "module": "vault",
+          "function": "release_to_agent",
+          "type_arguments": [
+            "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC"
+          ]
+        }
+      ],
+      "balance_changes": [
+        {
+          "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+          "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+          "amount": "800000"
+        }
+      ],
+      "events": [
+        {
+          "type": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d::vault::ReleasedToAgent",
+          "json_contains": {
+            "vault_id": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+            "agent": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
+            "amount": "800000",
+            "request_id": "cmVxLWQ4OTUyNWU2LTg3Zg==",
+            "free_after": "1400000",
+            "spent_in_window": "800000"
+          }
+        }
+      ],
+      "created_type_contains": []
+    }
+  ],
+  "simulations": []
+}

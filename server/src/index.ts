@@ -6,17 +6,30 @@ import { initDb } from "./db/index";
 import { formatUsdc, suiNetwork } from "./lib/env";
 import { namespace } from "./memory/memwal";
 import { cachedRules, currentSession } from "./services/state";
+import { assertRuntimeBudgetsReady } from "./mainnet/runtime";
+import { credentialConfig } from "./auth/context";
+import { proofManifest } from "./mainnet/proof-policy";
+import { suiClient } from "./lib/tatum";
 
 const port = Number(process.env.PORT ?? 8787);
 
-// The hosted server must never hold a mainnet owner key; owner actions there are signed in the browser.
+// The server never holds a Mainnet owner key; owner intents are signed by the local helper.
 if (suiNetwork() === "mainnet" && process.env.OWNER_PRIVATE_KEY) {
   console.error("Refusing to start: OWNER_PRIVATE_KEY is set while SUI_NETWORK=mainnet. Remove it from this environment.");
   process.exit(1);
 }
-if (!process.env.DEMO_TOKEN) console.warn("DEMO_TOKEN is not set: mutating endpoints are open (local development only).");
+if (suiNetwork() === "mainnet") {
+  const credentials = credentialConfig("mainnet");
+  if (credentials.error || !credentials.agent || !credentials.owner) throw new Error(credentials.error ?? "Both Mainnet role credentials must be configured");
+}
 
 await initDb();
+await assertRuntimeBudgetsReady();
+if (suiNetwork() === "mainnet") {
+  const plan = await proofManifest();
+  const info = await suiClient("mainnet").ledgerService.getServiceInfo({});
+  if (info.response.chainId !== plan.chain_id) throw new Error("Connected chain differs from the reviewed Mainnet plan");
+}
 const session = await currentSession();
 const rules = await cachedRules();
 try {

@@ -1,0 +1,57 @@
+/** Assemble reviewed expectations for the completed proof; no chain writes or signing. */
+import { readFileSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { REPO_ROOT } from "../../src/lib/env";
+import { loadMainnetManifest } from "../../src/mainnet/manifest";
+import { loadJournal } from "../../src/mainnet/journal";
+import { validateEvidenceBindings, type TransactionExpectation } from "../../src/mainnet/evidence";
+const dir = resolve(REPO_ROOT, "docs/evidence/mainnet-20261108");
+if (process.argv.includes("--help")) { console.log("build-proof-spec.ts. Read local public snapshot and immutable manifest to build exact receipt expectations. No chain writes."); process.exit(0); }
+const read = (name: string) => JSON.parse(readFileSync(resolve(dir, name), "utf8").replace(/^\uFEFF/, ""));
+const save = (name: string, value: unknown) => writeFileSync(resolve(dir, name), JSON.stringify(value, null, 2) + "\n");
+const m = loadMainnetManifest("docs/mainnet/MANIFEST.json");
+const journal = loadJournal(m.plan_id);
+const pkg = journal.ids.SISIH_PACKAGE_ID!, vault = journal.ids.VAULT_ID!, asset = m.asset.coin_type;
+const owner = m.roles.owner.address, operator = m.roles.operator.address, agent = m.roles.agent.address, facilitator = m.roles.facilitator.address;
+const call = (fn: string) => ({ package: pkg, module: "vault", function: fn, type_arguments: [asset] });
+const event = (name: string, values: Record<string, string | number> = {}) => ({ type: `${pkg}::vault::${name}`, json_contains: { vault_id: vault, ...values } });
+const balance = (address: string, amount: string) => ({ address, coin_type: asset, amount });
+const expectation = (id: string, digest: string, sender: string, gas: string): TransactionExpectation => ({ id, digest, sender, gas_owner: sender, expected_success: true, max_gas_budget_mist: gas, move_calls: [], balance_changes: [], events: [], created_type_contains: [] });
+const transactions: TransactionExpectation[] = [];
+const published = expectation("publish-package", journal.operations["publish-package"]!.digest, owner, "100000000");
+published.created_type_contains = ["package", "::package::UpgradeCap"];
+transactions.push(published);
+const created = expectation("create-vault", journal.operations["create-vault"]!.digest, owner, "20000000");
+created.move_calls = [call("create_vault")];
+created.events = [event("VaultCreated", { owner, operator, operator_cap_id: journal.ids.OPERATOR_CAP_ID! })];
+created.created_type_contains = [`${pkg}::vault::Vault<`, `${pkg}::vault::OperatorCap`];
+transactions.push(created);
+const setup = expectation("setup-vault", journal.operations["setup-vault"]!.digest, owner, "25000000");
+setup.move_calls = [call("deposit"), call("add_obligation"), call("set_agent_policy")];
+setup.balance_changes = [balance(owner, "-3000000")];
+setup.events = [event("Deposited", { from: owner, amount: "3000000", free_after: "3000000" }), event("ObligationAdded", { payee: owner, target: "800000", reserved: "800000", free_after: "2200000" }), event("AgentPolicySet", { agent, max_per_request: "1000000", max_per_day: "3000000", expires_ms: m.scenario.agent_policy_expires_ms })];
+transactions.push(setup);
+const requests = read("requests.json");
+if (requests.length !== 3 || requests.filter((r: any) => r.paymentStatus === "paid").length !== 2 || !requests.some((r: any) => r.code === "would_cut_reserve" && r.paymentStatus === "none")) throw new Error("Actual requests do not match the approved scenario");
+const paid = requests.filter((r: any) => r.paymentStatus === "paid").sort((a: any, b: any) => a.createdAt - b.createdAt);
+for (const [i, request] of paid.entries()) {
+  const release = expectation(`purchase-${i + 1}-release`, request.paymentDigests.find((d: any) => d.step === "release").digest, operator, "20000000");
+  release.move_calls = [call("release_to_agent")];
+  release.balance_changes = [balance(agent, "800000")];
+  release.events = [event("ReleasedToAgent", { agent, amount: "800000", request_id: Buffer.from(request.id).toString("base64"), free_after: i === 0 ? "1400000" : "600000", spent_in_window: i === 0 ? "800000" : "1600000" })];
+  transactions.push(release);
+  const settle = expectation(`purchase-${i + 1}-settle`, request.paymentDigests.find((d: any) => d.step === "x402_settle").digest, agent, "0");
+  settle.gas_owner = facilitator;
+  settle.move_calls = [{ package: "0x" + "2".padStart(64, "0"), module: "balance", function: "send_funds", type_arguments: [asset] }];
+  settle.balance_changes = [balance(agent, "-800000"), balance(m.merchant.recipient, "800000")];
+  transactions.push(settle);
+}
+const revoke = expectation("revoke-agent", read("owner-revoke.json").data.digest, owner, "20000000");
+revoke.move_calls = [call("revoke_agent")];
+revoke.events = [event("AgentRevoked", { agent })];
+transactions.push(revoke);
+const spec = { schema_version: 1 as const, network: "mainnet" as const, chain_id: m.chain_id, package_id: pkg, vault_id: vault, asset, transactions, simulations: [{ id: "protected-reserve", broadcast: false as const, expected_abort: "EExceedsFree", artifact: "docs/evidence/mainnet-20261108/reserve-simulation.json" }] };
+validateEvidenceBindings(spec);
+save("evidence.json", spec);
+save("negative-control-spec.json", { ...spec, transactions: [{ ...transactions.find(t => t.id === "purchase-1-release")!, digest: published.digest }], simulations: [] });
+console.log("Built exact expectations for 8 approved receipts, refusal simulation and a valid-unrelated-digest negative control.");

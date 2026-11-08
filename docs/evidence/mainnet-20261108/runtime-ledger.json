@@ -1,0 +1,77 @@
+{
+  "captured_at": "2026-11-08T13:47:49.298Z",
+  "budgets": [
+    {
+      "key": "sisih-mainnet-proof-20261107-v1:usdc",
+      "authorized": "1600000",
+      "reserved": "0",
+      "spent": "1600000"
+    },
+    {
+      "key": "sisih-mainnet-proof-20261107-v1:operator-gas",
+      "authorized": "40000000",
+      "reserved": "0",
+      "spent": "2845830"
+    },
+    {
+      "key": "sisih-mainnet-proof-20261107-v1:owner-runtime-gas",
+      "authorized": "20000000",
+      "reserved": "0",
+      "spent": "0"
+    }
+  ],
+  "operations": [
+    {
+      "id": "sisih-mainnet-proof-20261107-v1:purchase:req-d89525e6-87f:usdc",
+      "budgetKey": "sisih-mainnet-proof-20261107-v1:usdc",
+      "maximum": "800000",
+      "actual": "800000",
+      "status": "spent",
+      "digest": "6C3oTgnJYb2TH1jJiRxLR1DE87GVvY1mmfcsX2goJcms",
+      "createdAt": 1794143214273,
+      "updatedAt": 1794143217651
+    },
+    {
+      "id": "sisih-mainnet-proof-20261107-v1:purchase:req-d89525e6-87f:operator-gas",
+      "budgetKey": "sisih-mainnet-proof-20261107-v1:operator-gas",
+      "maximum": "20000000",
+      "actual": "1422915",
+      "status": "spent",
+      "digest": "6C3oTgnJYb2TH1jJiRxLR1DE87GVvY1mmfcsX2goJcms",
+      "createdAt": 1794143214280,
+      "updatedAt": 1794143217656
+    },
+    {
+      "id": "sisih-mainnet-proof-20261107-v1:purchase:req-7dd90263-75e:usdc",
+      "budgetKey": "sisih-mainnet-proof-20261107-v1:usdc",
+      "maximum": "800000",
+      "actual": "800000",
+      "status": "spent",
+      "digest": "Gm1Rtgd2ty6sJ1gWxx1LSfVqNYnKnSwTkxDchfjECVE3",
+      "createdAt": 1794143308245,
+      "updatedAt": 1794143311219
+    },
+    {
+      "id": "sisih-mainnet-proof-20261107-v1:purchase:req-7dd90263-75e:operator-gas",
+      "budgetKey": "sisih-mainnet-proof-20261107-v1:operator-gas",
+      "maximum": "20000000",
+      "actual": "1422915",
+      "status": "spent",
+      "digest": "Gm1Rtgd2ty6sJ1gWxx1LSfVqNYnKnSwTkxDchfjECVE3",
+      "createdAt": 1794143308247,
+      "updatedAt": 1794143311224
+    },
+    {
+      "id": "owner-intent:oi-a2fd5efe3f2b",
+      "budgetKey": "sisih-mainnet-proof-20261107-v1:owner-runtime-gas",
+      "maximum": "20000000",
+      "actual": "0",
+      "status": "spent",
+      "digest": "3ijG4jsAk9QcV4jvffUAF3RTmwn7np39pc697PJf5LH1",
+      "createdAt": 1794143406590,
+      "updatedAt": 1794143408031
+    }
+  ],
+  "leases": [],
+  "note": "Runtime owner gas spending is conservatively floored at zero for the net-rebate revoke. Independent receipt accounting retains its negative net charge. Publication/setup gas lives in the separate local journal and verified receipt report."
+}

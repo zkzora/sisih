@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "command": "sign",
+  "data": {
+    "intent_id": "oi-a2fd5efe3f2b",
+    "kind": "onchain",
+    "summary": "Revoke the agent's spending permission",
+    "status": "executed",
+    "network": "sui:mainnet",
+    "digest": "3ijG4jsAk9QcV4jvffUAF3RTmwn7np39pc697PJf5LH1",
+    "explorer_url": "https://suiscan.xyz/mainnet/tx/3ijG4jsAk9QcV4jvffUAF3RTmwn7np39pc697PJf5LH1",
+    "error": null,
+    "expires_at": "2026-11-08T13:24:46.360Z",
+    "gas_cap_sui": "0.020"
+  }
+}

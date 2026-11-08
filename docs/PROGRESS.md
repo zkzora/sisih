@@ -2,15 +2,21 @@
 
 ## Current phase
 
-Unified Handoff implementation complete (2026-11-07).
-- Public product is now a 3-page website: **Home (`/`)**, **Connect (`/connect`)**, and **Proof (`/proof`)**.
-- Operational dashboard completely removed from the public product; legacy routes (`/workspace`, `/tour`, etc.) cleanly redirect to `/` or `/proof`.
-- Unified MCP endpoint at `/api/mcp` with role-scoped capabilities (Spending Agent with `SISIH_AGENT_TOKEN` vs Owner Assistant with `SISIH_OWNER_TOKEN`).
-- Companion Owner CLI (`pnpm sisih`) retained for terminal-based inspection, decisions, and local signing.
-- Fully bounded Sui Mainnet proof package prepared (`docs/mainnet/MANIFEST.json`, `docs/mainnet/MANIFEST.md`, `docs/MAINNET_READINESS.md`), status: **prepared · not deployed · not funded · not executed**.
-- All tests passing (server 164, web 18), TypeScript typechecks 100% clean, Next.js production build succeeded, and 12 viewport screenshots captured.
+Mainnet proof executed and verified (8 November 2026), based on `1109d5b`. The evidence archive preserves execution-time source identities; Git history identifies the resulting source/documentation milestone. No public Mainnet web deployment.
 
-## Done
+- Current product is Home / Connect / read-only Proof, one MCP URL with separate agent and owner roles, and the owner CLI/local signer. Server owner credential is `SISIH_OWNER_MCP_TOKEN`; CLI alias is `SISIH_OWNER_TOKEN`.
+- Selected the tested Sisih Move vault after checking native Allowance functions directly through Tatum Mainnet and comparing OpenZeppelin source reuse. See `mainnet/VAULT_DECISION.md` and `primitive-inspection.json`.
+- Added strict manifest validation, isolated env layering/server export, publication/setup restart journal and lock, persistent concurrent USDC/gas budgets, owner proof scope, pre-submission known digests and payment reconciliation. Mainnet namespace cannot fall back to historical Testnet state.
+- Exact verifier accepts the historical release control and exits 1 for an unrelated successful transaction. Mainnet settlement checks exact payer/recipient/asset/amount before delivery.
+- Server: 190 tests in 22 files; web: 18 tests; Move: 46 tests. Typechecks and production build passed. A separate fresh clone without developer env files also passed offline locked install, tests, typechecks, build and command-help checks.
+- Chromium: Home/Connect/Proof at 375/768/1280/1440, no overflow; keyboard/focus, copy success/failure, API outage/retry, dark theme persistence and redirects checked. Genuine captures are under `verification/public-site-20261108`.
+- Approved funding was verified at checkpoint 343006171. Published the selected Move package, created the vault and deposited 3.00 USDC with a 0.80 reserve. Initial preflight remains a historical preparation artifact.
+- **Real Codex Mainnet task completed:** first purchase held, local owner approval remembered, two 0.80-USDC x402 settlements delivered useful live reports, fresh-session rule recalled, third purchase refused with 0.60 free. Unsigned contract simulation confirmed `EExceedsFree`. Owner revoked permission; final vault 1.40 USDC. All eight receipts passed exact read-back; unrelated Mainnet digest failed. Four of four Walrus jobs/blobs verified.
+- Actual net gas: 0.083418818 SUI under the 0.205-SUI ceiling. Claude Code hit its weekly quota before tool use; Codex performed the task. Evidence: `evidence/mainnet-20261108/README.md`. No extra payment was made for screenshots or provenance checks.
+
+## Historical implementation log
+
+Entries below describe earlier revisions and historical runs. Their dashboard layouts, signing assumptions and old funding proposals are superseded by the current phase, README and Mainnet runbook. Historical evidence files remain unchanged. Only the recorded spending-agent Claude Code task is a verified model-client run; owner-assistant tools have isolated MCP SDK coverage.
 
 ### Agent-neutral public copy (2026-11-07)
 

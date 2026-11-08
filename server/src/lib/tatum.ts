@@ -11,7 +11,7 @@
 import { ChannelCredentials } from "@grpc/grpc-js";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
 import type { Keypair } from "@mysten/sui/cryptography";
-import type { Transaction } from "@mysten/sui/transactions";
+import { TransactionDataBuilder, type Transaction } from "@mysten/sui/transactions";
 import { GrpcTransport } from "@protobuf-ts/grpc-transport";
 import type { RpcTransport } from "@protobuf-ts/runtime-rpc";
 import { env, suiNetwork, type SuiNetwork } from "./env";
@@ -169,9 +169,57 @@ export interface ExecutedTx {
   error: string | null;
 }
 
+/** A transport failure after submission is not proof of failure; this carries the known digest. */
+export class UnknownTransactionOutcomeError extends Error {
+  constructor(readonly digest: string, cause: unknown) {
+    super(`Transaction ${digest} may have been submitted, but its outcome is unknown: ${(cause as Error).message}`);
+    this.name = "UnknownTransactionOutcomeError";
+  }
+}
+
+export interface PreparedSignedTransaction {
+  bytes: Uint8Array;
+  signature: string;
+  digest: string;
+}
+
+/** Resolve and sign once before broadcast, so a timeout always has a stable digest to reconcile. */
+export async function prepareSignedTransaction(tx: Transaction, signer: Keypair, network?: SuiNetwork): Promise<PreparedSignedTransaction> {
+  const bytes = await tx.build({ client: suiClient(network) });
+  const digest = TransactionDataBuilder.getDigestFromBytes(bytes);
+  const signed = await signer.signTransaction(bytes);
+  return { bytes, signature: signed.signature, digest };
+}
+
+export async function executePreparedDetailed(prepared: PreparedSignedTransaction, network?: SuiNetwork): Promise<DetailedTx> {
+  let res;
+  try {
+    res = await suiClient(network).executeTransaction({ transaction: prepared.bytes, signatures: [prepared.signature], include: { effects: true, objectTypes: true } });
+  } catch (err) {
+    throw new UnknownTransactionOutcomeError(prepared.digest, err);
+  }
+  const t = res.Transaction ?? res.FailedTransaction;
+  const g = t.effects.gasUsed;
+  return {
+    digest: t.digest,
+    success: t.status.success,
+    error: t.status.success ? null : JSON.stringify(t.status.error),
+    created: t.effects.changedObjects
+      .filter((c) => c.idOperation === "Created")
+      .map((c) => ({ objectId: c.objectId, type: c.outputState === "PackageWrite" ? "package" : (t.objectTypes[c.objectId] ?? "unknown"), owner: c.outputState === "PackageWrite" ? "package" : (c.outputOwner?.$kind ?? "unknown") })),
+    gasUsedMist: BigInt(g.computationCost) + BigInt(g.storageCost) - BigInt(g.storageRebate),
+  };
+}
+
 /** Sign and submit through Tatum. Gas must already be set (see setGas). */
 export async function signAndExecute(tx: Transaction, signer: Keypair, network?: SuiNetwork): Promise<ExecutedTx> {
-  const res = await suiClient(network).signAndExecuteTransaction({ transaction: tx, signer });
+  const prepared = await prepareSignedTransaction(tx, signer, network);
+  let res;
+  try {
+    res = await suiClient(network).executeTransaction({ transaction: prepared.bytes, signatures: [prepared.signature] });
+  } catch (err) {
+    throw new UnknownTransactionOutcomeError(prepared.digest, err);
+  }
   const t = res.Transaction ?? res.FailedTransaction;
   return { digest: t.digest, success: t.status.success, error: t.status.success ? null : JSON.stringify(t.status.error) };
 }
@@ -190,28 +238,15 @@ export interface DetailedTx extends ExecutedTx {
 }
 
 /** Like signAndExecute, but also returns created objects (with types) and gas used. */
-export async function signAndExecuteDetailed(tx: Transaction, signer: Keypair, network?: SuiNetwork): Promise<DetailedTx> {
-  const res = await suiClient(network).signAndExecuteTransaction({
-    transaction: tx,
-    signer,
-    include: { effects: true, objectTypes: true },
-  });
-  const t = res.Transaction ?? res.FailedTransaction;
-  const created = t.effects.changedObjects
-    .filter((c) => c.idOperation === "Created")
-    .map((c) => ({
-      objectId: c.objectId,
-      type: c.outputState === "PackageWrite" ? "package" : (t.objectTypes[c.objectId] ?? "unknown"),
-      owner: c.outputState === "PackageWrite" ? "package" : (c.outputOwner?.$kind ?? "unknown"),
-    }));
-  const g = t.effects.gasUsed;
-  return {
-    digest: t.digest,
-    success: t.status.success,
-    error: t.status.success ? null : JSON.stringify(t.status.error),
-    created,
-    gasUsedMist: BigInt(g.computationCost) + BigInt(g.storageCost) - BigInt(g.storageRebate),
-  };
+export async function signAndExecuteDetailed(tx: Transaction, signer: Keypair, network?: SuiNetwork, beforeExecute?: (prepared: PreparedSignedTransaction) => Promise<void>): Promise<DetailedTx> {
+  const prepared = await prepareSignedTransaction(tx, signer, network);
+  await beforeExecute?.(prepared);
+  try {
+    return await executePreparedDetailed(prepared, network);
+  } catch (err) {
+    if (err instanceof UnknownTransactionOutcomeError) throw err;
+    throw new UnknownTransactionOutcomeError(prepared.digest, err);
+  }
 }
 
 export interface TxEvent {
@@ -229,8 +264,10 @@ export interface VerifiedTx {
   timestampMs: number | null;
   events: TxEvent[];
   gasMist: bigint;
+  gasBreakdown: { computationMist: string; storageMist: string; storageRebateMist: string; netMist: string };
   /** Output version per changed object (from effects), to wait out read lag on later reads. */
   objectVersions: Record<string, string>;
+  created: CreatedObject[];
   attempts: number;
 }
 
@@ -243,7 +280,7 @@ export async function verifyTransaction(digest: string, opts: { network?: SuiNet
   const tries = opts.tries ?? 8;
   for (let attempt = 1; ; attempt++) {
     try {
-      const res = await suiClient(opts.network).core.getTransaction({ digest, include: { effects: true, events: true } });
+      const res = await suiClient(opts.network).core.getTransaction({ digest, include: { effects: true, events: true, objectTypes: true } });
       const t = res.Transaction ?? res.FailedTransaction;
       const g = t.effects.gasUsed;
       return {
@@ -254,9 +291,17 @@ export async function verifyTransaction(digest: string, opts: { network?: SuiNet
         timestampMs: t.timestampMs,
         events: t.events.map((e) => ({ type: e.eventType, sender: e.sender, json: e.json })),
         gasMist: BigInt(g.computationCost) + BigInt(g.storageCost) - BigInt(g.storageRebate),
+        gasBreakdown: { computationMist: String(g.computationCost), storageMist: String(g.storageCost), storageRebateMist: String(g.storageRebate), netMist: (BigInt(g.computationCost) + BigInt(g.storageCost) - BigInt(g.storageRebate)).toString() },
         objectVersions: Object.fromEntries(
           t.effects.changedObjects.filter((c) => c.outputVersion).map((c) => [c.objectId, c.outputVersion as string]),
         ),
+        created: t.effects.changedObjects
+          .filter((c) => c.idOperation === "Created")
+          .map((c) => ({
+            objectId: c.objectId,
+            type: c.outputState === "PackageWrite" ? "package" : (t.objectTypes[c.objectId] ?? "unknown"),
+            owner: c.outputState === "PackageWrite" ? "package" : (c.outputOwner?.$kind ?? "unknown"),
+          })),
         attempts: attempt,
       };
     } catch (err) {

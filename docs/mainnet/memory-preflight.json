@@ -1,0 +1,10 @@
+{
+  "checked_at": "2026-11-08T03:43:11.082Z",
+  "service": "Walrus Memory Mainnet",
+  "account_id": "0xc6408ac06d2e4ba3c4df92a47646cc7e4051ebdf20765a7ae63f572d2d8523ba",
+  "delegate_public_key": "2bd5ef9fe819eb9fc39de0b6d37b341ec8cf9dc091f82bdea74b5560c785e3b3",
+  "authenticated_read": true,
+  "proposed_namespace": "sisih-mainnet-proof-20261107",
+  "memory_write_performed": false,
+  "note": "Account authentication only; not an inventory count or proof that future writes will succeed."
+}

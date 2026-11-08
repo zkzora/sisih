@@ -152,3 +152,24 @@ export const rateLimits = pgTable("rate_limits", {
   windowStart: ms("window_start").notNull(),
   hits: integer("hits").notNull(),
 });
+
+/** Mainnet proof budgets. Amounts are integer base units (MIST or USDC micro-units). */
+export const executionBudgets = pgTable("execution_budgets", {
+  key: text("key").primaryKey(),
+  authorized: bigint("authorized", { mode: "bigint" }).notNull(),
+  reserved: bigint("reserved", { mode: "bigint" }).notNull(),
+  spent: bigint("spent", { mode: "bigint" }).notNull(),
+});
+
+/** Durable idempotency and unknown-outcome record for each budgeted external operation. */
+export const executionOperations = pgTable("execution_operations", {
+  id: text("id").primaryKey(),
+  budgetKey: text("budget_key").notNull(),
+  maximum: bigint("maximum", { mode: "bigint" }).notNull(),
+  actual: bigint("actual", { mode: "bigint" }),
+  /** reserved | spent | released | unknown */
+  status: text("status").notNull(),
+  digest: text("digest"),
+  createdAt: ms("created_at").notNull(),
+  updatedAt: ms("updated_at").notNull(),
+});

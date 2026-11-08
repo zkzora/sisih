@@ -1,0 +1,178 @@
+[
+  {
+    "id": "req-f37bacb5-c6a",
+    "session": 2,
+    "merchant": "ChainScope",
+    "merchantDemo": true,
+    "item": "Live Sui vault report",
+    "category": "data",
+    "amount": "800000",
+    "taskContext": "Request exactly one additional 0.80 USDC ChainScope live Sui vault report to check whether current authority permits this purchase.",
+    "action": "hold",
+    "code": "would_cut_reserve",
+    "status": "held",
+    "automatic": false,
+    "reasons": [
+      "Would use 0.20 USDC of committed funds. Reserves are locked by the contract."
+    ],
+    "cutsReserveBy": "200000",
+    "allowDisabled": true,
+    "matchedRuleIds": [],
+    "simulation": {
+      "freeBefore": "600000",
+      "freeAfter": "0",
+      "affected": [
+        {
+          "id": 0,
+          "name": "Savings reserve",
+          "amount": "200000"
+        }
+      ]
+    },
+    "recall": {
+      "query": "ChainScope data 0.80 USDC decision or rule: Request exactly one additional 0.80 USDC ChainScope live Sui vault report to check whether current authority permits this purchase.",
+      "ms": 2692,
+      "results": [
+        {
+          "memoryId": "mem-ccf086ff-12e",
+          "blobId": "TnwJqTlovSbUz5852akt4BIpHJElg2-i4CF3048d42M",
+          "text": "[sisih:v1:decision] ChainScope (demo) data \"Live Sui vault report\" 0.80 USDC: approved automatically. Approved by your remembered rule: Always allow data from ChainScope up to 0.80 USDC until 2026-11-15. All vault limits passed. {\"requestId\":\"req-7dd90263-75e\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"amount\":\"800000\",\"decision\":\"auto_allow\",\"by\":\"auto\",\"code\":\"allow_rule\",\"session\":2,\"ruleId\":\"rule-dfbf7042\"}",
+          "distance": 0.18081500920676497
+        },
+        {
+          "memoryId": "mem-eddf98b2-064",
+          "blobId": "_VGxDTDGcawBrMyDL48cDjUpUfaSEje8NoCZEFaqHBk",
+          "text": "[sisih:v1:decision] ChainScope (demo) data \"Live Sui vault report\" 0.80 USDC: approved by the owner. New merchant. Free funds are sufficient, but ChainScope has no approved rule yet. {\"requestId\":\"req-d89525e6-87f\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"amount\":\"800000\",\"decision\":\"approve_and_remember\",\"by\":\"owner\",\"code\":\"new_merchant\",\"session\":1,\"ruleId\":\"rule-dfbf7042\"}",
+          "distance": 0.24359705168979895
+        },
+        {
+          "memoryId": "mem-af193926-5b8",
+          "blobId": "dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+          "text": "[sisih:v1:rule] Always allow data from ChainScope up to 0.80 USDC until 2026-11-15 {\"ruleId\":\"rule-dfbf7042\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"maxAmount\":\"800000\",\"action\":\"allow\",\"expiresMs\":1794748014232,\"requestId\":\"req-d89525e6-87f\"}",
+          "distance": 0.25954585127017704
+        },
+        {
+          "memoryId": "mem-7f446a5f-691",
+          "blobId": "dBSVlVrox0Qt2-UrRd-LN7pbhjryIEY4XAI-KiQWNzA",
+          "text": "[sisih:v1:session_summary] Session 1: 1 requests, 1 held, 0 automatic, 1 new rules. {\"session\":1,\"requests\":1,\"held\":1,\"automatic\":0,\"approved\":1,\"denied\":0,\"newRules\":1}",
+          "distance": 0.7004124116862397
+        }
+      ]
+    },
+    "paymentStatus": "none",
+    "paymentDigests": [],
+    "createdAt": 1794143363860,
+    "decidedAt": null
+  },
+  {
+    "id": "req-7dd90263-75e",
+    "session": 2,
+    "merchant": "ChainScope",
+    "merchantDemo": true,
+    "item": "Live Sui vault report",
+    "category": "data",
+    "amount": "800000",
+    "taskContext": "Obtain a live report explaining the owner's vault balances, protected commitments, delegated spending authority, and remaining capacity for another 0.80 USDC purchase after this report.",
+    "action": "auto_allow",
+    "code": "allow_rule",
+    "status": "auto_allowed",
+    "automatic": true,
+    "reasons": [
+      "Approved by your remembered rule: Always allow data from ChainScope up to 0.80 USDC until 2026-11-15. All vault limits passed."
+    ],
+    "cutsReserveBy": "0",
+    "allowDisabled": false,
+    "matchedRuleIds": [
+      "rule-dfbf7042"
+    ],
+    "simulation": {
+      "freeBefore": "1400000",
+      "freeAfter": "600000",
+      "affected": []
+    },
+    "recall": {
+      "query": "ChainScope data 0.80 USDC decision or rule: Obtain a live report explaining the owner's vault balances, protected commitments, delegated spending authority, and remaining capacity for another 0.80 USDC purchase after this report.",
+      "ms": 2090,
+      "results": [
+        {
+          "memoryId": "mem-eddf98b2-064",
+          "blobId": "_VGxDTDGcawBrMyDL48cDjUpUfaSEje8NoCZEFaqHBk",
+          "text": "[sisih:v1:decision] ChainScope (demo) data \"Live Sui vault report\" 0.80 USDC: approved by the owner. New merchant. Free funds are sufficient, but ChainScope has no approved rule yet. {\"requestId\":\"req-d89525e6-87f\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"amount\":\"800000\",\"decision\":\"approve_and_remember\",\"by\":\"owner\",\"code\":\"new_merchant\",\"session\":1,\"ruleId\":\"rule-dfbf7042\"}",
+          "distance": 0.3057380468485522
+        },
+        {
+          "memoryId": "mem-af193926-5b8",
+          "blobId": "dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+          "text": "[sisih:v1:rule] Always allow data from ChainScope up to 0.80 USDC until 2026-11-15 {\"ruleId\":\"rule-dfbf7042\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"maxAmount\":\"800000\",\"action\":\"allow\",\"expiresMs\":1794748014232,\"requestId\":\"req-d89525e6-87f\"}",
+          "distance": 0.3482180393889399
+        },
+        {
+          "memoryId": "mem-7f446a5f-691",
+          "blobId": "dBSVlVrox0Qt2-UrRd-LN7pbhjryIEY4XAI-KiQWNzA",
+          "text": "[sisih:v1:session_summary] Session 1: 1 requests, 1 held, 0 automatic, 1 new rules. {\"session\":1,\"requests\":1,\"held\":1,\"automatic\":0,\"approved\":1,\"denied\":0,\"newRules\":1}",
+          "distance": 0.7341694219679462
+        }
+      ]
+    },
+    "paymentStatus": "paid",
+    "paymentDigests": [
+      {
+        "step": "release",
+        "digest": "Gm1Rtgd2ty6sJ1gWxx1LSfVqNYnKnSwTkxDchfjECVE3",
+        "verified": true
+      },
+      {
+        "step": "x402_settle",
+        "digest": "8ywcKQZpHDpFsZnBq4yCusuLiibDfWws6nF8FWQTBhS9",
+        "verified": true
+      }
+    ],
+    "createdAt": 1794143308220,
+    "decidedAt": 1794143308220
+  },
+  {
+    "id": "req-d89525e6-87f",
+    "session": 1,
+    "merchant": "ChainScope",
+    "merchantDemo": true,
+    "item": "Live Sui vault report",
+    "category": "data",
+    "amount": "800000",
+    "taskContext": "Obtain a live report on the owner's vault explaining spendable balance, protected commitments, delegated spending limits, and capacity for another 0.80 USDC data purchase.",
+    "action": "hold",
+    "code": "new_merchant",
+    "status": "approved",
+    "automatic": false,
+    "reasons": [
+      "New merchant. Free funds are sufficient, but ChainScope has no approved rule yet."
+    ],
+    "cutsReserveBy": "0",
+    "allowDisabled": false,
+    "matchedRuleIds": [],
+    "simulation": {
+      "freeBefore": "2200000",
+      "freeAfter": "1400000",
+      "affected": []
+    },
+    "recall": {
+      "query": "ChainScope data 0.80 USDC decision or rule: Obtain a live report on the owner's vault explaining spendable balance, protected commitments, delegated spending limits, and capacity for another 0.80 USDC data purchase.",
+      "ms": 1674,
+      "results": []
+    },
+    "paymentStatus": "paid",
+    "paymentDigests": [
+      {
+        "step": "release",
+        "digest": "6C3oTgnJYb2TH1jJiRxLR1DE87GVvY1mmfcsX2goJcms",
+        "verified": true
+      },
+      {
+        "step": "x402_settle",
+        "digest": "8JyrP75EGse2BSTE4ty7afEPskptMYt6h3bv8hAjAyXB",
+        "verified": true
+      }
+    ],
+    "createdAt": 1794143183196,
+    "decidedAt": 1794143214233
+  }
+]

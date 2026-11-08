@@ -40,6 +40,20 @@ button {
   cursor: pointer;
 }
 
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
 .skip-link {
   position: fixed;
   top: 8px;
@@ -142,8 +156,8 @@ button {
 }
 
 .icon-btn {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -241,7 +255,7 @@ button {
 }
 
 .dark .eyebrow {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .section {
@@ -332,6 +346,7 @@ button {
 }
 
 .copy-btn {
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -343,7 +358,7 @@ button {
   background: var(--card);
   color: var(--foreground);
   cursor: pointer;
-  transition: 0.15s;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 .copy-btn:hover {
@@ -449,7 +464,7 @@ button {
 }
 
 .dark .hero h1 span {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .actions {
@@ -463,6 +478,91 @@ button {
 .network-line {
   font-size: 12.5px;
   color: var(--muted-foreground);
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   Features / Capabilities
+   ========================================================================== */
+.features {
+  margin: 48px 0 56px;
+  padding-top: 36px;
+  border-top: 1px solid var(--border);
+}
+
+.features-head {
+  margin-bottom: 28px;
+  max-width: 760px;
+}
+
+.features-head h2 {
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.7px;
+  color: var(--foreground);
+  margin: 4px 0 10px;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.feature-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.feature-card:hover {
+  border-color: color-mix(in oklch, var(--primary), var(--border) 60%);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.04);
+}
+
+.feature-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--secondary);
+  color: var(--primary);
+  border: 1px solid var(--border);
+}
+
+.feature-card h3 {
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+  color: var(--foreground);
+  margin: 0;
+}
+
+.feature-card p {
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+  margin: 0;
+  flex-grow: 1;
+}
+
+.feature-tag {
+  font-size: 11px;
+  font-family: var(--font-geist-mono), monospace;
+  font-weight: 550;
+  color: var(--primary);
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  align-self: flex-start;
   margin-top: 4px;
 }
 
@@ -574,7 +674,7 @@ button {
 }
 
 .dark .steps li svg {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .steps li h3 {
@@ -693,6 +793,10 @@ button {
   color: var(--foreground);
 }
 
+.proof-page .bullets code {
+  overflow-wrap: anywhere;
+}
+
 .callout {
   padding: 12px 16px;
   border-left: 3px solid var(--warning);
@@ -742,7 +846,7 @@ button {
 }
 
 .dark .step-number {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .who-badge {
@@ -876,7 +980,7 @@ button {
 }
 
 .dark .receipt-link, .dark .blob-link {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .receipt-link:hover, .blob-link:hover {
@@ -1014,7 +1118,7 @@ button {
 }
 
 .dark .history-card code {
-  color: var(--accent);
+  color: var(--primary);
 }
 
 .page-actions-bottom {
@@ -1030,6 +1134,9 @@ button {
    Responsive Breakpoints
    ========================================================================== */
 @media (max-width: 1024px) {
+  .features-grid {
+    grid-template-columns: 1fr 1fr;
+  }
   .steps ol {
     grid-template-columns: 1fr 1fr;
   }
@@ -1038,6 +1145,12 @@ button {
 @media (max-width: 768px) {
   .hero h1 {
     font-size: 34px;
+  }
+  .features-head h2 {
+    font-size: 24px;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
   }
   .lead {
     font-size: 15px;
@@ -1055,6 +1168,9 @@ button {
     padding: 10px 16px;
   }
   .site-header nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
     padding: 6px 10px;
     font-size: 12.5px;
   }

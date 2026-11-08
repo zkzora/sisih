@@ -13,8 +13,11 @@ import type { AgentPolicyState, ObligationState, VaultState } from "../domain/ty
 import { publish, jsonSafe } from "../lib/bus";
 import { hardLimit } from "../policy/engine";
 import type { Keypair } from "@mysten/sui/cryptography";
-import { setGas, signAndExecuteDetailed, suiClient, verifyTransaction, type CreatedObject, type TxEvent } from "../lib/tatum";
+import { setGas, signAndExecuteDetailed, suiClient, UnknownTransactionOutcomeError, verifyTransaction, type CreatedObject, type TxEvent } from "../lib/tatum";
 import { keypair } from "../lib/wallets";
+import { operatorGasBudget } from "../mainnet/runtime";
+import { isMainnet } from "../lib/env";
+import { toBase64 } from "@mysten/sui/utils";
 import { CLOCK_ID, operatorCapId, target, usdcType, vaultAbortName, vaultId } from "./sisih";
 
 type Json = Record<string, unknown>;
@@ -159,6 +162,7 @@ export interface RecordedTx {
   timestampMs: number | null;
   events: TxEvent[];
   error: string | null;
+  gasMist: bigint | null;
 }
 
 /** Who signed a recorded digest: our server keys, the owner wallet, the demo owner key (testnet), or an import. */
@@ -183,7 +187,7 @@ export async function recordTx(
   try {
     const v = await verifyTransaction(digest);
     vaultVersion = Object.entries(v.objectVersions).find(([id]) => sameId(id, vaultId()))?.[1];
-    rec = { digest, status: v.success ? "verified" : "failed", success: v.success, checkpoint: v.checkpoint, timestampMs: v.timestampMs, events: v.events, error: v.error };
+    rec = { digest, status: v.success ? "verified" : "failed", success: v.success, checkpoint: v.checkpoint, timestampMs: v.timestampMs, events: v.events, error: v.error, gasMist: v.gasMist };
     await d
       .update(schema.txLog)
       .set({
@@ -201,7 +205,7 @@ export async function recordTx(
       .where(eq(schema.txLog.digest, digest));
     publish(v.success ? "tx.confirmed" : "tx.failed", { digest, label: meta.label, checkpoint: v.checkpoint, error: v.error ? vaultAbortName(v.error) : null });
   } catch (err) {
-    rec = { digest, status: "error", success: null, checkpoint: null, timestampMs: null, events: [], error: (err as Error).message.slice(0, 200) };
+    rec = { digest, status: "error", success: null, checkpoint: null, timestampMs: null, events: [], error: (err as Error).message.slice(0, 200), gasMist: null };
     await d.update(schema.txLog).set({ status: "error", error: rec.error }).where(eq(schema.txLog.digest, digest));
     publish("tx.failed", { digest, label: meta.label, error: rec.error });
   }
@@ -211,7 +215,7 @@ export async function recordTx(
 
 export type WriteResult =
   | { ok: true; digest: string; tx: RecordedTx; created: CreatedObject[] }
-  | { ok: false; stage: "precheck" | "dry_run" | "execute"; code: string; reason: string; digest?: string };
+  | { ok: false; stage: "precheck" | "dry_run" | "execute" | "unknown"; code: string; reason: string; digest?: string };
 
 const REASONS: Record<string, string> = {
   EExceedsFree: "Amount exceeds free funds. Reserves are locked by the contract.",
@@ -246,11 +250,16 @@ export async function signedWrite(
   build(tx);
   let res;
   try {
-    res = await signAndExecuteDetailed(tx, signer);
+    res = await signAndExecuteDetailed(tx, signer, undefined, isMainnet() && meta.requestId ? async (prepared) => {
+      await kvPut(`release_prepared:${meta.requestId}`, JSON.stringify({ digest: prepared.digest, bytes: toBase64(prepared.bytes), signature: prepared.signature }));
+    } : undefined);
   } catch (err) {
     if (err instanceof SimulationError || (err as Error)?.name === "SimulationError") {
       const { code, reason } = readableAbort(String((err as Error).message));
       return { ok: false, stage: "dry_run", code, reason };
+    }
+    if (err instanceof UnknownTransactionOutcomeError) {
+      return { ok: false, stage: "unknown", code: "EOutcomeUnknown", reason: "The transaction may have been submitted. Reconcile its known digest before any retry.", digest: err.digest };
     }
     throw err;
   }
@@ -265,7 +274,7 @@ export async function signedWrite(
 }
 
 function operatorWrite(label: string, build: (tx: Transaction) => void, meta: { requestId?: string } = {}): Promise<WriteResult> {
-  return signedWrite(keypair("operator"), label, build, meta);
+  return signedWrite(keypair("operator"), label, build, { ...meta, budget: operatorGasBudget() });
 }
 
 const T = () => [usdcType()];

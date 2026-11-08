@@ -9,10 +9,15 @@ import { Hono } from "hono";
 import { usdcType } from "../chain/sisih";
 import { recordTx } from "../chain/vault";
 import { publish } from "../lib/bus";
-import { suiNetworkLabel } from "../lib/env";
+import { isMainnet, suiNetworkLabel } from "../lib/env";
 import { MERCHANTS, merchantAddress, type Merchant } from "../merchants/registry";
 import { x402Facilitator, x402Network } from "./facilitator";
 import { liveVaultReport } from "./live-report";
+import { merchantPendingResultKey, merchantResultKey } from "../services/payments";
+import { kvSet } from "../services/state";
+import { db, schema } from "../db/index";
+import { eq } from "drizzle-orm";
+import { address } from "../lib/wallets";
 
 export function baseUrl(): string {
   // Hosted: the public deployment URL (the agent calls the demo merchants over real HTTP).
@@ -105,12 +110,22 @@ export function merchantRoutes(): Hono {
       const payload = decodePaymentSignatureHeader(sig);
       const verify = await x402Facilitator().verify(payload, requirements);
       if (!verify.isValid) return c.json({ error: verify.invalidReason, message: verify.invalidMessage, demo: true }, 402);
+      const requestId = c.req.header("x-sisih-request-id") ?? undefined;
+      if (isMainnet()) {
+        if (!requestId || verify.payer?.toLowerCase() !== address("agent").toLowerCase()) return c.json({ error: "unreviewed_payment" }, 403);
+        const [request] = await db().select().from(schema.requests).where(eq(schema.requests.id, requestId));
+        if (m.slug !== "chainscope" || !request || request.merchant !== m.name || request.amount !== requirements.amount || request.paymentStatus !== "pending") return c.json({ error: "request_not_pending" }, 409);
+        // Persist useful content before submission so a lost settlement response can be recovered.
+        await kvSet(merchantPendingResultKey(requestId), JSON.stringify({ demo: true, merchant: `${m.name} (demo)`, item: m.item, content_type: "live onchain data", data: content }));
+      }
       const settle = await x402Facilitator().settle(payload, requirements);
       // The library reports success:true with an empty digest when verify fails inside settle.
       if (!settle.success || !settle.transaction) return c.json({ error: settle.errorReason ?? "settle failed", message: settle.errorMessage, demo: true }, 402);
-      const requestId = c.req.header("x-sisih-request-id") ?? undefined;
       // Proof through Tatum: 1 GetTransaction. Settlement does not touch the vault, so no vault read.
       const rec = await recordTx(settle.transaction, { source: "our", label: `x402 settle: ${m.name} (demo)`, requestId, refreshVault: false });
+      if (requestId && rec.status === "verified") {
+        await kvSet(merchantResultKey(requestId), JSON.stringify({ demo: true, merchant: `${m.name} (demo)`, item: m.item, content_type: m.content === "live" ? "live onchain data" : "fixed example content", data: content, settlement: settle.transaction }));
+      }
       publish("x402.settled", { merchant: m.name, digest: settle.transaction, verified: rec.status === "verified", requestId });
       c.header("PAYMENT-RESPONSE", encodePaymentResponseHeader(settle));
       return c.json({ demo: true, merchant: `${m.name} (demo)`, item: m.item, content_type: m.content === "live" ? "live onchain data" : "fixed example content", data: content, settlement: settle.transaction });

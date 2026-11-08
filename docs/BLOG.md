@@ -1,173 +1,47 @@
-# Sisih: an AI agent that can only spend money you haven't promised
+# Giving an agent the part of a wallet that is actually free
 
-Giving an AI agent a wallet is easy. Giving it the right part of a wallet is not.
+Draft, unpublished. Verified local demonstration: real Sui Mainnet x402 payments and Walrus Memory Mainnet, 8 November 2026. Hosted interactive demo remains Sui Testnet; no web deployment occurred in this milestone.
 
-Say you run a small research agent. It buys market data, premium search results and the occasional
-report, paying per call with x402. It spends from the same USDC that has to cover your inference
-bill, your VPS, a weekly savings transfer and a domain renewal. The balance looks like 20 USDC. Most
-of it is already promised. A spending limit does not know that, and neither does the agent.
+A builder gives an agent 20 USDC for data and APIs. The same balance also covers hosting, inference and savings. A daily spending cap can approve a useful report while leaving the next bill short: it knows the amount spent, but not what the balance has already promised.
 
-Sisih is a vault that knows. It reserves money for every commitment first, lets the agent spend only
-what is left, and learns from what you approve so it asks you less often. The learning lives in
-Walrus Memory. The money lives in a Move contract on Sui, and the contract has the last word.
+Sisih makes those promises explicit. A Move vault on Sui separates each commitment's reserve from its free pool. The operator may release only free funds to the configured agent, within per-request and daily limits, expiry and pause/revoke controls. Preferences recalled from Walrus decide which permitted purchases need review. The contract still decides whether funds can leave.
 
-Live demo: https://sisih-azure.vercel.app
+The simpler alternative is a separately prepaid agent wallet. That works when a fixed allocation models the owner's risk. Sisih is aimed at an owner whose commitments change and who wants the same live asset pool to respect those changes. We have demonstrated that mechanism; we have not yet established demand across a customer population.
 
-## Two terminals: your agent buys, you decide
+## The Mainnet task
 
-Sisih is built for an agent that already works in a terminal. Claude Code connects to Sisih's MCP
-server with its own credential. That credential lets it read its budget and the services it may
-buy, request a purchase for its task, and read its own requests. Nothing else. There are no owner
-tools on that server, and there is no switch that turns the rules off.
+A real Codex CLI agent connected to the isolated local MCP with only the spending credential. The owner deposited 3.00 native USDC and reserved 0.80 for savings. The first 0.80-USDC ChainScope purchase waited for approval. The owner signed that exact decision locally and remembered a seven-day preference capped at 0.80. x402 settlement completed and the agent used the purchased live vault report.
 
-The owner sits in a second terminal with the Sisih CLI and an owner token the agent never sees. From
-there the owner can:
+A new application session rebuilt one rule from Walrus. A fresh Codex conversation bought the second report with `allow_rule`, without another owner approval. Only 0.60 free then remained, so the third 0.80 request was blocked despite the active rule. An unsigned simulation against the real operator capability independently returned `EExceedsFree`. The owner revoked permission; 1.40 USDC remained, including the protected 0.80 reserve.
 
-- check the budget (`pnpm sisih status`)
-- set the agent's limits
-- change reserves
-- answer held purchases (`pnpm sisih approve <id> --remember`)
-- pause, resume or revoke the agent
-- inspect the evidence
+All eight receipts passed exact Tatum read-back, and an unrelated successful Mainnet digest failed the verifier. Four Walrus jobs/blobs matched the relayer and full inventory. Net gas was 0.083418818 SUI; merchant proceeds were 1.60 USDC. [Receipts, transcripts and limitations](evidence/mainnet-20261108/README.md). Claude Code had hit its weekly quota before tool use, so Codex completed the task. A read-only follow-up checked improved source links and corrected the agent's initial confusion between the default threshold and the merchant rule. No extra purchase was made for that check.
 
-The dashboard shows the same state, but it is optional.
+## Earlier Testnet task
 
-Here is the final run, on 2026-11-07 (Walrus namespace `sisih-hosted-9`). For this test, Claude Code
-was started with only Sisih's tools: it could not read files, run a shell or see the owner token.
+In the recorded `sisih-hosted-9` run on 7 November 2026, a real Claude Code process had only Sisih's five spending tools. It could inspect the budget, discover services, request a purchase, read its own result and release the shared session. It had no owner credential or shell access.
 
-1. The owner set a 2.00 per-request and 6.00 per-day limit from the terminal.
-2. The agent was asked to check the vault's health with a live report from ChainScope. ChainScope
-   is a demo merchant that reads the vault through Tatum at purchase time. It is new, so Sisih held
-   the 0.80 purchase. Nothing was paid, and Claude printed the exact command for the owner.
-3. The owner ran `pnpm sisih approve req-637fe5e4-e5a --remember`. Twelve seconds later the release
-   from free funds and the x402 settlement were both verified through Tatum, and the preference
-   ("allow ChainScope data up to 1.00 USDC") was on its way to Walrus Memory.
-4. Claude checked the same request, never paying twice, and answered from live data at Sui Testnet
-   checkpoint 403681845.
-5. After a billing cycle and `pnpm sisih session next`, a fresh Claude session asked again. The
-   purchase went through on its own, because the preference had been rebuilt from Walrus.
-6. Then the owner raised the savings reserve until only 0.60 was free, and Claude asked once more.
-   The preference was still active, but Sisih blocked the purchase: it would have used 0.20 of
-   committed money. The same 0.80 release sent straight to the vault aborted on chain:
-   https://suiscan.xyz/testnet/tx/AFKJwvpjY4gYphMeyKsWuz1PrXrRzcoQm8MMWRXEtKqG
-7. The owner paused the agent from the terminal, and the next purchase was blocked until the owner
-   resumed it.
+It requested a 0.80-USDC ChainScope report to assess the owner's vault. ChainScope is a project-operated merchant that reads live Sui state through Tatum. As an unfamiliar purchase, request `req-637fe5e4-e5a` waited for the owner. The owner approved that exact request from `pnpm sisih` and remembered an allow preference. The vault release and x402 settlement were verified through Tatum; the agent resumed the same request and answered from live checkpoint data.
 
-Every Claude Code transcript, the owner's command log, and each of the 13 memories (checked one by
-one against the Walrus relayer) are in the repository under
-`docs/evidence/final-run-sisih-hosted-9`.
+After the application started its next session, a fresh model conversation made a new request. Walrus recall rebuilt the owner preference, so `req-e2e8e0e4-b03` settled without a second manual approval. Later the owner increased a savings reserve until only 0.60 remained free. The same 0.80 report was blocked with the preference still active. A direct operator release failed onchain with `EExceedsFree`.
 
-## Two kinds of rules
+The full [recorded proof](https://sisih-azure.vercel.app/proof) links the receipts and memory provenance. The repository evidence directory preserves transcripts, owner commands and 13 checked memory jobs/blobs. Those links remain Testnet links; Mainnet memory does not make a Testnet payment a Mainnet payment.
 
-Sisih splits rules into two kinds and never mixes them up.
+## What Tatum does
 
-**Hard rules** are enforced by the `sisih::vault` Move contract on Sui Testnet: a reserve per
-commitment, a per-request cap and a 24-hour cap (5.00 and 10.00 USDC in the seeded demo; the owner
-set 2.00 and 6.00 from the terminal in the final run), a permission expiry, pause and revoke. The agent is only ever paid by `release_to_agent`, which splits coins from the free
-pool and aborts with `EExceedsFree` if the amount would touch a reserve.
+All Sui operations use one throttled Tatum native-gRPC client: identity and balances, vault/object reads, transaction resolution and simulation, submission and subsequent read-back. A transaction digest returned by a merchant is only a lead until its chain status and expected effects are verified. Current Mainnet tooling additionally matches sender, gas owner/budget, package/function/type, asset/recipient/amount, vault events and created types. An unrelated successful transaction fails the check.
 
-**Soft rules** are the owner's preferences: which merchants are trusted, up to what amount, and for
-how long. They are stored as memories on Walrus Mainnet and rebuilt at the start of every session.
-They only ever choose among payments the vault would already allow.
+Release and merchant settlement are separate transactions. If the vault releases funds but a merchant cannot deliver its live report, the money may still be at the agent. If a response is lost after sending, the outcome may be unknown. Sisih persists those states, keeps unknown budget reservations and refuses a replacement release until read-back. The merchant stores a verified result so a lost delivery can be recovered without charging again.
 
-## How it uses Tatum
+## What Walrus remembers
 
-Every Sui read and write goes through Tatum's Sui gateway, over native gRPC, from one module
-(`server/src/lib/tatum.ts`). The server reads the vault object and balances, executes the operator's
-releases and bill payments, submits the x402 settlements, and then reads every transaction back with
-`GetTransaction` before the dashboard shows it as "verified via Tatum". The browser never talks to a
-fullnode; it goes through a server route that uses the same client. Tatum's free plan allows three
-requests per second, so the client keeps one call in flight and retries rate limits, and the
-dashboard reads a cached vault state instead of polling.
+Walrus Memory Mainnet stores owner decisions, explicit preferences, rule disables, bill outcomes, reserve changes and session summaries. A write is asynchronous: accepted, writing and stored are distinct. The interface reports a blob only after the job confirms it. New application sessions rebuild preferences from recall; Postgres is their working cache.
 
-## How it uses Walrus Memory
+The historical five-session experiment produced manual-review counts of **2, 1, 1, 2, 2**. The remembered SearchBox preference removed one repeated approval, but later reserve increases caused more holds. This demonstrates a changed future decision and preserved financial constraints. It does not demonstrate steadily fewer reviews or superiority over every static-policy baseline. The historical namespace contained 35 independently checked memories; the Testnet terminal run contained 13. The new Mainnet namespace contains four verified memories and does not claim ten.
 
-Every owner decision, every rule, every bill outcome, every reserve change and a summary of each
-session are written to Walrus Memory on Mainnet through the mainnet relayer. A write is a job
-that takes about 20 seconds; the dashboard shows it as "Writing" until it is stored, and a write
-whose server function dies is finished on the next poll.
+## Interfaces and next proof
 
-At the start of each session Sisih rebuilds its rules from Walrus recall. Postgres only caches them.
-When the agent asks to pay a merchant, Sisih also recalls what it remembers about that merchant and
-shows the results, with their distances, next to the decision.
+The public product is Home, Connect and Proof. One MCP URL uses separate credentials for the spending agent and owner assistant. The CLI is a companion and local owner signer. Historical Testnet owner actions used an explicitly labeled server demo key; Mainnet owner actions require the owner's local signature.
 
-## How memory changed a decision, over five sessions
+We reviewed native Sui Allowances and OpenZeppelin Spend Vault before selecting the existing exercised Sisih vault for the bounded Mainnet proof. App-bound allowances remain a promising future building block, but dynamic commitment segregation still needs application policy. The selected code has test evidence, not a third-party audit claim.
 
-An earlier run, on 2026-11-06 (Walrus namespace `sisih-hosted-6`), used the built-in Research Agent
-for five sessions in one workspace. Sessions 1 and 2 were clicked through the dashboard.
-
-Session 1 starts with 20.00 USDC in the vault, 16.50 of it reserved and 3.50 free. The agent buys
-0.50 of data from DataMart; that is under the 0.50 automatic threshold, so it goes through, paid
-over x402 and verified through Tatum.
-
-Then the agent asks to pay SearchBox 1.20 for a premium search. SearchBox is new, so the payment is
-held. The owner chooses "Approve & remember". The payment settles, and a rule memory is written to
-Walrus: "Always allow search from SearchBox up to 1.50 USDC" for 30 days.
-
-The agent then wants a 3.00 report from ReportLab. Only 1.80 is free, so paying would cut 1.20 out of
-the reserves. The Approve button is disabled; the owner denies and remembers that too.
-
-In session 2 Sisih rebuilds two rules from Walrus recall. The same SearchBox request for 1.20 comes
-in and is approved automatically, with the remembered rule as its reason. Nobody clicked anything.
-
-## How a bill becomes a better reserve
-
-Between the sessions a billing cycle runs: simulated income arrives and the four bills are paid from
-their reserves. The Inference API bill is 6.80, but its reserve was 6.00. The vault covers the 0.80
-from free funds and Sisih writes the outcome to memory. From that outcome it suggests raising the
-Inference reserve to 7.00. Changing a reserve is the owner's call, signed on chain; the owner accepts,
-and session 2 starts at 18.00 total, 16.00 reserved, 2.00 free.
-
-## The contract still says no
-
-Memory can make Sisih ask less. It cannot make the vault pay more. To check that on chain, we sent
-the release straight from the operator, bypassing the server's policy engine: 1.20 USDC, the
-SearchBox amount the remembered rule allows, at a moment when only 0.70 was free. The vault aborted it
-with `EExceedsFree`:
-https://suiscan.xyz/testnet/tx/3QcakorFNa8YhAaXHdv8wHU39kYXnis4EdJA6mLhRGeM
-
-## What five sessions showed, honestly
-
-After the two clicked sessions we ran sessions 3 to 5 with a script (`pnpm demo:continue`) and one
-fixed owner policy: approve once when the vault allows it, deny when it would cut reserves. Nothing
-was tuned per session.
-
-Manual reviews per session came out as **2, 1, 1, 2, 2**.
-
-The drop from session 1 to 2 is the memory at work: SearchBox stopped needing a click. The rise in
-sessions 4 and 5 is the hard rules at work. A 7.20 bill in a later cycle led the owner to raise the
-Inference reserve again, to 7.50, which left only 0.10 to 0.70 free. SearchBox's 1.20 would then have
-cut into reserves, so it was held by the reserve check even though its rule was still active. Across
-the five sessions, held requests would have used 13.40 USDC of committed money; none of it left the
-reserves.
-
-That is five demo sessions in one workspace with demo merchants and testnet USDC. It is not five
-users, and it is not evidence that Sisih works in production. It shows the loop working end to end:
-the owner decides once, the memory changes the next decision, and the contract keeps the promises.
-
-By the end of the run the namespace held 35 memories on Walrus Mainnet: 14 decisions, 13 bill
-outcomes, 4 session summaries, 2 reserve changes and 2 rules. All 35 were checked again on
-2026-11-07, one by one, through their relayer jobs.
-
-## Limits
-
-The merchants and bill payees are ours, labeled demo. Only ChainScope returns live data; the
-others return fixed example content, and the agent is told which is which. The income is
-simulated.
-
-The vault and payments run on Sui Testnet; Walrus Memory runs on Mainnet.
-
-The owner's terminal actions are signed by a server key, which the CLI and the UI label "Demo owner
-(server-signed, testnet)", not by the owner's own wallet. That covers a fixed list of owner
-operations: deposits, reserves, commitments, limits, pause, resume and revoke. It is refused on
-mainnet.
-
-It is one shared demo workspace, not a vault per visitor. Sisih is a hackathon build, unaudited.
-
-## What's next
-
-Real merchants instead of demo ones, an owner CLI that signs with the owner's own key, one vault
-per owner, and memory that explains itself better: why a rule exists, when it was last used, and
-when it should expire.
-
-Code, evidence and every transaction digest: see the repository README and `docs/PROGRESS.md`.
+Mainnet publication, two real 0.80-USDC purchases, stored preference recall and final revocation were executed under the approved fixed manifest. The merchants remain ours, so payments are project funds returning to project addresses, not customer revenue. Further validation needs real owners, independent merchants and a measured comparison against a competent static policy. Public deployment, this blog and any submission still require separate authorization.

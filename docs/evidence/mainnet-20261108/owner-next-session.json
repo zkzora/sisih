@@ -1,0 +1,27 @@
+{
+  "ok": true,
+  "command": "session next",
+  "data": {
+    "status": "owner_signature_required",
+    "intent_id": "oi-eb5276493508",
+    "kind": "offchain",
+    "summary": "Start the next session (rules rebuilt from Walrus recall)",
+    "network": "sui:mainnet",
+    "vault": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+    "expires_at": "2026-11-08T13:23:01.315Z",
+    "sign_with": "pnpm sisih sign oi-eb5276493508 --yes",
+    "note": "Nothing has changed yet. The owner's local helper checks this intent against its own configuration and signs it with the owner key, which never leaves the owner's machine. `pnpm sisih sign <id>` without --yes only shows the plan.",
+    "submitted": {
+      "intent_id": "oi-eb5276493508",
+      "kind": "offchain",
+      "summary": "Start the next session (rules rebuilt from Walrus recall)",
+      "status": "executed",
+      "network": "sui:mainnet",
+      "digest": null,
+      "explorer_url": null,
+      "error": null,
+      "expires_at": "2026-11-08T13:23:01.315Z",
+      "gas_cap_sui": "0.020"
+    }
+  }
+}

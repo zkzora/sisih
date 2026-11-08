@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-11-08T13:48:50.064Z",
+  "base_commit": "1109d5bdbe14e4bb181fda1c4631e590e275de8b",
+  "uncommitted": true,
+  "note": "Payment and Move sources used for execution. MCP tools.ts includes the documented post-payment read-only provenance improvement; public page changes followed execution. No commit or deployment created.",
+  "files": {
+    "contracts/sisih/sources/vault.move": "148d6a0a17399925420c285abeef653c09f4371e42d1737981366bf8a238e421",
+    "docs/mainnet/MANIFEST.json": "b9415d95625f1a8c6d8469b6b9347da98cdb30b1837684dd7378b19b8716d11c",
+    "server/src/lib/tatum.ts": "8278ee09126b2206e250adfab82a34d3ee3e87cf94163a0dcc2b679c23a18134",
+    "server/src/chain/vault.ts": "2312c99b49e61d5ca4b6c1ccdd03f0b2882e222c434e2c89d07a819a740bb964",
+    "server/src/services/payments.ts": "62ecf9d6437d5e012ec15fa3e2e26502401cc639d915caf51b42ba106ddaf9dc",
+    "server/src/services/requests.ts": "af4ab9a06d6260ec6caa94a17ed50821f02a3f9291a163a3b9b7a8bec6895ce2",
+    "server/src/x402/agentPay.ts": "d92ba64a6a4679e66924611154009f6fc5692f58228cd0df6c7b60219b96ae24",
+    "server/src/x402/merchants.ts": "4d86e625c3eadee446c17fd0f3bfdb276b7e762dcf0d26d48deeb06070961c58",
+    "server/src/owner/intents.ts": "77bedf4cf1fc635945c623a325b8c51f62762bb9418c5f55306260bcd4dd4148",
+    "server/src/owner/tx.ts": "00ed96867aad95bee6409c96565cb2c57a1f933c2e3638cab4b2ad1e9711f710",
+    "server/src/cli/signer.ts": "f004440e22fa38930a28352055f2eb169dc082bc453a81faa39f367a03fd02fd",
+    "server/src/mainnet/runtime.ts": "09840e615469fbb288f5540cdd6168e63deb3d18db817d0ce6856d753fd4797a",
+    "server/src/mainnet/budget.ts": "ca5e4b2c402e1d4804baed178f2b2e70cb4cdad22e2705ef07bcfcd1dbedf7ca",
+    "server/src/mcp/tools.ts": "7945244f8901c4c2a0f7dd166174a4bfca2c7c1220ec0a19dcdc653936b2f285",
+    "server/scripts/publish.ts": "15d8275d693448819d6ddde4e40ef553b0a5006524cb3d6f2643c5c38423b285",
+    "server/scripts/mainnet/setup.ts": "30654cb6b20f767c68844882b3c8798555ebb9b82cd498cdeee49c0629c24887"
+  }
+}

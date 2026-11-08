@@ -4,7 +4,7 @@ import { ProofView } from "./proof-view";
 export const metadata: Metadata = {
   title: "Recorded proof · Sisih",
   description:
-    "The complete verified terminal-first run of Sisih on Sui Testnet and Walrus Memory Mainnet (namespace sisih-hosted-9). Every transaction, receipt, and memory blob.",
+    "Recorded Sui Mainnet x402 purchases by a real Codex agent, local owner signing, Walrus memory recall and protected reserves, alongside historical Testnet evidence.",
 };
 
 export default function ProofPage() {

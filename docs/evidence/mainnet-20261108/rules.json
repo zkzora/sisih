@@ -1,0 +1,20 @@
+[
+  {
+    "id": "rule-dfbf7042",
+    "merchant": "ChainScope",
+    "category": "data",
+    "maxAmount": "800000",
+    "action": "allow",
+    "expiresMs": 1794748014232,
+    "active": true,
+    "sentence": "Always allow data from ChainScope up to 0.80 USDC until 2026-11-15",
+    "sourceMemoryId": "mem-af193926-5b8",
+    "sourceBlobId": "dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+    "origin": "walrus",
+    "timesUsed": 1,
+    "lastUsedAt": 1794143308229,
+    "createdAt": 1794143214238,
+    "walrusUrl": "https://walruscan.com/mainnet/blob/dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+    "sourceMemoryStatus": "stored"
+  }
+]

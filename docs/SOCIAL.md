@@ -1,29 +1,15 @@
-# X thread draft (not posted)
-
-Three posts. Lengths checked with every URL counted as 23 characters: 280, 277 and 219. No dashes.
-Every number is from the documented run of 2026-11-06 (docs/PROGRESS.md, Phase 5). Post it only
-after the repo is public; add the blog or video link in a reply once they exist.
+# Social drafts — not posted
 
 ## Post 1
 
-Sisih: your AI agent only spends money you haven't promised.
-
-Bills are reserved in a Move vault on Sui Testnet. The agent spends only what is left. Your approvals become Walrus Memory on Mainnet, so the next session asks less.
-
-https://sisih-azure.vercel.app
-@Tatum_io @WalrusFoundation
+Sisih lets an AI agent spend only money its owner has not promised. A Sui Move vault protects commitments; Walrus Memory carries owner preferences into a later session. Recorded Testnet proof: https://sisih-azure.vercel.app/proof
 
 ## Post 2
 
-How it learned in our demo run:
-Session 1: SearchBox 1.20 held, owner approves and remembers.
-Session 2: rule recalled from Walrus, same request approved on its own.
-A 6.80 bill against a 6.00 reserve turned into a 7.00 reserve suggestion.
-35 memories stored on Walrus Mainnet.
+Our real agent task bought a live vault report, waited for owner approval, then used a recalled preference in a fresh conversation. A later purchase was blocked when it would touch reserves. Memory changed the review; the financial boundary held.
 
 ## Post 3
 
-Memory can make it ask less. It cannot make the vault pay more.
-We sent a 1.20 release the remembered rule allows, with only 0.70 free. The contract refused it:
-https://suiscan.xyz/testnet/tx/3QcakorFNa8YhAaXHdv8wHU39kYXnis4EdJA6mLhRGeM
-Every Sui call goes through Tatum.
+New local proof: two native-USDC x402 purchases on Sui Mainnet by Codex, remembered owner approval on Walrus Mainnet, then a reserve refusal and final revoke. Eight receipts verified through Tatum; four memories checked. Merchants are project-operated. Hosted demo remains Testnet. No customer-revenue or audit claim.
+
+Optional tags: @Tatum_io @WalrusFoundation. Check the destination's character limit immediately before posting. Add only real published repository/blog/video URLs. Posting requires separate authorization.

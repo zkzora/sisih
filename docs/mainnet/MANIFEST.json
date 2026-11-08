@@ -1,213 +1,75 @@
 {
-  "status": "prepared · not deployed · not funded · not executed",
-  "generated_at": "2026-11-07T08:17:12.365Z",
+  "schema_version": 1,
+  "plan_id": "sisih-mainnet-proof-20261107-v1",
+  "status": "proposed-awaiting-explicit-approval",
+  "generated_at": "2026-11-07T09:09:17.715Z",
   "network": "sui:mainnet",
   "chain_id": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S",
-  "rpc": "Tatum Sui Mainnet gRPC (every read, simulation and broadcast)",
-  "target_origin": {
-    "decision_required": true,
-    "note": "A separate deployment (new Vercel project or local `next start`), never the Testnet demo at sisih-azure.vercel.app."
+  "primitive": { "selected": "sisih-custom-vault", "decision": "docs/mainnet/VAULT_DECISION.md", "source_sha256": "148d6a0a17399925420c285abeef653c09f4371e42d1737981366bf8a238e421" },
+  "deployment": {
+    "execution_target": "local-isolated-runtime",
+    "execution_origin": "http://127.0.0.1:8788",
+    "execution_mcp_endpoint": "http://127.0.0.1:8788/api/mcp",
+    "public_target": "separate-vercel-project",
+    "public_project": "sisih-mainnet-proof-zkzora",
+    "public_origin": "https://sisih-mainnet-proof-zkzora.vercel.app",
+    "testnet_origin_unchanged": "https://sisih-azure.vercel.app",
+    "execution_database": "explicit-isolated-pglite",
+    "public_database": "separate-mainnet-postgres-required-before-deploy",
+    "memwal_namespace_prefix": "sisih-mainnet-proof-20261107"
   },
   "asset": {
     "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
     "symbol": "USDC",
-    "decimals": 6,
-    "verified_via": "GetCoinMetadata through Tatum (preflight)"
+    "decimals": 6
   },
   "roles": {
-    "owner": {
-      "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
-      "balance_sui": "0.000000",
-      "balance_usdc": "0.000000"
-    },
-    "operator": {
-      "address": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc",
-      "balance_sui": "0.000000",
-      "balance_usdc": "0.000000"
-    },
-    "agent": {
-      "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5",
-      "balance_sui": "0.000000",
-      "balance_usdc": "0.000000"
-    },
-    "facilitator": {
-      "address": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664",
-      "balance_sui": "0.000000",
-      "balance_usdc": "0.000000"
-    }
+    "owner": { "address": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990", "funding_sui_mist": "165000000", "funding_usdc_base_units": "3000000", "gas_authorization_mist": "165000000" },
+    "operator": { "address": "0x3728736836d2ffc9380cd7f1d4c17afc2838a74967e552344e6345bdf7de0fcc", "funding_sui_mist": "40000000", "funding_usdc_base_units": "0", "gas_authorization_mist": "40000000" },
+    "agent": { "address": "0x659429355664bc93efceae5faf7b2eeb55a10f42dd5e74c526b5fb660d54c2d5", "funding_sui_mist": "0", "funding_usdc_base_units": "0", "gas_authorization_mist": "0" },
+    "facilitator": { "address": "0x9ccb348898d029c559913609cdd262ecad0f11afd0e17ceb24dae3bf9f2c3664", "funding_sui_mist": "0", "funding_usdc_base_units": "0", "gas_authorization_mist": "0" }
   },
-  "key_custody": {
-    "owner": "Local only (.env.mainnet on the owner's machine). Signs publish, create_vault, setup and every owner intent via pnpm sisih sign. Never on the server or Vercel.",
-    "operator": "Server (deployment env). Can only call release_to_agent through the OperatorCap, from free funds, within the agent's caps.",
-    "agent": "Server (deployment env): the x402 payer for released coins. The spending agent process (Claude Code) never holds it; it has only SISIH_AGENT_TOKEN.",
-    "facilitator": "Server (deployment env): co-signs x402 settlements as gas owner.",
-    "note": "Sisih is not fully non-custodial: the operator, agent and facilitator keys are held by the deployment. The owner key stays local, and the contract limits what the others can do."
+  "merchant": {
+    "slug": "chainscope",
+    "recipient": "0xb00fbd9da3208cfba9034178439f3c9dc6685d38db47845c0b9bedc6e8262ce5",
+    "project_operated": true,
+    "price_base_units": "800000"
   },
-  "operations": [
-    {
-      "step": 1,
-      "by": "owner (local)",
-      "what": "publish contracts/sisih (UpgradeCap to owner)",
-      "command": "publish.ts --execute --manifest docs/mainnet/MANIFEST.json --out .env.mainnet.deployment",
-      "effects": "package + UpgradeCap; IDs written to .env.mainnet.deployment (never .env or .env.mainnet)",
-      "gas_estimate_sui": "0.0767",
-      "estimate_source": "Mainnet simulation (mocked gas), preflight.json"
-    },
-    {
-      "step": 2,
-      "by": "owner (local)",
-      "what": "create_vault<USDC>(operator)",
-      "effects": "shared Vault + OperatorCap to the operator",
-      "gas_estimate_sui": "0.0039",
-      "estimate_source": "Testnet measurement BPpnht7M5SKmzETvfYH11FhqkBCUsQqVxe7oZPEZPuDL"
-    },
-    {
-      "step": 3,
-      "by": "owner (local)",
-      "what": "setup: deposit 3.20 USDC, one commitment 1.00 USDC to the owner's own address, set_agent_policy 1.00 per request / 3.00 per day / 7 days",
-      "command": "mainnet/setup.ts --execute --manifest docs/mainnet/MANIFEST.json",
-      "gas_estimate_sui": "0.0059",
-      "estimate_source": "Testnet measurement 7qCqTe8nTKZktPZxqAkQkrcEQELKND9FdrWHfscaxUp2 (4 commitments: upper bound)"
-    },
-    {
-      "step": 4,
-      "by": "spending agent + owner",
-      "what": "P1: ChainScope 0.80 held (new merchant) -> owner approves and remembers via pnpm sisih approve <id> --remember --yes (local signature)",
-      "effects": "release (operator) + x402 settle (facilitator) + decision and rule memories on Walrus Mainnet",
-      "gas_estimate_sui": "0.0089"
-    },
-    {
-      "step": 5,
-      "by": "owner",
-      "what": "start_next_session (offchain, owner-signed): rules rebuilt from Walrus recall"
-    },
-    {
-      "step": 6,
-      "by": "spending agent (fresh session)",
-      "what": "P2: ChainScope 0.80 approved by the recalled preference",
-      "gas_estimate_sui": "0.0089"
-    },
-    {
-      "step": 7,
-      "by": "spending agent",
-      "what": "P3: ChainScope 0.80 refused: free 0.60 < 0.80 despite the allow preference (would_cut_reserve). Refused by the policy engine before any transaction; the contract boundary is shown by simulation only (labeled simulated), no gas spent."
-    },
-    {
-      "step": 8,
-      "by": "owner (optional)",
-      "what": "pause_agent then resume_agent (owner intents)",
-      "gas_estimate_sui": "0.0102"
-    },
-    {
-      "step": 9,
-      "by": "anyone",
-      "what": "verify-memories.ts <namespace> and mainnet/verify-evidence.ts (read only)"
-    }
-  ],
-  "usdc": {
-    "max_allocation_usdc": "3.20",
-    "deposit_usdc": "3.20",
-    "commitment_usdc": "1.00",
-    "per_purchase_usdc": "0.80",
-    "per_request_cap_usdc": "1.00",
-    "per_day_cap_usdc": "3.00",
-    "paid_to_merchant_usdc": "1.60",
-    "merchant_recipient": {
-      "decision_required": true,
-      "note": "Project-operated ChainScope address (MERCHANT_CHAINSCOPE_ADDRESS in .env.mainnet.deployment). Its proceeds are ours, recorded as returned funds, not revenue."
-    },
-    "expected_remaining_in_vault_usdc": "1.60",
-    "expected_remaining_free_usdc": "0.60"
+  "scenario": {
+    "deposit_base_units": "3000000",
+    "commitment_base_units": "800000",
+    "per_request_cap_base_units": "1000000",
+    "per_day_cap_base_units": "3000000",
+    "agent_policy_expires_ms": "1794647357715",
+    "commitment_cycle_ms": "2592000000",
+    "commitment_first_due_ms": "1796634557715",
+    "approved_purchase_count": 2,
+    "max_merchant_outflow_base_units": "1600000",
+    "expected_final_free_base_units": "600000",
+    "expected_final_reserved_base_units": "800000",
+    "expected_final_total_base_units": "1400000",
+    "permission_final_state": "revoked"
   },
   "gas": {
-    "mainnet_reference_gas_price_mist": "100",
-    "testnet_reference_gas_price_mist": "1000",
-    "method": "Gross gas (computation + storage, rebates ignored). Computation is rescaled from Testnet measurements to the Mainnet reference gas price; storage is unchanged; publish is simulated on Mainnet. Per-role cap = 3x the gross estimates + the largest single gas budget that role sets (it must hold that budget when signing). Budgets are caps, not charges.",
-    "budgets_set_by_code_mist": {
-      "publish": "200000000",
-      "owner_tx": "100000000",
-      "operator_release": "50000000",
-      "facilitator_settle": "2000000"
-    },
-    "per_role_cap_sui": {
-      "owner": "0.4901",
-      "operator": "0.1024",
-      "facilitator": "0.0028",
-      "agent": "0 (the facilitator pays settlement gas)"
-    },
-    "aggregate_cap_sui": "0.5954",
-    "measurements": {
-      "create_vault": {
-        "testnet_digest": "BPpnht7M5SKmzETvfYH11FhqkBCUsQqVxe7oZPEZPuDL",
-        "testnet_computation_mist": "1000000",
-        "storage_mist": "3845600",
-        "rebate_mist": "0",
-        "mainnet_gross_estimate_mist": "3945600"
-      },
-      "setup": {
-        "testnet_digest": "7qCqTe8nTKZktPZxqAkQkrcEQELKND9FdrWHfscaxUp2",
-        "testnet_computation_mist": "1000000",
-        "storage_mist": "5760800",
-        "rebate_mist": "6808919",
-        "mainnet_gross_estimate_mist": "5860800"
-      },
-      "set_limits": {
-        "testnet_digest": "HRPPmUjQs1HLinUsGainL7UV1d398FQVA1UowrKpxNbx",
-        "testnet_computation_mist": "1000000",
-        "storage_mist": "5760800",
-        "rebate_mist": "5760224",
-        "mainnet_gross_estimate_mist": "5860800"
-      },
-      "release_to_agent": {
-        "testnet_digest": "3sts8iZ2UNtF7CrNK28U2HQvAkc8GCrd1SPcap4XcCy6",
-        "testnet_computation_mist": "1000000",
-        "storage_mist": "8641200",
-        "rebate_mist": "7318068",
-        "mainnet_gross_estimate_mist": "8741200"
-      },
-      "x402_settle": {
-        "testnet_digest": "ErfGvPGLEKaxJJTaLCrDiYgqmnnxsVADj5kPguXhNZiu",
-        "testnet_computation_mist": "1322268",
-        "storage_mist": "0",
-        "rebate_mist": "1322268",
-        "mainnet_gross_estimate_mist": "132226"
-      },
-      "pause_agent": {
-        "testnet_digest": "GJ3AGmivtxtBKH3v7DjRiGsvftqyJ1pma7GZXcs2Rkq5",
-        "testnet_computation_mist": "1000000",
-        "storage_mist": "5016000",
-        "rebate_mist": "5015498",
-        "mainnet_gross_estimate_mist": "5116000"
-      }
-    }
+    "reference_price_mist": "100",
+    "publish_simulated_gross_mist": "76670000",
+    "authorized_per_role_mist": { "owner": "165000000", "operator": "40000000", "agent": "0", "facilitator": "0" },
+    "aggregate_authorized_mist": "205000000",
+    "method": "Publish was simulated on Sui Mainnet through Tatum with mocked gas: 76,670,000 MIST gross. Other caps use measured Testnet gross upper bounds at Mainnet reference gas price 100 MIST, rounded up to explicit per-transaction limits. The native-USDC x402 library path is gasless at 0.80 USDC and sets facilitator gas budget to zero. Authorization is the sum of transaction limits, not an estimate of actual charges; actual computation, storage and rebates must be recorded separately."
   },
-  "funding_request": {
-    "owner": {
-      "usdc": "3.20",
-      "sui": "0.4901"
-    },
-    "operator": {
-      "sui": "0.1024"
-    },
-    "facilitator": {
-      "sui": "0.0028"
-    }
-  },
-  "expected_receipts": [
-    "publish digest",
-    "create_vault digest",
-    "setup digest",
-    "P1 release + settle",
-    "P2 release + settle",
-    "P3 refusal (no transaction; simulation output labeled simulated)",
-    "owner intent ids and digests",
-    "Walrus job ids and blob ids (decision, rule, session summary)"
+  "operations": [
+    { "id": "publish-package", "signer": "owner", "action": "Publish the selected Sisih Move package and keep UpgradeCap with owner", "gas_budget_mist": "100000000", "max_usdc_base_units": "0", "outcome": "Package and UpgradeCap, read back through Tatum" },
+    { "id": "create-vault", "signer": "owner", "action": "Create Vault<USDC> and issue OperatorCap to the reviewed operator", "gas_budget_mist": "20000000", "max_usdc_base_units": "0", "outcome": "Shared vault and operator cap, read back through Tatum" },
+    { "id": "setup-vault", "signer": "owner", "action": "Deposit 3,000,000 USDC base units, reserve 800,000, and set the reviewed agent policy", "gas_budget_mist": "25000000", "max_usdc_base_units": "3000000", "outcome": "3.00 total, 0.80 reserved, 2.20 free" },
+    { "id": "purchase-1-release", "signer": "operator", "action": "Release exactly 800,000 base units to the reviewed agent for the held ChainScope request", "gas_budget_mist": "20000000", "max_usdc_base_units": "800000", "outcome": "One released coin; no duplicate release" },
+    { "id": "purchase-1-settle", "signer": "facilitator", "action": "Agent and facilitator settle the same released coin to the reviewed ChainScope recipient", "gas_budget_mist": "0", "max_usdc_base_units": "800000", "outcome": "Verified x402 settlement and useful live vault report" },
+    { "id": "owner-approve-remember", "signer": "none", "action": "Owner approves the exact held request and stores the reviewed preference in Walrus Memory Mainnet", "gas_budget_mist": "0", "max_usdc_base_units": "0", "outcome": "Stored rule provenance after async job reaches stored" },
+    { "id": "fresh-session-recall", "signer": "none", "action": "Start a fresh application and spending-agent session and rebuild rules from Walrus recall", "gas_budget_mist": "0", "max_usdc_base_units": "0", "outcome": "Recalled preference changes the next decision" },
+    { "id": "purchase-2-release", "signer": "operator", "action": "Release exactly 800,000 base units for the fresh-session ChainScope request", "gas_budget_mist": "20000000", "max_usdc_base_units": "800000", "outcome": "Second and final authorized release" },
+    { "id": "purchase-2-settle", "signer": "facilitator", "action": "Agent and facilitator settle the second released coin to the same reviewed recipient", "gas_budget_mist": "0", "max_usdc_base_units": "800000", "outcome": "Verified x402 settlement and useful live vault report" },
+    { "id": "purchase-3-refusal", "signer": "none", "action": "Request a third 800,000-base-unit report while 600,000 is free and 800,000 remains reserved", "gas_budget_mist": "0", "max_usdc_base_units": "800000", "outcome": "Policy refusal plus labeled contract simulation; no broadcast" },
+    { "id": "revoke-agent", "signer": "owner", "action": "Revoke the agent policy as the deliberate final permission state", "gas_budget_mist": "20000000", "max_usdc_base_units": "0", "outcome": "Agent policy absent/revoked" },
+    { "id": "verify-evidence", "signer": "none", "action": "Read every receipt, object, balance, event and memory status independently", "gas_budget_mist": "0", "max_usdc_base_units": "0", "outcome": "Evidence report that fails on unrelated or mismatched transactions" }
   ],
-  "decisions_required": [
-    "Approve the funding request above (amounts and addresses).",
-    "Choose the Mainnet deployment origin (separate from the Testnet demo).",
-    "Provide a Mainnet DATABASE_URL (separate database).",
-    "Confirm the project-operated ChainScope recipient address for Mainnet.",
-    "Confirm the Walrus Memory Mainnet proof namespace prefix (current: sisih-rehearsal)."
-  ]
+  "approval": { "approved": false, "approved_at": null, "approved_by": null }
 }

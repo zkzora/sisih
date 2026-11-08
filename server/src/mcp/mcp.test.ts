@@ -296,13 +296,18 @@ describe("terminal-first owner workflow and hard limits", () => {
 
   it("an active allow preference still cannot spend committed funds", async () => {
     const { createOwnerRule } = await import("../services/requests");
-    await createOwnerRule({ merchant: "SearchBox", category: "search", maxAmount: 1_500_000n, action: "allow", expiresMs: Date.now() + 86_400_000 }, { session: 1 });
+    const preference = await createOwnerRule({ merchant: "SearchBox", category: "search", maxAmount: 1_500_000n, action: "allow", expiresMs: Date.now() + 86_400_000 }, { session: 1 });
+    // A rule rebuilt from Walrus must expose its original stored source, even when this
+    // request has no newly written rule memory (and the source is absent locally).
+    await db().update(schema.rulesCache).set({ origin: "walrus", sourceBlobId: "stored-preference-blob" }).where(eq(schema.rulesCache.id, preference.ruleId));
     const client = await connect();
     const ok = (await call(client, "request_purchase", { service: "searchbox", task: "Allowed by the remembered preference" })).body;
     expect(ok).toMatchObject({ outcome: "settled", decision_code: "allow_rule" });
+    expect(ok.memory_evidence).toContainEqual({ type: "rule", status: "stored", blob_id: "stored-preference-blob", walrus_url: "https://walruscan.com/mainnet/blob/stored-preference-blob", rule_id: preference.ruleId, source: "walrus_recalled_rule" });
     vault.state = { ...vault.state, free: 1_000_000n }; // 1.00 free, SearchBox costs 1.20
     const blocked = (await call(client, "request_purchase", { service: "searchbox", task: "Same preference, not enough free funds" })).body;
     expect(blocked).toMatchObject({ outcome: "blocked", paid: false, decision_code: "would_cut_reserve" });
+    expect(blocked.memory_evidence.some((m: any) => m.source === "walrus_recalled_rule")).toBe(false);
     expect(charges).toEqual([ok.request_id]);
   });
 

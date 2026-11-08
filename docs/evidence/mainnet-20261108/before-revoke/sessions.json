@@ -1,0 +1,36 @@
+[
+  {
+    "n": 1,
+    "startedAt": 1794143071555,
+    "endedAt": 1794143281429,
+    "summaryMemoryId": "mem-7f446a5f-691",
+    "rulesLoaded": null,
+    "rulesLoadMs": null,
+    "stats": {
+      "session": 1,
+      "requests": 1,
+      "held": 1,
+      "automatic": 0,
+      "approved": 1,
+      "denied": 0,
+      "newRules": 1
+    }
+  },
+  {
+    "n": 2,
+    "startedAt": 1794143284054,
+    "endedAt": null,
+    "summaryMemoryId": null,
+    "rulesLoaded": 1,
+    "rulesLoadMs": 2616,
+    "stats": {
+      "session": 2,
+      "requests": 2,
+      "held": 1,
+      "automatic": 1,
+      "approved": 1,
+      "denied": 0,
+      "newRules": 0
+    }
+  }
+]

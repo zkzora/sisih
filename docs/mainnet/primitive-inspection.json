@@ -1,0 +1,287 @@
+{
+  "inspected_at": "2026-11-08T03:41:01.593Z",
+  "network": "sui:mainnet",
+  "chain_id": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S",
+  "checkpoint": "342867743",
+  "transport": "Tatum native gRPC MovePackageService.GetFunction",
+  "signed": false,
+  "broadcast": false,
+  "functions": [
+    {
+      "target": "0x2::allowance::new",
+      "present": true,
+      "descriptor": {
+        "typeParameters": [
+          {
+            "constraints": []
+          }
+        ],
+        "parameters": [
+          {
+            "body": {
+              "typeParameterInstantiation": [],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000001::string::String"
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [],
+              "type": 1
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [],
+                  "type": 8
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000001::option::Option"
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [],
+                  "type": 6
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000001::option::Option"
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [],
+                  "type": 6
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000001::option::Option"
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [],
+                  "type": 10,
+                  "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::allowance::RateLimit"
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000001::option::Option"
+            }
+          },
+          {
+            "reference": 2,
+            "body": {
+              "typeParameterInstantiation": [],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::tx_context::TxContext"
+            }
+          }
+        ],
+        "returns": [],
+        "name": "new",
+        "visibility": 1,
+        "isEntry": true
+      }
+    },
+    {
+      "target": "0x2::allowance::balance_spend",
+      "present": true,
+      "descriptor": {
+        "typeParameters": [
+          {
+            "constraints": []
+          }
+        ],
+        "parameters": [
+          {
+            "reference": 2,
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [
+                    {
+                      "typeParameterInstantiation": [],
+                      "type": 11,
+                      "typeParameter": 0
+                    }
+                  ],
+                  "type": 10,
+                  "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance"
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::allowance::Allowance"
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [
+                    {
+                      "typeParameterInstantiation": [],
+                      "type": 11,
+                      "typeParameter": 0
+                    }
+                  ],
+                  "type": 10,
+                  "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance"
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::allowance::AllowanceWithdrawal"
+            }
+          },
+          {
+            "reference": 1,
+            "body": {
+              "typeParameterInstantiation": [],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::clock::Clock"
+            }
+          },
+          {
+            "reference": 1,
+            "body": {
+              "typeParameterInstantiation": [],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::tx_context::TxContext"
+            }
+          }
+        ],
+        "returns": [
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [],
+                  "type": 11,
+                  "typeParameter": 0
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance"
+            }
+          }
+        ],
+        "name": "balance_spend",
+        "visibility": 2,
+        "isEntry": false
+      }
+    },
+    {
+      "target": "0x2::allowance::app_balance_spend",
+      "present": true,
+      "descriptor": {
+        "typeParameters": [
+          {
+            "constraints": []
+          },
+          {
+            "constraints": []
+          }
+        ],
+        "parameters": [
+          {
+            "reference": 2,
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [
+                    {
+                      "typeParameterInstantiation": [],
+                      "type": 11,
+                      "typeParameter": 0
+                    }
+                  ],
+                  "type": 10,
+                  "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance"
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::allowance::Allowance"
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [],
+                  "type": 11,
+                  "typeParameter": 1
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::allowance::SpendPermit"
+            }
+          },
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [
+                    {
+                      "typeParameterInstantiation": [],
+                      "type": 11,
+                      "typeParameter": 0
+                    }
+                  ],
+                  "type": 10,
+                  "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance"
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::allowance::AllowanceWithdrawal"
+            }
+          },
+          {
+            "reference": 1,
+            "body": {
+              "typeParameterInstantiation": [],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::clock::Clock"
+            }
+          },
+          {
+            "reference": 1,
+            "body": {
+              "typeParameterInstantiation": [],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::tx_context::TxContext"
+            }
+          }
+        ],
+        "returns": [
+          {
+            "body": {
+              "typeParameterInstantiation": [
+                {
+                  "typeParameterInstantiation": [],
+                  "type": 11,
+                  "typeParameter": 0
+                }
+              ],
+              "type": 10,
+              "typeName": "0x0000000000000000000000000000000000000000000000000000000000000002::balance::Balance"
+            }
+          }
+        ],
+        "name": "app_balance_spend",
+        "visibility": 2,
+        "isEntry": false
+      }
+    }
+  ],
+  "interpretation": "Deployed function availability is distinct from an app-bound reserve implementation. The selected proof still uses the independently exercised Sisih vault."
+}

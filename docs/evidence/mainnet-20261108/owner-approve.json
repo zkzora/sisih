@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "command": "sign",
+  "data": {
+    "intent_id": "oi-3468a2d44e17",
+    "kind": "offchain",
+    "summary": "Approve request req-d89525e6-87f and remember it as a preference (up to 0.80 USDC)",
+    "status": "executed",
+    "network": "sui:mainnet",
+    "digest": null,
+    "explorer_url": null,
+    "error": null,
+    "expires_at": "2026-11-08T13:21:41.035Z",
+    "gas_cap_sui": "0.020"
+  }
+}

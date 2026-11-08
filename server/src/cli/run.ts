@@ -205,6 +205,7 @@ export function authorizationTextFor(i: IntentForSigning): string {
     `network: sui:${i.target.network}`,
     `package: ${i.target.packageId}`,
     `vault: ${i.target.vaultId}`,
+    `asset: ${i.target.usdcType}`,
     `owner: ${normalizeAddr(i.target.ownerAddress)}`,
     `action: ${JSON.stringify(i.action)}`,
     `summary: ${i.summary}`,

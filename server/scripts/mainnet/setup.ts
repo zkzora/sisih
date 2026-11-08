@@ -1,82 +1,91 @@
-/**
- * Mainnet vault setup for the bounded proof, signed with the owner's LOCAL key, through Tatum.
- * One transaction:
- * - deposit the manifest's USDC;
- * - add ONE commitment, paid to the owner's own address;
- * - set the agent policy (per-request, per-day, 7 days).
- *
- * Without --execute it prints the plan and SIMULATES the transaction through Tatum. Nothing is
- * signed or broadcast.
- *
- *   SISIH_ENV_FILE=.env.mainnet,.env.mainnet.deployment pnpm --filter @sisih/server exec tsx \
- *     scripts/mainnet/setup.ts --manifest docs/mainnet/MANIFEST.json [--execute]
- *
- * Every amount comes from the reviewed manifest and is checked against it. The deposit is built
- * with coinWithBalance, so USDC can sit in address balances or coin objects.
- */
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+/** Mainnet vault setup. Default is an exact plan; live mode is manifest-bound and journaled. */
 import { coinWithBalance, Transaction } from "@mysten/sui/transactions";
-import { CLOCK_ID, KIND, PRIORITY, target, usdc, usdcType, vaultId } from "../../src/chain/sisih";
-import { REPO_ROOT, suiNetwork } from "../../src/lib/env";
-import { setGas, signAndExecute, suiClient, verifyTransaction } from "../../src/lib/tatum";
+import { parseVault } from "../../src/chain/vault";
+import { CLOCK_ID, KIND, PRIORITY, target, usdcType, vaultId } from "../../src/chain/sisih";
+import { env, suiNetwork } from "../../src/lib/env";
+import { setGas, suiClient } from "../../src/lib/tatum";
 import { address, keypair } from "../../src/lib/wallets";
+import { acquireJournalLock, journaledTransaction, loadJournal } from "../../src/mainnet/journal";
+import { assertManifestIdentity, loadMainnetManifest } from "../../src/mainnet/manifest";
+import { verifyMainnetObjects } from "../../src/mainnet/deployment";
 
 const argv = process.argv.slice(2);
+const option = (name: string) => (argv.includes(name) ? argv[argv.indexOf(name) + 1] : undefined);
 if (argv.includes("--help")) {
-  console.log("setup.ts --manifest <file> [--execute]. Without --execute: plan and simulation only.");
+  console.log("setup.ts --manifest <file> [--execute --acknowledge <plan-id>] [--resubmit-known]. Default does not sign or broadcast.");
   process.exit(0);
 }
-if (suiNetwork() !== "mainnet") {
-  console.error("Refusing: this is the Mainnet proof setup (use SISIH_ENV_FILE=.env.mainnet,.env.mainnet.deployment). The Testnet demo uses seed-vault.ts.");
-  process.exit(2);
+if (suiNetwork() !== "mainnet") throw new Error("Select .env.mainnet plus its public runtime/deployment layers");
+const path = option("--manifest");
+if (!path) throw new Error("--manifest is required");
+const manifest = loadMainnetManifest(path);
+assertManifestIdentity(manifest, { owner: address("owner"), operator: address("operator"), agent: address("agent"), facilitator: address("facilitator"), asset: usdcType() });
+if (env("MERCHANT_CHAINSCOPE_ADDRESS")?.toLowerCase() !== manifest.merchant.recipient.toLowerCase()) throw new Error("configured ChainScope recipient does not match the manifest");
+const execute = argv.includes("--execute");
+if (execute && option("--acknowledge") !== manifest.plan_id) throw new Error(`Live setup requires --acknowledge ${manifest.plan_id}`);
+const operation = manifest.operations.find((value) => value.id === "setup-vault");
+if (!operation) throw new Error("setup-vault operation is missing from the manifest");
+const deposit = BigInt(manifest.scenario.deposit_base_units);
+const commitment = BigInt(manifest.scenario.commitment_base_units);
+const perRequest = BigInt(manifest.scenario.per_request_cap_base_units);
+const perDay = BigInt(manifest.scenario.per_day_cap_base_units);
+const expiry = BigInt(manifest.scenario.agent_policy_expires_ms);
+const cycle = BigInt(manifest.scenario.commitment_cycle_ms);
+const firstDue = BigInt(manifest.scenario.commitment_first_due_ms);
+console.log(JSON.stringify({
+  plan_id: manifest.plan_id,
+  vault: env("VAULT_ID") ?? "not-created-yet",
+  owner: address("owner"),
+  agent: address("agent"),
+  deposit_base_units: deposit.toString(),
+  commitment_base_units: commitment.toString(),
+  commitment_payee: address("owner"),
+  per_request_base_units: perRequest.toString(),
+  per_day_base_units: perDay.toString(),
+  agent_policy_expires_ms: expiry.toString(),
+  gas_budget_mist: operation.gas_budget_mist,
+}, null, 2));
+if (!execute) {
+  console.log("PLAN ONLY. Nothing was signed, simulated or broadcast. Simulation becomes possible after publish/create_vault.");
+  process.exit(0);
 }
-const mPath = argv[argv.indexOf("--manifest") + 1];
-if (!argv.includes("--manifest") || !mPath) {
-  console.error("--manifest docs/mainnet/MANIFEST.json is required");
-  process.exit(2);
+if (expiry <= BigInt(Date.now())) throw new Error("The reviewed agent policy has expired; revise and approve a new plan before setup");
+if (!env("SISIH_PACKAGE_ID") || !env("VAULT_ID") || !env("OPERATOR_CAP_ID")) throw new Error("Publish/create_vault must complete and .env.mainnet.deployment must be selected first");
+const service = await suiClient("mainnet").ledgerService.getServiceInfo({});
+if (service.response.chainId !== manifest.chain_id) throw new Error("connected chain does not match the manifest");
+acquireJournalLock(manifest.plan_id);
+const journal = loadJournal(manifest.plan_id);
+for (const key of ["SISIH_PACKAGE_ID", "VAULT_ID", "OPERATOR_CAP_ID"] as const) {
+  if (journal.ids[key] && journal.ids[key].toLowerCase() !== env(key)?.toLowerCase()) throw new Error(`${key} differs from the restart journal`);
 }
-const manifest = JSON.parse(readFileSync(resolve(REPO_ROOT, mPath), "utf8"));
-const owner = keypair("owner");
-if (manifest.network !== "sui:mainnet" || manifest.roles.owner.address.toLowerCase() !== owner.toSuiAddress().toLowerCase() || manifest.asset.coin_type !== usdcType()) {
-  console.error("Manifest does not match this network, owner key or asset. Refusing.");
-  process.exit(2);
-}
-const deposit = usdc(manifest.usdc.deposit_usdc);
-const commitment = usdc(manifest.usdc.commitment_usdc);
-const perRequest = usdc(manifest.usdc.per_request_cap_usdc);
-const perDay = usdc(manifest.usdc.per_day_cap_usdc);
-if (deposit > usdc(manifest.usdc.max_allocation_usdc)) {
-  console.error("Deposit exceeds the manifest's maximum USDC allocation. Refusing.");
-  process.exit(2);
-}
-const now = BigInt(Date.now());
-const month = 30n * 86_400_000n;
 
+// An existing non-empty vault without this operation's journal is not safe to set up again.
+await verifyMainnetObjects(manifest, { packageId: env("SISIH_PACKAGE_ID")!, vaultId: vaultId(), operatorCapId: env("OPERATOR_CAP_ID")!, upgradeCapId: env("UPGRADE_CAP_ID") });
+if (!journal.operations["setup-vault"]) {
+  const { object } = await suiClient("mainnet").getObject({ objectId: vaultId(), include: { json: true } });
+  const state = parseVault(object.objectId, object.json as Record<string, unknown>);
+  if (state.total !== 0n || state.obligations.length || state.policy) throw new Error("vault is not empty but setup-vault is absent from the journal; reconcile rather than depositing again");
+}
+
+const owner = keypair("owner");
 const tx = new Transaction();
 tx.setSender(owner.toSuiAddress());
-await setGas(tx, { budget: 100_000_000n, network: "mainnet" });
+await setGas(tx, { budget: BigInt(operation.gas_budget_mist), network: "mainnet" });
 const vault = tx.object(vaultId());
 tx.moveCall({ target: target("deposit"), typeArguments: [usdcType()], arguments: [vault, coinWithBalance({ type: usdcType(), balance: deposit })] });
 tx.moveCall({
   target: target("add_obligation"),
   typeArguments: [usdcType()],
-  arguments: [vault, tx.pure.string("Savings reserve"), tx.pure.address(owner.toSuiAddress()), tx.pure.u64(commitment), tx.pure.u8(KIND.fixed), tx.pure.u64(month), tx.pure.u64(now + month), tx.pure.u8(PRIORITY.must), tx.pure.string("Monthly")],
+  arguments: [vault, tx.pure.string("Savings reserve"), tx.pure.address(owner.toSuiAddress()), tx.pure.u64(commitment), tx.pure.u8(KIND.fixed), tx.pure.u64(cycle), tx.pure.u64(firstDue), tx.pure.u8(PRIORITY.must), tx.pure.string("Monthly")],
 });
 tx.moveCall({
   target: target("set_agent_policy"),
   typeArguments: [usdcType()],
-  arguments: [vault, tx.pure.address(address("agent")), tx.pure.u64(perRequest), tx.pure.u64(perDay), tx.pure.u64(now + 7n * 86_400_000n), tx.object(CLOCK_ID)],
+  arguments: [vault, tx.pure.address(address("agent")), tx.pure.u64(perRequest), tx.pure.u64(perDay), tx.pure.u64(expiry), tx.object(CLOCK_ID)],
 });
-
-console.log(`Plan: deposit ${manifest.usdc.deposit_usdc} USDC, commitment "Savings reserve" ${manifest.usdc.commitment_usdc} to the owner's own address, agent ${address("agent")} limits ${manifest.usdc.per_request_cap_usdc}/${manifest.usdc.per_day_cap_usdc} for 7 days, on vault ${vaultId()}.`);
-if (!argv.includes("--execute")) {
-  const sim = await suiClient("mainnet").simulateTransaction({ transaction: tx, include: { effects: true } });
-  const t = sim.Transaction ?? sim.FailedTransaction;
-  console.log(`SIMULATION ONLY (no --execute): success=${t.status.success}${t.status.success ? "" : ` error=${JSON.stringify(t.status.error).slice(0, 200)}`}. Nothing was signed or broadcast.`);
-  process.exit(0);
-}
-const res = await signAndExecute(tx, owner, "mainnet");
-const v = await verifyTransaction(res.digest, { network: "mainnet" });
-console.log(`setup ${res.digest} success=${res.success} verified through Tatum=${v.success} checkpoint=${v.checkpoint} gas ${(Number(v.gasMist) / 1e9).toFixed(6)} SUI`);
-process.exit(res.success ? 0 : 1);
+const result = await journaledTransaction({ journal, operation: "setup-vault", transaction: tx, signer: owner, network: "mainnet", gasAuthorizationMist: BigInt(manifest.gas.authorized_per_role_mist.owner), resubmitKnown: argv.includes("--resubmit-known") });
+if (!result.success) throw new Error(`setup failed: ${result.error}`);
+const { object } = await suiClient("mainnet").getObject({ objectId: vaultId(), include: { json: true } });
+const state = parseVault(object.objectId, object.json as Record<string, unknown>);
+if (state.total !== deposit || state.reserved !== commitment || state.free !== deposit - commitment) throw new Error("setup transaction succeeded but the vault read-back does not match the manifest");
+console.log(`setup ${result.digest} verified: total=${state.total} reserved=${state.reserved} free=${state.free} gas=${result.gasUsedMist} MIST`);

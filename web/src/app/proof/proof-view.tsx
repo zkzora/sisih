@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { ArrowUpRight, CheckCircle2, ShieldAlert, Terminal, Lock, ExternalLink, Bot, User, Cpu } from "lucide-react";
 import { CopyButton, Section } from "@/components/site";
+import { MainnetProof } from "./mainnet-proof";
 import {
   RUN,
   TRACE,
@@ -23,9 +24,10 @@ function WhoIcon({ who }: { who: Step["who"] }) {
 export function ProofView() {
   return (
     <div className="page proof-page">
+      <MainnetProof />
       <header className="page-head">
-        <p className="eyebrow">Evidence &amp; Verification</p>
-        <h1>Recorded proof: terminal-first run</h1>
+        <p className="eyebrow">Historical Testnet evidence</p>
+        <h2>Recorded proof: terminal-first run</h2>
         <p className="lead">
           Every value, digest, job ID and blob ID on this page comes from the verified terminal run of{" "}
           <strong>{RUN.date}</strong> in Walrus namespace <code>{RUN.namespace}</code> ({RUN.window}).

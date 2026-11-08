@@ -118,7 +118,7 @@ export function CopyButton({ value, label }: { value: string; label: string }) {
       }}
     >
       {state === "copied" ? <Check size={14} aria-hidden /> : <Copy size={14} aria-hidden />}
-      <span>{state === "copied" ? "Copied" : state === "failed" ? "Select and copy" : "Copy"}</span>
+      <span aria-live="polite">{state === "copied" ? "Copied" : state === "failed" ? "Select and copy" : "Copy"}</span>
     </button>
   );
 }

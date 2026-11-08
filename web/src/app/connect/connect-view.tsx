@@ -34,6 +34,7 @@ function usd(base: string) {
 export function ConnectView() {
   const [origin, setOrigin] = useState("https://sisih-azure.vercel.app");
   const [live, setLive] = useState<Live>({ status: "loading" });
+  const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     setOrigin(window.location.origin);
     const ctl = new AbortController();
@@ -44,7 +45,7 @@ export function ConnectView() {
       .catch(() => setLive({ status: "unavailable" }))
       .finally(() => clearTimeout(t));
     return () => ctl.abort();
-  }, []);
+  }, [refresh]);
 
   const mcp = `${origin}/api/mcp`;
   const skill = `${origin}/skills/sisih/SKILL.md`;
@@ -168,7 +169,7 @@ pnpm sisih release`;
         <div className="live-box" aria-live="polite">
           <strong>Current server state (optional)</strong>
           {live.status === "loading" && <span> Reading…</span>}
-          {live.status === "unavailable" && <span> The demo API is not reachable right now. The instructions on this page do not depend on it.</span>}
+          {live.status === "unavailable" && <span> The demo API is not reachable right now. You can still use these instructions. <button type="button" className="copy-btn" onClick={() => { setLive({ status: "loading" }); setRefresh((n) => n + 1); }}>Retry status</button></span>}
           {live.status === "ok" && (
             <span>
               {" "}
@@ -195,7 +196,7 @@ pnpm sisih release`;
       <Section id="agent" eyebrow="Recipe 1" title="Your spending agent">
         <p>Configure your agent&apos;s MCP client with the server URL and agent credential. Configuration syntax and environment variable support depend on your client.</p>
         <Code label="agent MCP configuration">{agentJson}</Code>
-        <h3>Verified CLI example</h3>
+        <h3>Verified Testnet CLI example: Claude Code</h3>
         <p>In a new, empty folder that holds nothing but the agent&apos;s setup:</p>
         <ShellTabs label="spending agent setup" powershell={agentSetupPs} bash={agentSetupSh} />
         <p>
@@ -203,6 +204,8 @@ pnpm sisih release`;
           <code>--allowedTools</code> alone does not.
         </p>
         <ShellTabs label="spending agent run" powershell={agentRunPs} bash={agentRunSh} />
+        <h3>Verified Mainnet client: Codex CLI</h3>
+        <p>Codex CLI 0.164.0-alpha.11.1 completed the recorded local Mainnet task using the same five spending tools and no owner credential. It ran with shell tools disabled, ignored user configuration, a read-only sandbox, and an MCP bearer-token environment variable. The exact isolated runner is <code>server/scripts/mainnet/run-agent.ts --client codex</code>; use the Mainnet runbook for its reviewed configuration. The hosted endpoint on this page remains Testnet. Antigravity has not been verified as an MCP client.</p>
         <h3>Prompts</h3>
         <p>1. A harmless connection check (buys nothing):</p>
         <Code label="connection check prompt">{checkPrompt}</Code>
@@ -237,7 +240,7 @@ pnpm sisih release`;
             by your own wallet. Every response says so.
           </li>
           <li>
-            <strong>Sui Mainnet</strong> (prepared, not deployed): an owner token alone changes nothing. Each owner action returns an intent; the owner signs it on
+            <strong>Sui Mainnet</strong> (local proof executed; public server not deployed): an owner token alone changes nothing. Each owner action returns an intent; the owner signs it on
             their own machine with <code>pnpm sisih sign &lt;intent-id&gt; --yes</code>, which checks the intent against the local configuration and builds the
             transaction itself. The owner key never reaches the server.
           </li>

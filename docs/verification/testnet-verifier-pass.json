@@ -1,0 +1,106 @@
+{
+  "checked_at": "2026-11-08T03:48:43.947Z",
+  "network": "testnet",
+  "chain_id": "69WiPg3DAQiwdxfncX6wYQ2siKwAe6L9BZthQea3JNMD",
+  "observations": [
+    {
+      "id": "historical-release-success-control",
+      "expected": {
+        "id": "historical-release-success-control",
+        "digest": "3sts8iZ2UNtF7CrNK28U2HQvAkc8GCrd1SPcap4XcCy6",
+        "expected_success": true,
+        "sender": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+        "gas_owner": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+        "max_gas_budget_mist": "50000000",
+        "move_calls": [
+          {
+            "package": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9",
+            "module": "vault",
+            "function": "release_to_agent",
+            "type_arguments": [
+              "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
+            ]
+          }
+        ],
+        "balance_changes": [
+          {
+            "address": "0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba",
+            "coin_type": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+            "amount": "800000"
+          }
+        ],
+        "events": [
+          {
+            "type": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::ReleasedToAgent",
+            "json_contains": {
+              "vault_id": "0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962",
+              "agent": "0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba",
+              "amount": "800000"
+            }
+          }
+        ],
+        "created_type_contains": [
+          "::coin::Coin<"
+        ]
+      },
+      "actual": {
+        "digest": "3sts8iZ2UNtF7CrNK28U2HQvAkc8GCrd1SPcap4XcCy6",
+        "success": true,
+        "error": null,
+        "sender": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+        "gasOwner": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+        "gasBudget": "50000000",
+        "calls": [
+          {
+            "package": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9",
+            "module": "vault",
+            "function": "release_to_agent",
+            "typeArguments": [
+              "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC"
+            ]
+          }
+        ],
+        "balanceChanges": [
+          {
+            "address": "0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba",
+            "coinType": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
+            "amount": "800000"
+          },
+          {
+            "address": "0xb72b7b13863cd53c3b5b2f021ce86875d15038a9a5620c2257c304c07f49e2de",
+            "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+            "amount": "-2323132"
+          }
+        ],
+        "events": [
+          {
+            "type": "0x37a5513a911110d00b9c795390d1af5b04a3873e6df4856b54ede7e74ba886e9::vault::ReleasedToAgent",
+            "json": {
+              "request_id": "cmVxLTYzN2ZlNWU0LWU1YQ==",
+              "spent_in_window": "800000",
+              "vault_id": "0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962",
+              "agent": "0x0922682e5841dcf01b2fc25d3b2fda2e7532ab85f022a1a15b4406b49a5359ba",
+              "amount": "800000",
+              "free_after": "2700000"
+            }
+          }
+        ],
+        "createdTypes": [
+          "0x0000000000000000000000000000000000000000000000000000000000000002::coin::Coin<0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC>"
+        ]
+      },
+      "checkpoint": "403681831",
+      "timestamp_ms": 1794015315980,
+      "errors": [],
+      "gas": {
+        "computation_mist": "1000000",
+        "storage_mist": "8641200",
+        "storage_rebate_mist": "7318068",
+        "net_mist": "2323132"
+      }
+    }
+  ],
+  "simulations": [],
+  "failures": [],
+  "passed": true
+}

@@ -1,0 +1,56 @@
+[
+    {
+        "id":  "mem-eddf98b2-064",
+        "type":  "decision",
+        "text":  "[sisih:v1:decision] ChainScope (demo) data \"Live Sui vault report\" 0.80 USDC: approved by the owner. New merchant. Free funds are sufficient, but ChainScope has no approved rule yet. {\"requestId\":\"req-d89525e6-87f\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"amount\":\"800000\",\"decision\":\"approve_and_remember\",\"by\":\"owner\",\"code\":\"new_merchant\",\"session\":1,\"ruleId\":\"rule-dfbf7042\"}",
+        "payload":  {
+                        "requestId":  "req-d89525e6-87f",
+                        "merchant":  "ChainScope",
+                        "category":  "data",
+                        "amount":  "800000",
+                        "decision":  "approve_and_remember",
+                        "by":  "owner",
+                        "code":  "new_merchant",
+                        "session":  1,
+                        "ruleId":  "rule-dfbf7042"
+                    },
+        "session":  1,
+        "status":  "stored",
+        "jobId":  "dd8d6ec2-d1e4-424a-86d3-7f1c25aa249d",
+        "blobId":  "_VGxDTDGcawBrMyDL48cDjUpUfaSEje8NoCZEFaqHBk",
+        "walrusUrl":  "https://walruscan.com/mainnet/blob/_VGxDTDGcawBrMyDL48cDjUpUfaSEje8NoCZEFaqHBk",
+        "namespace":  "sisih-mainnet-proof-20261107",
+        "error":  null,
+        "usedInDecisions":  [
+                                "req-d89525e6-87f"
+                            ],
+        "createdAt":  1794143214246,
+        "storedAt":  1794143237203
+    },
+    {
+        "id":  "mem-af193926-5b8",
+        "type":  "rule",
+        "text":  "[sisih:v1:rule] Always allow data from ChainScope up to 0.80 USDC until 2026-11-15 {\"ruleId\":\"rule-dfbf7042\",\"merchant\":\"ChainScope\",\"category\":\"data\",\"maxAmount\":\"800000\",\"action\":\"allow\",\"expiresMs\":1794748014232,\"requestId\":\"req-d89525e6-87f\"}",
+        "payload":  {
+                        "ruleId":  "rule-dfbf7042",
+                        "merchant":  "ChainScope",
+                        "category":  "data",
+                        "maxAmount":  "800000",
+                        "action":  "allow",
+                        "expiresMs":  1794748014232,
+                        "requestId":  "req-d89525e6-87f"
+                    },
+        "session":  1,
+        "status":  "stored",
+        "jobId":  "3c62c83c-87c6-4a33-99fd-3e1619afc00b",
+        "blobId":  "dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+        "walrusUrl":  "https://walruscan.com/mainnet/blob/dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds",
+        "namespace":  "sisih-mainnet-proof-20261107",
+        "error":  null,
+        "usedInDecisions":  [
+                                "req-d89525e6-87f"
+                            ],
+        "createdAt":  1794143214236,
+        "storedAt":  1794143234687
+    }
+]

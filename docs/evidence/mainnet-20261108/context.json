@@ -1,0 +1,20 @@
+{
+  "captured_at": "2026-11-08T13:10:29.350Z",
+  "network": "sui:mainnet",
+  "chain_id": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S",
+  "checkpoint": "343008070",
+  "origin": "http://127.0.0.1:8788",
+  "mcp_endpoint": "http://127.0.0.1:8788/api/mcp",
+  "namespace": "sisih-mainnet-proof-20261107",
+  "plan_id": "sisih-mainnet-proof-20261107-v1",
+  "ids": {
+    "SISIH_PACKAGE_ID": "0xc894db8fba8696dd1a8b246744582a78279410b4523126b82ed68ce8ca40f55d",
+    "UPGRADE_CAP_ID": "0x03e8c7678a7be19776ce28f8108ceaf8f5e57d17a079d9ade782b8db5f07f507",
+    "VAULT_ID": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+    "OPERATOR_CAP_ID": "0xa26d752f4841e3a320efa7d7b13f611cf93419f6d49f91565a65c5bc4b96b593"
+  },
+  "asset": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+  "owner_interface": "Sisih CLI, owner key signs locally",
+  "external_client": "Codex CLI 0.164.0-alpha.11.1; fresh process per prompt",
+  "public_deployment": false
+}

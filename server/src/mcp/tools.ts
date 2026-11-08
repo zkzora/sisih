@@ -12,7 +12,7 @@
 import { createHash } from "node:crypto";
 import { vaultState } from "../chain/vault";
 import { acquireLease, currentLease, releaseLease } from "../lib/leases";
-import { formatUsdc, suiNetworkLabel, usdcLabel } from "../lib/env";
+import { formatUsdc, isMainnet, suiNetworkLabel, usdcLabel } from "../lib/env";
 import { CATEGORY_LABEL, findMerchant, MERCHANTS, type Merchant } from "../merchants/registry";
 import { paymentError, paymentRecovery, purchaseResult, type PaymentRecovery } from "../services/payments";
 import { getRequest, requestView, submitRequest } from "../services/requests";
@@ -51,11 +51,11 @@ export interface PurchaseStatus {
   /** How the owner continues a held request: their own owner-assistant session (same MCP URL, owner credential) or the CLI. */
   owner_continuation?: { owner_assistant_tool: { name: "decide_request"; arguments: Record<string, unknown> }; owner_cli: string; note: string };
   /** For failed payments: what happened to the money (release and settlement are separate). */
-  payment?: { state: string; released: boolean; release_digest: string | null; release_receipt: string | null; settled: boolean | "unknown"; recovery: string };
+  payment?: { state: string; released: boolean | "unknown"; release_digest: string | null; release_receipt: string | null; settled: boolean | "unknown"; recovery: string };
   /** For permission and cap blocks: the owner's terminal command that changes the hard limit. Only the owner can run it. */
   owner_hint?: string;
   receipts?: { release: string | null; settlement: string | null };
-  memory_evidence?: { type: string; status: string; blob_id: string | null; walrus_url: string | null }[];
+  memory_evidence?: { type: string; status: string; blob_id: string | null; walrus_url: string | null; rule_id?: string; source?: string }[];
   result_note?: string;
   settlement?: { release_digest: string | null; settle_digest: string | null; verified_via_tatum: boolean; explorer_url: string | null };
   result?: unknown;
@@ -147,7 +147,7 @@ export function outcomeFor(v: View, result: unknown | null, failure: string | nu
   }
   if (v.paymentStatus === "failed") {
     const state = recovery?.state ?? (release ? "released_not_sent" : "not_released");
-    const released = state !== "not_released";
+    const released = state === "release_outcome_unknown" ? ("unknown" as const) : state !== "not_released";
     const payment = {
       state,
       released,
@@ -157,6 +157,8 @@ export function outcomeFor(v: View, result: unknown | null, failure: string | nu
       recovery:
         state === "not_released"
           ? "Nothing left the vault."
+          : state === "release_outcome_unknown"
+            ? "The vault release has a known digest but its chain outcome is unknown. Reconcile that digest before any retry or recovery."
           : state === "released_not_sent"
             ? "The vault released the amount to the agent address, but nothing was sent to the merchant. Only the operator can recover it; Sisih will not release again for this request."
             : state === "merchant_refused"
@@ -193,7 +195,7 @@ export function serviceView(m: Merchant) {
 }
 
 export function listServices() {
-  return { services: MERCHANTS.map(serviceView), networks: networksText(), note: "Prices and recipients come from Sisih's merchant registry and each merchant's x402 invoice, not from the agent." };
+  return { services: MERCHANTS.filter((m) => !isMainnet() || m.slug === "chainscope").map(serviceView), networks: networksText(), note: "Prices and recipients come from Sisih's merchant registry and each merchant's x402 invoice, not from the agent." };
 }
 
 export async function getBudget() {
@@ -249,11 +251,18 @@ function busy(retryAfterSeconds: number, why: string) {
 }
 
 /** Walrus memories written for this request (decision, rule), with their stored blob IDs. */
-async function memoryEvidence(id: string) {
+async function memoryEvidence(id: string, matchedRuleIds: string[]) {
   const rows = await db().select().from(schema.memories);
-  return rows
+  const rules = await db().select().from(schema.rulesCache);
+  const direct: NonNullable<PurchaseStatus["memory_evidence"]> = rows
     .filter((m) => (JSON.parse(m.usedInDecisions) as string[]).includes(id))
-    .map((m) => ({ type: m.type, status: m.status, blob_id: m.blobId, walrus_url: m.blobId ? `https://walruscan.com/mainnet/blob/${m.blobId}` : null }));
+    .map((m) => ({ type: m.type, status: m.status, blob_id: m.blobId, walrus_url: m.blobId ? `https://walruscan.com/mainnet/blob/${m.blobId}` : null, source: "request_memory" }));
+  for (const rule of rules.filter((r) => matchedRuleIds.includes(r.id))) {
+    const memory = rows.find((m) => m.id === rule.sourceMemoryId);
+    const blob = rule.sourceBlobId ?? memory?.blobId ?? null;
+    direct.push({ type: "rule", status: memory?.status ?? (blob ? "stored" : "unavailable"), blob_id: blob, walrus_url: blob ? `https://walruscan.com/mainnet/blob/${blob}` : null, rule_id: rule.id, source: rule.origin === "walrus" ? "walrus_recalled_rule" : "cached_rule" });
+  }
+  return direct;
 }
 
 export async function statusOf(id: string): Promise<PurchaseStatus> {
@@ -261,7 +270,7 @@ export async function statusOf(id: string): Promise<PurchaseStatus> {
   const result = v.paymentStatus === "paid" ? await purchaseResult(id) : null;
   const failure = v.paymentStatus === "failed" ? await paymentError(id) : null;
   const recovery = v.paymentStatus === "failed" ? await paymentRecovery(id) : null;
-  return { ...outcomeFor(v, result, failure, recovery), memory_evidence: await memoryEvidence(id), networks: networksText() };
+  return { ...outcomeFor(v, result, failure, recovery), memory_evidence: await memoryEvidence(id, v.matchedRuleIds), networks: networksText() };
 }
 
 export interface PurchaseInput {
@@ -278,6 +287,7 @@ export interface PurchaseInput {
 export async function requestPurchase(input: PurchaseInput) {
   const m = findMerchant(input.service);
   if (!m) throw new AgentInputError(`Unknown service "${input.service}". Call list_services; supported: ${MERCHANTS.map((x) => x.slug).join(", ")}.`);
+  if (isMainnet() && m.slug !== "chainscope") throw new AgentInputError("This Mainnet proof authorizes only the reviewed ChainScope service.");
   const task = input.task.trim();
   if (!task) throw new AgentInputError("Describe the task this purchase is for.");
 

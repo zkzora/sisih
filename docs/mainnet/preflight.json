@@ -1,14 +1,15 @@
 {
-  "generated_at": "2026-11-07T06:42:56.389Z",
+  "generated_at": "2026-11-08T03:39:50.831Z",
   "network": "sui:mainnet",
   "config_files": [
-    ".\\.env.mainnet"
+    ".\\.env.mainnet",
+    ".\\.env.mainnet.runtime"
   ],
   "rpc": "Tatum Sui Mainnet gRPC",
   "chain": {
     "chain_id": "4btiuiMPvEENsttpZC7CZ53DruC3MAgfznDbASZ7DR6S",
-    "checkpoint": "342552366",
-    "epoch": "1304"
+    "checkpoint": "342867459",
+    "epoch": "1305"
   },
   "usdc": {
     "coin_type": "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
@@ -57,7 +58,5 @@
     "deposit, add_obligation x N, set_agent_policy (need the vault)",
     "release_to_agent, x402 settle, pause_agent (need funded vault and agent)"
   ],
-  "problems": [
-    "DATABASE_URL is not set (Mainnet needs its own database; it never falls back to the Testnet PGlite)"
-  ]
+  "problems": []
 }

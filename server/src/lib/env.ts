@@ -1,7 +1,7 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { config } from "dotenv";
+import { parse } from "dotenv";
 
 /**
  * Configuration source. By default the repo-root .env (the working Sui Testnet demo). A separate
@@ -24,9 +24,52 @@ function selectedFiles(): string[] {
     .map((f) => (isAbsolute(f) ? f : resolve(REPO_ROOT, f)));
 }
 
+const selectedEnvFiles = selectedFiles();
+const explicitSelection = Boolean(process.env.SISIH_ENV_FILE?.trim());
+const missingEnvFiles = selectedEnvFiles.filter((f) => !existsSync(f));
+if (explicitSelection && missingEnvFiles.length) {
+  throw new Error(`Selected SISIH_ENV_FILE does not exist: ${missingEnvFiles.join(", ")}`);
+}
+
 /** The env files actually loaded into this process (existing ones only). */
-export const loadedEnvFiles: string[] = selectedFiles().filter((f) => existsSync(f));
-for (const f of loadedEnvFiles) config({ path: f, quiet: true });
+export const loadedEnvFiles: string[] = selectedEnvFiles.filter((f) => existsSync(f));
+
+/**
+ * Only these public deployment outputs may be supplied by a later selected file. Secrets,
+ * network selection and identities must agree across files instead of being silently replaced.
+ * Values inherited from the launching process always win.
+ */
+export const DEPLOYMENT_ENV_KEYS = new Set([
+  "SISIH_PACKAGE_ID",
+  "VAULT_ID",
+  "OPERATOR_CAP_ID",
+  "UPGRADE_CAP_ID",
+  "DATABASE_URL",
+  "MEMWAL_NAMESPACE_PREFIX",
+  "MERCHANT_CHAINSCOPE_ADDRESS",
+  "PUBLIC_BASE_URL",
+  "PORT",
+  "MAINNET_PLAN_ID",
+  "MAINNET_OPERATOR_TX_GAS_BUDGET_MIST",
+]);
+const inherited = new Set(Object.keys(process.env));
+for (const [index, file] of loadedEnvFiles.entries()) {
+  const values = parse(readFileSync(file, "utf8"));
+  for (const [key, value] of Object.entries(values)) {
+    if (inherited.has(key)) continue;
+    const current = process.env[key];
+    if (current === undefined || current === "") {
+      process.env[key] = value;
+      continue;
+    }
+    if (current === value) continue;
+    if (index > 0 && DEPLOYMENT_ENV_KEYS.has(key)) {
+      process.env[key] = value;
+      continue;
+    }
+    throw new Error(`Conflicting ${key} across selected environment files. Only public deployment IDs may be overridden by a later file.`);
+  }
+}
 
 export type SuiNetwork = "testnet" | "mainnet";
 
@@ -47,7 +90,7 @@ export function requireEnv(name: string): string {
  */
 export function assertEnvIsolation(network: SuiNetwork, files: readonly string[], rootFile = ROOT_ENV_FILE): void {
   if (network !== "mainnet") return;
-  if (files.some((f) => resolve(f) === resolve(rootFile))) {
+  if (files.some((f) => resolve(/*turbopackIgnore: true*/ f) === resolve(/*turbopackIgnore: true*/ rootFile))) {
     throw new Error(
       "SUI_NETWORK=mainnet while the repo-root .env (the Testnet demo) is loaded. Select the Mainnet configuration with SISIH_ENV_FILE (for example .env.mainnet,.env.mainnet.deployment).",
     );
