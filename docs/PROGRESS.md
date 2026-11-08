@@ -13,6 +13,7 @@ Mainnet proof executed and verified (8 November 2026), based on `1109d5b`. The e
 - Approved funding was verified at checkpoint 343006171. Published the selected Move package, created the vault and deposited 3.00 USDC with a 0.80 reserve. Initial preflight remains a historical preparation artifact.
 - **Real Codex Mainnet task completed:** first purchase held, local owner approval remembered, two 0.80-USDC x402 settlements delivered useful live reports, fresh-session rule recalled, third purchase refused with 0.60 free. Unsigned contract simulation confirmed `EExceedsFree`. Owner revoked permission; final vault 1.40 USDC. All eight receipts passed exact read-back; unrelated Mainnet digest failed. Four of four Walrus jobs/blobs verified.
 - Actual net gas: 0.083418818 SUI under the 0.205-SUI ceiling. Claude Code hit its weekly quota before tool use; Codex performed the task. Evidence: `evidence/mainnet-20261108/README.md`. No extra payment was made for screenshots or provenance checks.
+- At the owner's later request, pushed the verified Mainnet milestone to GitHub and deployed public Home/Connect/Proof from `bcee8ee` to Vercel. Production pages now expose the recorded Mainnet trace and Codex client details. Live runtime stays Testnet, same vault/session/namespace; no env migration or purchase. Production browser checks and HTTP auth/x402 invoice probes passed; see `verification/deployed-site-20261108`.
 
 ## Historical implementation log
 

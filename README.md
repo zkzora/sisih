@@ -5,7 +5,7 @@
 A builder funds an agent's API and data purchases from the same USDC balance that must cover hosting, inference and savings. A wallet balance or static cap cannot tell which money is already committed; Sisih reserves those promises in a Sui Move vault first, releases only the live free balance, and recalls owner preferences from Walrus without letting memory override the contract.
 
 - [Live Testnet demo](https://sisih-azure.vercel.app) — public pages are read-only without credentials.
-- [Recorded Proof](https://sisih-azure.vercel.app/proof) — one real Claude Code task with Sui Testnet receipts and Walrus Memory Mainnet provenance.
+- [Recorded Proof](https://sisih-azure.vercel.app/proof) — verified Codex Mainnet task, native-USDC x402 receipts and Walrus provenance, alongside historical Claude Code Testnet evidence.
 - [Connect](https://sisih-azure.vercel.app/connect) — client-neutral MCP contract, separate agent/owner roles, and the local owner signer.
 - [Repository](https://github.com/zkzora/sisih) — currently private; public visibility requires the owner's separate decision before submission.
 - [Verified Mainnet proof](docs/evidence/mainnet-20261108/README.md) — real Codex purchases, native-USDC x402 settlement, local owner signing and Walrus recall; executed locally on 8 November. The hosted demo remains Testnet; no public Mainnet server is deployed.
@@ -36,7 +36,7 @@ The [Mainnet archive](docs/evidence/mainnet-20261108/README.md) contains transcr
 No clone or credential is needed to understand the result:
 
 1. Read [Home](https://sisih-azure.vercel.app), then [Proof](https://sisih-azure.vercel.app/proof).
-2. Open the Mainnet receipts in this README or the local Proof page, then compare the recorded refusal simulation. The hosted Proof page remains the previously deployed Testnet version until a separately authorized deployment; its historical links retain `/testnet/`.
+2. Open the Mainnet receipts in this README or the hosted Proof page, then compare the recorded refusal simulation. Home/Connect/Proof were updated on 8 November; the interactive runtime remains Testnet, and historical receipt links retain `/testnet/`.
 3. Compare the remembered rule provenance with the fresh-session decision and the later reserve refusal.
 
 The hosted workspace has shared capacity: one agent run can hold its lease at a time. Private judge credentials belong in the submission form or another private channel, never in URLs, screenshots or this repository.

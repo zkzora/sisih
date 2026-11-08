@@ -5,6 +5,7 @@ Updated 8 November 2026. Execution used the working tree based on `1109d5b`; its
 ## Current state
 
 - Public product: Home / Connect / Proof, one role-scoped MCP endpoint, CLI companion/local signer.
+- Public pages deployed on 8 November from `bcee8ee` to `sisih-azure.vercel.app`; Proof now records Mainnet and historical Testnet separately. Runtime remains Testnet. [Production verification](verification/deployed-site-20261108/README.md).
 - Hosted demo: `https://sisih-azure.vercel.app`, Sui Testnet and Walrus Memory Mainnet. Historical primary evidence: [sisih-hosted-9](evidence/final-run-sisih-hosted-9/README.md), real Claude Code task, owner CLI, 13 stored memories.
 - Mainnet: published and executed locally on 8 November; two real Codex x402 purchases, stored Walrus recall, reserve refusal and final revoke. [Verified evidence](evidence/mainnet-20261108/README.md). Public Mainnet server not deployed.
 - Selected primitive: existing tested Sisih custom vault; [decision and sources](mainnet/VAULT_DECISION.md).

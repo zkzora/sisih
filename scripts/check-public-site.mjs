@@ -8,7 +8,7 @@ const modulePath = process.env.SISIH_PLAYWRIGHT_PATH;
 if (!modulePath) throw new Error("Set SISIH_PLAYWRIGHT_PATH to the installed playwright-core index.mjs");
 const { chromium } = await import(pathToFileURL(resolve(modulePath)).href);
 const origin = process.env.SISIH_CHECK_ORIGIN ?? "http://127.0.0.1:3000";
-const output = resolve("docs/verification/public-site-20261108");
+const output = resolve(process.env.SISIH_CHECK_OUTPUT ?? "docs/verification/public-site-20261108");
 await mkdir(output, { recursive: true });
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ permissions: ["clipboard-read", "clipboard-write"], colorScheme: "light" });
@@ -103,7 +103,7 @@ try {
   assert.equal(skill.status(), 200);
   assert.doesNotMatch(await skill.text(), /dashboard link/);
   assert.deepEqual(errors, []);
-  const report = { origin, revision: "working-tree-based-on-1109d5b", mutable_api: "intercepted with isolated 503 fixture; no payments or memory writes", viewports: [375, 768, 1280, 1440], captures, contrast, checks: ["routes and read-only navigation", "no horizontal overflow", "API error and retry", "arrow-key shell tabs", "copy success and failure", "keyboard focus", "dark theme and persistence", "legacy redirects", "served skill", "text contrast in both themes"], page_errors: errors };
+  const report = { origin, revision: process.env.SISIH_CHECK_REVISION ?? "working-tree-based-on-1109d5b", mutable_api: "intercepted with isolated 503 fixture; no payments or memory writes", viewports: [375, 768, 1280, 1440], captures, contrast, checks: ["routes and read-only navigation", "no horizontal overflow", "API error and retry", "arrow-key shell tabs", "copy success and failure", "keyboard focus", "dark theme and persistence", "legacy redirects", "served skill", "text contrast in both themes"], page_errors: errors };
   await writeFile(resolve(output, "report.json"), JSON.stringify(report, null, 2) + "\n");
   console.log(JSON.stringify(report, null, 2));
 } finally {

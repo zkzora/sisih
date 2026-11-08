@@ -22,7 +22,7 @@ The current demonstrated task uses Codex CLI over a restricted MCP credential an
 
 Tatum provides every Sui read, simulation, transaction submission and read-back. Walrus Memory Mainnet stores decisions/rules/outcomes/summaries and supplies provenance for the changed next-session decision. Async jobs are tracked to stored status. Manual reviews in the older five-session run were 2, 1, 1, 2, 2; persistence is demonstrated, monotonic improvement is not.
 
-The historical payments are Sui Testnet; the new local proof is verified Sui Mainnet. The hosted site has not been migrated or updated in this milestone. Merchants are project-operated, so 1.60 USDC paid is not customer revenue. Net gas was 0.083418818 SUI; 1.40 USDC remains in the revoked vault. Owner keys stayed local; scoped operator/agent/facilitator keys are server-held. No broad audit, production-readiness or fully non-custodial claim is made.
+The historical payments are Sui Testnet; the new local proof is verified Sui Mainnet. Hosted Home/Connect/Proof now display this evidence, while the interactive runtime remains Testnet. Merchants are project-operated, so 1.60 USDC paid is not customer revenue. Net gas was 0.083418818 SUI; 1.40 USDC remains in the revoked vault. Owner keys stayed local; scoped operator/agent/facilitator keys are server-held. No broad audit, production-readiness or fully non-custodial claim is made.
 
 ## Personal fields requiring the entrant
 

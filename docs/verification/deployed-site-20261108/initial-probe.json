@@ -1,0 +1,36 @@
+{
+  "checked_at": "2026-11-08T13:58:35.373Z",
+  "origin": "https://sisih-azure.vercel.app",
+  "deployment_id": "dpl_4Qs6uyAQ5zbYzZLC4EnSGMEWujFb",
+  "deployment_url": "https://sisih-ppjfuk6p7-zkzoras-projects.vercel.app",
+  "source_commit": "bcee8eeeb04810c3367c0f65008272078fb5ee32",
+  "mainnet_recorded_proof": true,
+  "codex_recipe": true,
+  "runtime": {
+    "network": "testnet",
+    "vault": "0xbfb09999511c994267cc79aa4d28de859004a0ff3b91de30155c8ee205fae962",
+    "session": 2,
+    "namespace": "sisih-hosted-9"
+  },
+  "checks": [
+    {
+      "path": "/api/mcp",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    },
+    {
+      "path": "/api/owner/status",
+      "status": 401,
+      "expected": 401,
+      "passed": true
+    },
+    {
+      "path": "/merchants/chainscope",
+      "status": 404,
+      "expected": 402,
+      "passed": false
+    }
+  ],
+  "transactions_started": false
+}

@@ -1,6 +1,6 @@
 # Giving an agent the part of a wallet that is actually free
 
-Draft, unpublished. Verified local demonstration: real Sui Mainnet x402 payments and Walrus Memory Mainnet, 8 November 2026. Hosted interactive demo remains Sui Testnet; no web deployment occurred in this milestone.
+Draft, unpublished. Verified local demonstration: real Sui Mainnet x402 payments and Walrus Memory Mainnet, 8 November 2026. Hosted Home/Connect/Proof now display the recorded evidence; the interactive runtime remains Sui Testnet.
 
 A builder gives an agent 20 USDC for data and APIs. The same balance also covers hosting, inference and savings. A daily spending cap can approve a useful report while leaving the next bill short: it knows the amount spent, but not what the balance has already promised.
 
