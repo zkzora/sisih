@@ -1,7 +1,10 @@
 # Never upload secrets or local state to Vercel (env vars live in the project settings).
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+.sisih-mainnet/
 server/data/
 **/node_modules
 **/.next
