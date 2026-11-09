@@ -8,7 +8,7 @@ Unsubmitted; no credentials in this file. Rules checked 8 November 2026 at the [
 | --- | --- |
 | Walrus Memory writes on Mainnet, at least ten stored memories | Historical `sisih-hosted-9`: 13 stored, per-job/blob checks; earlier `sisih-hosted-6`: 35. New Sui Mainnet proof has four verified memories; do not claim it alone meets ten. |
 | Tatum onchain data where relevant | Application Sui reads, builds, simulations, submissions and receipt checks use Tatum gRPC. Eight actual Mainnet receipts verified, including two x402 settlements. Public runtime reads the actual Mainnet vault and completed state. |
-| Working demo and public repository | Demo: https://sisih-azure.vercel.app. Repository https://github.com/zkzora/sisih was verified private on 8 November; public visibility still needs authorization. |
+| Working demo and public repository | Demo: https://sisih-azure.vercel.app (Mainnet production deployment `dpl_mzbJfke5M4Ec7YPLbmopJr22Piq8`, `/api/state` confirmed `network: mainnet`). Repository https://github.com/zkzora/sisih was verified private on 8 November; public visibility still needs authorization. |
 | Published blog | `BLOG.md` is a draft; publication URL still required. |
 | Short video | Rules list two to three minutes; `RECORDING.md` is the capture script. Uploaded URL still required. |
 

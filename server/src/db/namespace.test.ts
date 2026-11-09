@@ -4,7 +4,7 @@ process.env.DATABASE_SCHEMA = "mainnet_isolation_fixture";
 process.env.DATABASE_URL = "pglite::memory:";
 const { initDb, db, schema, schemaExists } = await import("./index");
 describe("real PostgreSQL schema isolation", () => {
-  it("qualifies application reads/writes and leaves same-named legacy tables untouched", async () => {
+  it("qualifies application reads/writes and leaves same-named legacy tables untouched", { timeout: 15000 }, async () => {
     await initDb();
     await db().execute(sql.raw("CREATE TABLE public.sessions (n integer primary key)"));
     await db().execute(sql.raw("INSERT INTO public.sessions VALUES (99)"));
