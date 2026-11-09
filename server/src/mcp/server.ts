@@ -36,6 +36,11 @@ import { AgentInputError, endDemoSession, getBudget, getRequestStatus, listServi
 import { mainnetReadOnly, readOnlyCapability } from "../mainnet/publication";
 
 export const AGENT_TOOLS = ["get_budget", "list_services", "request_purchase", "get_request_status", "end_demo_session"] as const;
+/** Agent tools that are safe for read-only mode (no state change, no payment, no signing). */
+export const AGENT_READ_ONLY_TOOLS: readonly string[] = ["get_budget", "list_services", "get_request_status"];
+/** Agent tools that mutate state (purchases, session lifecycle). Hidden in read-only mode. */
+export const AGENT_MUTATION_TOOLS: readonly string[] = ["request_purchase", "end_demo_session"];
+
 export const OWNER_TOOLS = [
   "owner_status",
   "list_requests",
@@ -55,6 +60,15 @@ export const OWNER_TOOLS = [
   "get_owner_intent",
   "release_demo_run",
 ] as const;
+/** Owner tools that are safe for read-only mode (inspection only, no signing or config changes). */
+export const OWNER_READ_ONLY_TOOLS: readonly string[] = ["owner_status", "list_requests", "get_request", "list_suggestions", "get_evidence", "get_owner_intent"];
+/** Owner tools that mutate state (decisions, configuration, signing, session lifecycle). Hidden in read-only mode. */
+export const OWNER_MUTATION_TOOLS: readonly string[] = [
+  "decide_request", "add_preference", "set_preference_enabled", "set_threshold",
+  "decide_suggestion", "set_reserve", "add_commitment", "set_limits",
+  "set_agent_permission", "start_next_session", "release_demo_run",
+];
+
 export const DEMO_TOOLS = ["demo_reset", "demo_advance_cycle"] as const;
 
 function agentInstructions() {
@@ -115,6 +129,7 @@ const usdcArg = (what: string) => z.string().regex(/^\d+(\.\d{1,6})?$/).describe
 
 export function buildMcpServer(ctx: AuthContext): McpServer {
   const owner = ctx.role === "owner";
+  const ro = mainnetReadOnly();
   const server = new McpServer(
     { name: "sisih", version: "1.1.0", title: owner ? "Sisih owner controls" : "Sisih spending controls" },
     { instructions: owner ? ownerInstructions(ctx) : agentInstructions() },
@@ -123,6 +138,7 @@ export function buildMcpServer(ctx: AuthContext): McpServer {
   const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const;
 
   if (ctx.role === "agent") {
+    // --- read-only agent tools (always registered) ---
     server.registerTool(
       "get_budget",
       { title: "Get budget", description: "Free, committed and total funds in the owner's vault, plus this agent's spending limits and permission status. Read only.", annotations: read },
@@ -134,21 +150,6 @@ export function buildMcpServer(ctx: AuthContext): McpServer {
       () => guarded(ctx, "services.read", async () => listServices()),
     );
     server.registerTool(
-      "request_purchase",
-      {
-        title: "Request a purchase",
-        description:
-          "Ask Sisih to buy one service for a task. Sisih applies the owner's commitments, limits and remembered preferences: it pays over x402 at once, holds the purchase for the owner, or refuses it. The price comes from the service's own invoice. Returns a request_id; repeating the call with the same idempotency_key returns the same request and never pays twice.",
-        inputSchema: {
-          service: z.enum(MERCHANTS.map((m) => m.slug) as [string, ...string[]]).describe("Service id from list_services"),
-          task: z.string().min(3).max(500).describe("What the purchase is for, in one sentence"),
-          idempotency_key: z.string().max(100).optional().describe("Identifies this one intended purchase: keep it for retries, use a new one for a new purchase"),
-        },
-        annotations: { ...write, idempotentHint: true },
-      },
-      (args) => guarded(ctx, "purchase.request", () => requestPurchase(args)),
-    );
-    server.registerTool(
       "get_request_status",
       {
         title: "Get request status",
@@ -158,17 +159,37 @@ export function buildMcpServer(ctx: AuthContext): McpServer {
       },
       ({ request_id }) => guarded(ctx, "purchase.status", () => getRequestStatus(request_id)),
     );
-    server.registerTool(
-      "end_demo_session",
-      { title: "End demo session", description: "Hand the shared live demo back so the next visitor can use it. Call this when the task is done.", annotations: write },
-      () => guarded(ctx, "session.end", endDemoSession),
-    );
+
+    // --- mutation agent tools (hidden in Mainnet read-only mode) ---
+    if (!ro) {
+      server.registerTool(
+        "request_purchase",
+        {
+          title: "Request a purchase",
+          description:
+            "Ask Sisih to buy one service for a task. Sisih applies the owner's commitments, limits and remembered preferences: it pays over x402 at once, holds the purchase for the owner, or refuses it. The price comes from the service's own invoice. Returns a request_id; repeating the call with the same idempotency_key returns the same request and never pays twice.",
+          inputSchema: {
+            service: z.enum(MERCHANTS.map((m) => m.slug) as [string, ...string[]]).describe("Service id from list_services"),
+            task: z.string().min(3).max(500).describe("What the purchase is for, in one sentence"),
+            idempotency_key: z.string().max(100).optional().describe("Identifies this one intended purchase: keep it for retries, use a new one for a new purchase"),
+          },
+          annotations: { ...write, idempotentHint: true },
+        },
+        (args) => guarded(ctx, "purchase.request", () => requestPurchase(args)),
+      );
+      server.registerTool(
+        "end_demo_session",
+        { title: "End demo session", description: "Hand the shared live demo back so the next visitor can use it. Call this when the task is done.", annotations: write },
+        () => guarded(ctx, "session.end", endDemoSession),
+      );
+    }
     return server;
   }
 
   // --- owner assistant ---------------------------------------------------------------------
   const act = (name: string) => (args: Record<string, unknown>) => run(() => performOwnerAction(ctx, name, args));
 
+  // --- read-only owner tools (always registered for owner) ---
   server.registerTool("owner_status", { title: "Owner status", description: "Vault funds, commitments (with ids), agent limits and permission, threshold, preferences and held requests. Read only.", annotations: read }, () =>
     guarded(ctx, "owner.read", () => ownerStatus(ctx)),
   );
@@ -189,86 +210,6 @@ export function buildMcpServer(ctx: AuthContext): McpServer {
     guarded(ctx, "owner.read", () => ownerEvidence(ctx)),
   );
   server.registerTool(
-    "decide_request",
-    {
-      title: "Decide a held request",
-      description: "Approve or deny a purchase that is waiting for the owner. Approving pays that same request once (release from free funds, x402 settle, Tatum verification). remember=true saves the decision as a preference in Walrus Memory.",
-      inputSchema: {
-        request_id: z.string().min(4).max(64),
-        decision: z.enum(["approve", "deny"]),
-        remember: z.boolean().optional(),
-        max_usdc: usdcArg("Preference limit when remembering").optional(),
-        days: z.number().int().min(1).max(90).optional().describe("Preference lifetime when remembering"),
-      },
-      annotations: write,
-    },
-    act("decide_request"),
-  );
-  server.registerTool(
-    "add_preference",
-    {
-      title: "Add a preference",
-      description: "Remember a merchant preference (allow or deny up to an amount). Preferences never unlock committed funds or exceed the vault's caps.",
-      inputSchema: { merchant: z.enum(MERCHANTS.map((m) => m.slug) as [string, ...string[]]), action: z.enum(["allow", "deny"]), max_usdc: usdcArg("Limit"), days: z.number().int().min(1).max(90).optional() },
-      annotations: write,
-    },
-    act("add_preference"),
-  );
-  server.registerTool(
-    "set_preference_enabled",
-    { title: "Enable or disable a preference", description: "Disable (or re-enable) a remembered preference by rule id.", inputSchema: { rule_id: z.string().min(3).max(64), enabled: z.boolean() }, annotations: write },
-    act("set_preference_enabled"),
-  );
-  server.registerTool(
-    "set_threshold",
-    { title: "Set automatic approval threshold", description: "Purchases from merchants without a preference are approved automatically up to this amount.", inputSchema: { max_usdc: usdcArg("Threshold") }, annotations: write },
-    act("set_threshold"),
-  );
-  server.registerTool(
-    "decide_suggestion",
-    { title: "Accept or reject a reserve suggestion", description: "Accepting changes the commitment's reserve target in the vault.", inputSchema: { suggestion_id: z.string().min(3).max(64), decision: z.enum(["accept", "reject"]) }, annotations: write },
-    ({ suggestion_id, decision }) => run(() => performOwnerAction(ctx, decision === "accept" ? "accept_suggestion" : "reject_suggestion", { suggestion_id })),
-  );
-  server.registerTool(
-    "set_reserve",
-    { title: "Set a commitment's reserve", description: "Change how much the vault reserves for one commitment (id from owner_status).", inputSchema: { commitment_id: z.number().int().min(0), amount_usdc: usdcArg("Reserve target") }, annotations: write },
-    act("set_reserve"),
-  );
-  server.registerTool(
-    "add_commitment",
-    {
-      title: "Add a commitment",
-      description: "Add a bill or savings commitment that the vault reserves before the agent can spend.",
-      inputSchema: {
-        name: z.string().min(2).max(40),
-        payee: z.string().regex(/^0x[0-9a-fA-F]{64}$/).describe("Full Sui address of the payee"),
-        amount_usdc: usdcArg("Amount per cycle"),
-        recurring: z.boolean().optional(),
-        usage: z.boolean().optional().describe("Usage-based bill (may come in under the target)"),
-        important: z.boolean().optional().describe("Priority important instead of must"),
-        cadence: z.string().min(3).max(20).optional(),
-      },
-      annotations: write,
-    },
-    act("add_commitment"),
-  );
-  server.registerTool(
-    "set_limits",
-    {
-      title: "Set the agent's limits",
-      description: "Per-request and 24-hour caps and the permission length for the spending agent, enforced by the vault contract.",
-      inputSchema: { per_request_usdc: usdcArg("Per-request cap"), per_day_usdc: usdcArg("24-hour cap"), days: z.number().int().min(1).max(90).optional() },
-      annotations: write,
-    },
-    act("set_limits"),
-  );
-  server.registerTool(
-    "set_agent_permission",
-    { title: "Pause, resume or revoke the agent", description: "Pause: the vault refuses every release until resume. Revoke: removes the permission (grant again with set_limits).", inputSchema: { state: z.enum(["pause", "resume", "revoke"]) }, annotations: { ...write, destructiveHint: true } },
-    act("set_agent_permission"),
-  );
-  server.registerTool("start_next_session", { title: "Start the next session", description: "Start the next application session; rules are rebuilt from Walrus recall.", annotations: write }, () => act("start_next_session")({}));
-  server.registerTool(
     "get_owner_intent",
     { title: "Get an owner intent", description: "Status of an owner intent created by an owner action on a local-signing deployment (pending, executed, failed, unknown). Checking reconciles an unknown outcome through Tatum; it never signs.", inputSchema: { intent_id: z.string().regex(/^oi-[0-9a-f]{12}$/) }, annotations: read },
     ({ intent_id }) =>
@@ -277,14 +218,98 @@ export function buildMcpServer(ctx: AuthContext): McpServer {
         return intentView(i.status === "unknown" ? await reconcileIntent(intent_id) : i);
       }),
   );
-  server.registerTool("release_demo_run", { title: "Release the shared demo run", description: "Hand the shared demo run back if this owner session holds it.", annotations: write }, () =>
-    guarded(ctx, "owner.session", async () => {
-      await releaseLease(DEMO_RUN_LEASE, ctx.holder);
-      return { released: true };
-    }),
-  );
 
-  if (ctx.network === "testnet" && ctx.capabilities.has("demo.control")) {
+  // --- mutation owner tools (hidden in Mainnet read-only mode) ---
+  if (!ro) {
+    server.registerTool(
+      "decide_request",
+      {
+        title: "Decide a held request",
+        description: "Approve or deny a purchase that is waiting for the owner. Approving pays that same request once (release from free funds, x402 settle, Tatum verification). remember=true saves the decision as a preference in Walrus Memory.",
+        inputSchema: {
+          request_id: z.string().min(4).max(64),
+          decision: z.enum(["approve", "deny"]),
+          remember: z.boolean().optional(),
+          max_usdc: usdcArg("Preference limit when remembering").optional(),
+          days: z.number().int().min(1).max(90).optional().describe("Preference lifetime when remembering"),
+        },
+        annotations: write,
+      },
+      act("decide_request"),
+    );
+    server.registerTool(
+      "add_preference",
+      {
+        title: "Add a preference",
+        description: "Remember a merchant preference (allow or deny up to an amount). Preferences never unlock committed funds or exceed the vault's caps.",
+        inputSchema: { merchant: z.enum(MERCHANTS.map((m) => m.slug) as [string, ...string[]]), action: z.enum(["allow", "deny"]), max_usdc: usdcArg("Limit"), days: z.number().int().min(1).max(90).optional() },
+        annotations: write,
+      },
+      act("add_preference"),
+    );
+    server.registerTool(
+      "set_preference_enabled",
+      { title: "Enable or disable a preference", description: "Disable (or re-enable) a remembered preference by rule id.", inputSchema: { rule_id: z.string().min(3).max(64), enabled: z.boolean() }, annotations: write },
+      act("set_preference_enabled"),
+    );
+    server.registerTool(
+      "set_threshold",
+      { title: "Set automatic approval threshold", description: "Purchases from merchants without a preference are approved automatically up to this amount.", inputSchema: { max_usdc: usdcArg("Threshold") }, annotations: write },
+      act("set_threshold"),
+    );
+    server.registerTool(
+      "decide_suggestion",
+      { title: "Accept or reject a reserve suggestion", description: "Accepting changes the commitment's reserve target in the vault.", inputSchema: { suggestion_id: z.string().min(3).max(64), decision: z.enum(["accept", "reject"]) }, annotations: write },
+      ({ suggestion_id, decision }) => run(() => performOwnerAction(ctx, decision === "accept" ? "accept_suggestion" : "reject_suggestion", { suggestion_id })),
+    );
+    server.registerTool(
+      "set_reserve",
+      { title: "Set a commitment's reserve", description: "Change how much the vault reserves for one commitment (id from owner_status).", inputSchema: { commitment_id: z.number().int().min(0), amount_usdc: usdcArg("Reserve target") }, annotations: write },
+      act("set_reserve"),
+    );
+    server.registerTool(
+      "add_commitment",
+      {
+        title: "Add a commitment",
+        description: "Add a bill or savings commitment that the vault reserves before the agent can spend.",
+        inputSchema: {
+          name: z.string().min(2).max(40),
+          payee: z.string().regex(/^0x[0-9a-fA-F]{64}$/).describe("Full Sui address of the payee"),
+          amount_usdc: usdcArg("Amount per cycle"),
+          recurring: z.boolean().optional(),
+          usage: z.boolean().optional().describe("Usage-based bill (may come in under the target)"),
+          important: z.boolean().optional().describe("Priority important instead of must"),
+          cadence: z.string().min(3).max(20).optional(),
+        },
+        annotations: write,
+      },
+      act("add_commitment"),
+    );
+    server.registerTool(
+      "set_limits",
+      {
+        title: "Set the agent's limits",
+        description: "Per-request and 24-hour caps and the permission length for the spending agent, enforced by the vault contract.",
+        inputSchema: { per_request_usdc: usdcArg("Per-request cap"), per_day_usdc: usdcArg("24-hour cap"), days: z.number().int().min(1).max(90).optional() },
+        annotations: write,
+      },
+      act("set_limits"),
+    );
+    server.registerTool(
+      "set_agent_permission",
+      { title: "Pause, resume or revoke the agent", description: "Pause: the vault refuses every release until resume. Revoke: removes the permission (grant again with set_limits).", inputSchema: { state: z.enum(["pause", "resume", "revoke"]) }, annotations: { ...write, destructiveHint: true } },
+      act("set_agent_permission"),
+    );
+    server.registerTool("start_next_session", { title: "Start the next session", description: "Start the next application session; rules are rebuilt from Walrus recall.", annotations: write }, () => act("start_next_session")({}));
+    server.registerTool("release_demo_run", { title: "Release the shared demo run", description: "Hand the shared demo run back if this owner session holds it.", annotations: write }, () =>
+      guarded(ctx, "owner.session", async () => {
+        await releaseLease(DEMO_RUN_LEASE, ctx.holder);
+        return { released: true };
+      }),
+    );
+  }
+
+  if (!ro && ctx.network === "testnet" && ctx.capabilities.has("demo.control")) {
     server.registerTool(
       "demo_reset",
       { title: "Reset the shared Testnet demo", description: "Testnet demo tooling only: new Walrus namespace, reseeded vault, cleared app state. Preserve evidence first.", inputSchema: { confirm: z.literal(true) }, annotations: { ...write, destructiveHint: true } },
@@ -316,6 +341,8 @@ const rpcError = (status: number, message: string, headers: Record<string, strin
 /** Handle one MCP HTTP request (credential checked first, role resolved from it). */
 export async function handleMcp(req: Request, ip: string): Promise<Response> {
   if (req.method !== "POST") return rpcError(405, "Use POST: this MCP endpoint is stateless (Streamable HTTP, JSON responses).", { allow: "POST" });
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (contentLength > 65536) return rpcError(413, "Payload too large. Maximum request size is 64KB.");
   const auth = resolveAuth((n) => req.headers.get(n));
   if (!auth.ok) return rpcError(auth.status, auth.error, auth.status === 401 ? { "www-authenticate": 'Bearer realm="sisih"' } : {});
   const limit = await rateHit(`mcp:${ip}`, 60, 60_000);

@@ -67,7 +67,7 @@ const resets: number[] = [];
 vi.mock("../demo/controls", () => ({ resetDemo: async () => (resets.push(1), { reset: true }), advanceCycle: async () => ({ cycle: true }), clock: async () => ({}) }));
 
 const { initDb, db, schema } = await import("../db/index");
-const { handleMcp, AGENT_TOOLS, OWNER_TOOLS, DEMO_TOOLS } = await import("./server");
+const { handleMcp, AGENT_TOOLS, OWNER_TOOLS, DEMO_TOOLS, AGENT_READ_ONLY_TOOLS, AGENT_MUTATION_TOOLS, OWNER_READ_ONLY_TOOLS, OWNER_MUTATION_TOOLS } = await import("./server");
 const { setPaymentExecutor, purchaseResultKey } = await import("../services/payments");
 const { kvSet } = await import("../services/state");
 const { acquireLease, releaseLease } = await import("../lib/leases");
@@ -214,5 +214,52 @@ describe("owner assistant through the shared engine", () => {
     expect(pause.isError).toBe(false);
     expect(ownerSigned.at(-1)?.action).toBe("pause_agent");
     await releaseLease("demo_run", "client:someone-else");
+  });
+});
+
+describe("strict read-only tool visibility in Mainnet proof-complete mode", () => {
+  it("hides all mutation-capable tools from tools/list for both Agent and Owner", async () => {
+    const publication = await import("../mainnet/publication");
+    const guard = vi.spyOn(publication, "mainnetReadOnly").mockReturnValue(true);
+    try {
+      const agent = await connect(AGENT);
+      const agentToolNames = (await agent.listTools()).tools.map((t) => t.name).sort();
+      expect(agentToolNames).toEqual([...AGENT_READ_ONLY_TOOLS].sort());
+      for (const tool of AGENT_MUTATION_TOOLS) {
+        expect(agentToolNames).not.toContain(tool);
+      }
+
+      const owner = await connect(OWNER);
+      const ownerToolNames = (await owner.listTools()).tools.map((t) => t.name).sort();
+      expect(ownerToolNames).toEqual([...OWNER_READ_ONLY_TOOLS].sort());
+      for (const tool of OWNER_MUTATION_TOOLS) {
+        expect(ownerToolNames).not.toContain(tool);
+      }
+      for (const tool of DEMO_TOOLS) {
+        expect(ownerToolNames).not.toContain(tool);
+      }
+    } finally {
+      guard.mockRestore();
+    }
+  });
+
+  it("direct call to unlisted mutation tool fails without effects", async () => {
+    const publication = await import("../mainnet/publication");
+    const guard = vi.spyOn(publication, "mainnetReadOnly").mockReturnValue(true);
+    try {
+      const agent = await connect(AGENT);
+      const agentCall = await call(agent, "request_purchase", { service: "searchbox", task: "attempt buy" });
+      expect(agentCall.isError).toBe(true);
+      expect(String(agentCall.body)).toMatch(/Tool request_purchase not found/);
+
+      const owner = await connect(OWNER);
+      for (const name of ["decide_request", "set_limits", "demo_reset"]) {
+        const ownerCall = await call(owner, name, { confirm: true, request_id: "req-1", decision: "approve" });
+        expect(ownerCall.isError).toBe(true);
+        expect(String(ownerCall.body)).toMatch(new RegExp(`Tool ${name} not found`));
+      }
+    } finally {
+      guard.mockRestore();
+    }
   });
 });

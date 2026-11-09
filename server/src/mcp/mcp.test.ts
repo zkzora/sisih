@@ -85,7 +85,13 @@ async function connect(token = "agent-secret", ip = "10.0.0.1") {
 }
 const call = async (client: Client, name: string, args: Record<string, unknown> = {}) => {
   const r = (await client.callTool({ name, arguments: args })) as { content: { text: string }[]; isError?: boolean };
-  return { isError: Boolean(r.isError), body: JSON.parse(r.content[0]!.text) };
+  let body: unknown;
+  try {
+    body = JSON.parse(r.content[0]!.text);
+  } catch {
+    body = r.content[0]?.text;
+  }
+  return { isError: Boolean(r.isError), body: body as Record<string, any> };
 };
 
 beforeAll(async () => {
@@ -118,6 +124,12 @@ describe("connection and discovery", () => {
     const r2 = await handleMcp(new Request("https://sisih.test/api/mcp", { method: "POST", headers: { "x-demo-token": "owner-secret" }, body: "{}" }), "10.0.0.2");
     expect(r2.status).toBe(401);
     await expect(connect("wrong")).rejects.toThrow();
+  });
+
+  it("refuses oversized payloads before passing to schema validation", async () => {
+    const r = await handleMcp(new Request("https://sisih.test/api/mcp", { method: "POST", headers: { "content-length": "100000", authorization: "Bearer agent-secret" }, body: "{}" }), "10.0.0.3");
+    expect(r.status).toBe(413);
+    expect((await r.json()).error.message).toMatch(/Payload too large/);
   });
 });
 
@@ -346,9 +358,13 @@ describe("idempotency across resets", () => {
     try {
       const client = await connect("agent-secret", "10.99.0.1");
       expect((await call(client, "get_budget")).body.vault).toBeDefined();
+      const tools = (await client.listTools()).tools.map((t) => t.name);
+      expect(tools).not.toContain("request_purchase");
+      expect(tools).not.toContain("end_demo_session");
       const before = (await db().select().from(schema.requests)).length;
       const refusal = await call(client, "request_purchase", { service: "chainscope", task: "Publication cannot initiate another payment" });
-      expect(refusal.body).toMatchObject({ outcome: "blocked", paid: false, decision_code: "agent_no_permission" });
+      expect(refusal.isError).toBe(true);
+      expect(String(refusal.body)).toMatch(/Tool request_purchase not found/);
       expect((await db().select().from(schema.requests)).length).toBe(before);
       expect(charges).toEqual([]);
       const { createApp } = await import("../api/app");
