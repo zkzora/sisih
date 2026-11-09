@@ -1,0 +1,47 @@
+{
+  "title": "SISIH — Mainnet Product Walkthrough",
+  "site": "https://sisih-azure.vercel.app",
+  "evidenceDir": "docs/evidence/mainnet-20261108",
+  "voice": [
+    {
+      "id": "home",
+      "page": "home",
+      "text": "An AI agent can find useful data, call paid services, and act on its owner's behalf. But when the same balance must cover spending and future commitments, a simple wallet balance is not enough. SISIH gives autonomous agents a controlled spending path, while keeping the owner's commitments protected."
+    },
+    {
+      "id": "connect",
+      "page": "connect",
+      "text": "SISIH exposes one Model Context Protocol endpoint over Streamable HTTP. The spending agent and the owner use separate bearer credentials and separate permissions. A bearer token authenticates a role. It is not a wallet private key. The agent never receives the owner's signing key or owner authority."
+    },
+    {
+      "id": "agent-first",
+      "page": "terminal-first",
+      "text": "In the recorded Mainnet run, Codex checks the available services and reads the vault budget. It requests a live ChainScope vault report for zero point eight zero U-S-D-C. Because ChainScope is a new merchant, SISIH holds the request for owner review. No payment happens at this stage."
+    },
+    {
+      "id": "owner",
+      "page": "terminal-owner",
+      "text": "The owner reviews that exact request in a separate local terminal and approves it. The owner also chooses to remember a rule: allow ChainScope data purchases up to zero point eight zero U-S-D-C for a limited period. The approval is owner-controlled. The agent cannot approve its own request. The first release and x-four-oh-two settlement are then verified on Sui Mainnet."
+    },
+    {
+      "id": "memory-second",
+      "page": "terminal-memory",
+      "text": "SISIH stores the decision rule in Walrus Memory. A fresh application session rebuilds the rule from its stored record. In a new Codex conversation, the second zero point eight zero U-S-D-C report is allowed by that remembered rule. The second release and settlement are independently verified. Memory changes the review decision; it does not override the vault's on-chain spending limits."
+    },
+    {
+      "id": "reserve",
+      "page": "terminal-reserve",
+      "text": "Next, Codex requests another zero point eight zero U-S-D-C report. Only zero point six zero U-S-D-C remains free, while zero point eight zero is still reserved. SISIH refuses the request because paying it would cut into the protected reserve. The refusal is recorded in the application evidence, and an unsigned contract simulation independently returns E-Exceeds-Free. No refusal transaction is broadcast."
+    },
+    {
+      "id": "proof",
+      "page": "proof",
+      "text": "The Proof page brings the evidence together: two verified purchases totaling one point six zero U-S-D-C, four stored Walrus memories, and the final vault balance. One point four zero U-S-D-C remains: zero point eight zero reserved and zero point six zero free. The owner then revokes the agent's spending permission on Sui Mainnet. The on-chain policy is now absent. The public SISIH connection is read-only."
+    },
+    {
+      "id": "closing",
+      "page": "closing",
+      "text": "This is SISIH: financial control for autonomous AI. Two real Mainnet purchases. A remembered owner rule. Protected commitments. And a permission that can be revoked. The completed proof is public, verifiable, and read-only."
+    }
+  ]
+}
