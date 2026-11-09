@@ -1,0 +1,51 @@
+name: SISIH Mainnet Product Walkthrough Video
+
+on:
+  push:
+    branches:
+      - video/sisih-mainnet-walkthrough
+    paths:
+      - ".github/workflows/sisih-mainnet-walkthrough.yml"
+      - "video-demo/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository and archived evidence
+        uses: actions/checkout@v4
+        with:
+          ref: video/sisih-mainnet-walkthrough
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install browser and video dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg zip fonts-liberation
+          npm install --no-save playwright
+          npx playwright install --with-deps chromium
+
+      - name: Render browser walkthrough, ElevenLabs narration and subtitles
+        env:
+          SISIH_SITE: https://sisih-azure.vercel.app
+          ELEVENLABS_API_KEY: \${{ secrets.ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: \${{ secrets.ELEVENLABS_VOICE_ID || vars.ELEVENLABS_VOICE_ID }}
+          ELEVENLABS_MODEL_ID: \${{ vars.ELEVENLABS_MODEL_ID }}
+        run: node video-demo/record.mjs
+
+      - name: Upload preview package
+        uses: actions/upload-artifact@v4
+        with:
+          name: SISIH-Mainnet-Walkthrough-Preview
+          path: video-demo/out/SISIH_Walkthrough_Preview_Package.zip
+          if-no-files-found: error
+          retention-days: 14
