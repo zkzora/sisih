@@ -338,21 +338,59 @@ export function buildMcpServer(ctx: AuthContext): McpServer {
 const rpcError = (status: number, message: string, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message }, id: null }), { status, headers: { "content-type": "application/json", ...headers } });
 
+const MAX_MCP_PAYLOAD_BYTES = 65_536;
+
 /** Handle one MCP HTTP request (credential checked first, role resolved from it). */
 export async function handleMcp(req: Request, ip: string): Promise<Response> {
   if (req.method !== "POST") return rpcError(405, "Use POST: this MCP endpoint is stateless (Streamable HTTP, JSON responses).", { allow: "POST" });
-  const contentLength = Number(req.headers.get("content-length") ?? 0);
-  if (contentLength > 65536) return rpcError(413, "Payload too large. Maximum request size is 64KB.");
+  const rawCl = req.headers.get("content-length");
+  if (rawCl && Number(rawCl) > MAX_MCP_PAYLOAD_BYTES) {
+    return rpcError(413, "Payload too large. Maximum request size is 64KB.");
+  }
   const auth = resolveAuth((n) => req.headers.get(n));
   if (!auth.ok) return rpcError(auth.status, auth.error, auth.status === 401 ? { "www-authenticate": 'Bearer realm="sisih"' } : {});
   const limit = await rateHit(`mcp:${ip}`, 60, 60_000);
   if (!limit.allowed) return rpcError(429, "Too many MCP calls. Try again shortly.", { "retry-after": String(limit.retryAfterSeconds) });
 
+  let safeReq = req;
+  if (req.body) {
+    const reader = req.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_MCP_PAYLOAD_BYTES) {
+            await reader.cancel().catch(() => {});
+            return rpcError(413, "Payload too large. Maximum request size is 64KB.");
+          }
+          chunks.push(value);
+        }
+      }
+    } catch {
+      return rpcError(400, "Failed to read request body.");
+    }
+    const fullBody = new Uint8Array(totalBytes);
+    let offset = 0;
+    for (const chunk of chunks) {
+      fullBody.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+    safeReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: fullBody,
+    });
+  }
+
   const server = buildMcpServer(auth.ctx);
   const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
   await server.connect(transport);
   try {
-    return await transport.handleRequest(req);
+    return await transport.handleRequest(safeReq);
   } finally {
     await transport.close().catch(() => {});
     await server.close().catch(() => {});
