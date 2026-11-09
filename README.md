@@ -31,6 +31,81 @@ The primary demonstrated run is Sui Mainnet, namespace `sisih-mainnet-proof-2026
 
 The [Mainnet archive](docs/evidence/mainnet-20261108/README.md) contains transcripts, exact read-back of all eight receipts, a failing unrelated-digest control and four independently checked Walrus jobs/blobs. Codex was the real Mainnet model client; Claude Code hit its weekly quota before calling a tool. Read-only rule-provenance links were improved after payment and checked without another purchase. Antigravity and an owner-assistant model session remain unverified. The earlier [Claude Code Testnet archive](docs/evidence/final-run-sisih-hosted-9/README.md), with 13 stored memories, remains historical and unchanged.
 
+## How to test
+
+The public deployment is read-only. No wallet, no clone, and no spending credential is needed to verify the core claims.
+
+### 1 — Read the live Mainnet state (no credential)
+
+Open the API directly in a browser or terminal and confirm the vault is real:
+
+```bash
+curl https://sisih-azure.vercel.app/api/state
+```
+
+Expected: `network: mainnet`, vault total `1400000` µUSDC (1.40 USDC), one funded obligation (Savings reserve 0.80 USDC), `heldRequests: 1`.
+
+Then open [suiscan.xyz](https://suiscan.xyz/mainnet/object/0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc) and confirm the same vault object on-chain.
+
+### 2 — Verify the transaction chain (no credential)
+
+All eight Mainnet transactions are public. Open each link and confirm the stated effect:
+
+| Step | Transaction | Expected effect |
+|------|------------|-----------------|
+| Deposit | [suiscan](https://suiscan.xyz/mainnet/tx/6C3oTgnJYb2TH1jJiRxLR1DE87GVvY1mmfcsX2goJcms) | 3.00 USDC deposited, 0.80 reserved |
+| First release | [suiscan](https://suiscan.xyz/mainnet/tx/6C3oTgnJYb2TH1jJiRxLR1DE87GVvY1mmfcsX2goJcms) | 0.80 released from free pool |
+| First x402 settlement | [suiscan](https://suiscan.xyz/mainnet/tx/8JyrP75EGse2BSTE4ty7afEPskptMYt6h3bv8hAjAyXB) | Merchant paid 0.80 USDC |
+| Second release | [suiscan](https://suiscan.xyz/mainnet/tx/Gm1Rtgd2ty6sJ1gWxx1LSfVqNYnKnSwTkxDchfjECVE3) | 0.80 released from free pool |
+| Second x402 settlement | [suiscan](https://suiscan.xyz/mainnet/tx/8ywcKQZpHDpFsZnBq4yCusuLiibDfWws6nF8FWQTBhS9) | Merchant paid 0.80 USDC |
+| Owner revoke | [suiscan](https://suiscan.xyz/mainnet/tx/3ijG4jsAk9QcV4jvffUAF3RTmwn7np39pc697PJf5LH1) | Agent permission revoked; vault left at 1.40 USDC |
+
+Then open the Walrus blob for the remembered rule and confirm it reached `stored` status:
+[`rule-dfbf7042` on Walrus Mainnet](https://walruscan.com/mainnet/blob/dAU_UeyCw3_fRAuIEQCFQJuXKE6wnlnIJkkkkmYoJds)
+
+### 3 — Connect an MCP agent and query read-only tools (needs agent token)
+
+If you have been given a `SISIH_AGENT_TOKEN` (e.g. in the submission form or judge channel), configure your MCP client:
+
+```json
+{
+  "mcpServers": {
+    "sisih": {
+      "type": "http",
+      "url": "https://sisih-azure.vercel.app/api/mcp",
+      "headers": { "Authorization": "Bearer YOUR_AGENT_TOKEN" }
+    }
+  }
+}
+```
+
+Then ask the agent:
+
+> "Use Sisih to show the current Mainnet vault balance, permission state and available services. Do not buy anything."
+
+The agent will call `get_budget`, `list_services`, and optionally `get_request_status`. Verify responses match the `/api/state` output above. No purchase is possible — the deployment rejects any mutation.
+
+You can also replay the two completed purchases and the reserve refusal by calling:
+
+```
+get_request_status   req-7dd90263-75e   # settled, allow_rule, live ChainScope report
+get_request_status   req-f37bacb5-c6a   # refused, EExceedsFree, reserve protected
+```
+
+### 4 — View the recorded proof page
+
+Open [https://sisih-azure.vercel.app/proof](https://sisih-azure.vercel.app/proof) in a browser.
+
+The page renders live data from `/api/state` and shows the full execution timeline, all eight transaction links, and the Walrus memory inventory — no login required.
+
+### 5 — Inspect the MCP server implementation
+
+The role-scoped tool registration is in [`server/src/mcp/server.ts`](server/src/mcp/server.ts). The agent sees exactly `get_budget`, `list_services`, and `get_request_status`; mutation tools are not registered in the public deployment. The read-only enforcement is in [`server/src/api/middleware.ts`](server/src/api/middleware.ts).
+
+---
+
+> **Note:** A `SISIH_AGENT_TOKEN` is a read-only bearer credential scoped to the agent role. It is not a wallet key and grants no spending authority in the completed public deployment. Never share `SISIH_OWNER_TOKEN` — that credential is private to the operator.
+
 ## Try the proof first
 
 No clone or credential is needed to understand the result:
