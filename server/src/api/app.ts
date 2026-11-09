@@ -170,7 +170,14 @@ export function createApp() {
       heldRequests: held.length,
       memory: { namespace: ns, stored: mem.filter((m) => m.status === "stored").length, writing: mem.filter((m) => m.status === "writing").length, failed: mem.filter((m) => m.status === "failed").length },
       tatum: tatumStatus(vault.readAtMs),
-      demo: { merchants: MERCHANTS.map((m) => ({ name: m.name, demo: true })) },
+      demo: {
+        merchants: MERCHANTS.map((m) => ({
+          name: m.name,
+          demo: true,
+          operator: "project_operated",
+          content: m.content === "live" ? "live_onchain_sui_data" : "sample_fixed_content",
+        })),
+      },
     });
   });
 

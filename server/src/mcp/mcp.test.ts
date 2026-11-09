@@ -127,9 +127,16 @@ describe("connection and discovery", () => {
   });
 
   it("refuses oversized payloads before passing to schema validation", async () => {
-    const r = await handleMcp(new Request("https://sisih.test/api/mcp", { method: "POST", headers: { "content-length": "100000", authorization: "Bearer agent-secret" }, body: "{}" }), "10.0.0.3");
-    expect(r.status).toBe(413);
-    expect((await r.json()).error.message).toMatch(/Payload too large/);
+    // 1. Content-Length header check
+    const r1 = await handleMcp(new Request("https://sisih.test/api/mcp", { method: "POST", headers: { "content-length": "100000", authorization: "Bearer agent-secret" }, body: "{}" }), "10.0.0.3");
+    expect(r1.status).toBe(413);
+    expect((await r1.json()).error.message).toMatch(/Payload too large/);
+
+    // 2. Streamed actual body check without Content-Length
+    const largeBody = "a".repeat(70_000);
+    const r2 = await handleMcp(new Request("https://sisih.test/api/mcp", { method: "POST", headers: { authorization: "Bearer agent-secret" }, body: largeBody }), "10.0.0.4");
+    expect(r2.status).toBe(413);
+    expect((await r2.json()).error.message).toMatch(/Payload too large/);
   });
 });
 
