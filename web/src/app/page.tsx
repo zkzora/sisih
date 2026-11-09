@@ -24,7 +24,7 @@ export default function Home() {
           </Link>
         </div>
         <p className="network-line">
-          Verified on <strong>Sui Mainnet · Walrus Memory Mainnet</strong>. Two x402 purchases, one recalled approval, reserves protected.
+          Completed proof on <strong>Sui Mainnet · Walrus Memory Mainnet</strong>. Two x402 purchases, one recalled approval, reserves protected. Public endpoint is read-only; agent permission revoked.
         </p>
       </section>
 
@@ -87,7 +87,7 @@ export default function Home() {
             </div>
             <h3>Separate Agent and Owner Roles</h3>
             <p>
-              Connect an external MCP client with a restricted token. The model receives no wallet key; a scoped server signer executes permitted payments. Codex and Claude Code have recorded runs.
+              Connect an external MCP client with a role-scoped bearer credential. The model receives no wallet keys or signing authority. In the completed Mainnet proof, Codex performed the task and permission was subsequently revoked.
             </p>
             <span className="feature-tag">Model Context Protocol</span>
           </div>

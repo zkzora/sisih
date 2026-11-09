@@ -24,15 +24,15 @@ export function MainnetProof() {
       <p className="fine">Recorded 13:03–13:10 UTC on Sui Mainnet. This run is complete and permission is revoked. <Link href="/connect">Connect</Link> reads the same Mainnet vault and recorded requests; new spending is closed.</p>
     </header>
     <dl className="proof-summary" aria-label="Verified Mainnet result">
-      <div><dt>Two x402 purchases</dt><dd>1.60 <span>USDC paid</span></dd></div>
-      <div><dt>Protected throughout</dt><dd>0.80 <span>USDC reserved</span></dd></div>
-      <div><dt>Final vault balance</dt><dd>1.40 <span>USDC · agent revoked</span></dd></div>
+      <div><dt>Historical purchases (consumed)</dt><dd>1.60 <span>USDC paid</span></dd></div>
+      <div><dt>Commitment reserve (protected)</dt><dd>0.80 <span>USDC reserved</span></dd></div>
+      <div><dt>Current vault balance</dt><dd>1.40 <span>USDC (0.60 free) · agent revoked</span></dd></div>
     </dl>
     <Section id="mainnet-trace" title="One approval, two purchases, one hard refusal">
       <div className="trace">
         <article className="step-card">
           <p className="eyebrow">01 · Agent requests</p><h3>A useful report, held for review</h3>
-          <p>The owner deposits 3.00 USDC: 0.80 for savings, 2.20 free. Codex discovers ChainScope and requests a live report on balances, commitments and spending limits.</p>
+          <p>The owner deposits 3.00 USDC: 0.80 for savings, 2.20 free. Codex discovers ChainScope (a project-operated merchant returning live Sui Mainnet data) and requests a live report on balances, commitments and spending limits.</p>
           <p>Request <code>req-d89525e6-87f</code> waits because the merchant is unfamiliar. No payment occurs.</p>
         </article>
         <article className="step-card">
