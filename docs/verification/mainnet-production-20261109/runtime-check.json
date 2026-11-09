@@ -1,0 +1,63 @@
+{
+  "checked_at": "2026-11-09T00:50:20.652Z",
+  "network": "mainnet",
+  "vault": {
+    "vaultId": "0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+    "version": 1,
+    "owner": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+    "free": "600000",
+    "reserved": "800000",
+    "total": "1400000",
+    "obligations": [
+      {
+        "id": 0,
+        "name": "Savings reserve",
+        "payee": "0xebd63d9b61f6a9a4f2e46954adb70c66c42e98f127a84a30071c336d63b98990",
+        "target": "800000",
+        "reserve": "800000",
+        "kind": "fixed",
+        "priority": "must",
+        "cycleMs": 2592000000,
+        "nextDueMs": 1796634557715,
+        "cadenceLabel": "Monthly",
+        "status": "funded"
+      }
+    ],
+    "policy": null,
+    "readAtMs": 1794185419048,
+    "explorerUrl": "https://suiscan.xyz/mainnet/object/0x24649e0f48c627733cc526faf39b642efd103b75d3651128bc7e56aaa93e32fc",
+    "operatorCapId": "0xa26d752f4841e3a320efa7d7b13f611cf93419f6d49f91565a65c5bc4b96b593"
+  },
+  "memories": {
+    "namespace": "sisih-mainnet-proof-20261107",
+    "stored": 4,
+    "writing": 0,
+    "failed": 0
+  },
+  "checks": [
+    {
+      "path": "/dev/states",
+      "method": "GET",
+      "status": 404,
+      "expected": 404
+    },
+    {
+      "path": "/merchants/chainscope/vault-report",
+      "method": "GET",
+      "status": 410,
+      "expected": 410
+    },
+    {
+      "path": "/api/sui-rpc",
+      "method": "POST",
+      "status": 403,
+      "expected": 403
+    },
+    {
+      "path": "/api/mcp",
+      "method": "POST",
+      "status": 401,
+      "expected": 401
+    }
+  ]
+}

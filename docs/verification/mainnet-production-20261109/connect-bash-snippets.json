@@ -1,0 +1,4 @@
+[
+  "mkdir -p sisih-agent && cd sisih-agent\nunset SISIH_OWNER_TOKEN SISIH_OWNER_MCP_TOKEN DEMO_TOKEN OWNER_PRIVATE_KEY\nexport SISIH_AGENT_TOKEN=\"<private Mainnet agent credential>\"",
+  "codex 'exec' '--ignore-user-config' '--ignore-rules' '--skip-git-repo-check' '--ephemeral' '--sandbox' 'read-only' '--disable' 'shell_tool' '--disable' 'unified_exec' '--disable' 'apps' '--disable' 'plugins' '--disable' 'hooks' '--disable' 'browser_use' '--disable' 'computer_use' '--disable' 'view_image' '-c' 'approval_policy=never' '-c' 'web_search=disabled' '-c' 'mcp_servers.sisih.url=https://sisih-azure.vercel.app/api/mcp' '-c' 'mcp_servers.sisih.bearer_token_env_var=SISIH_AGENT_TOKEN' '-c' 'mcp_servers.sisih.default_tools_approval_mode=auto' \"Use the sisih MCP server to show the current Mainnet vault balance, protected commitments and permission state. List available services. Do not buy anything or change configuration.\""
+]

@@ -1,0 +1,92 @@
+{
+  "origin": "https://sisih-azure.vercel.app",
+  "revision": "1c8f1c5",
+  "mutable_api": "intercepted with isolated fixtures; no payments or memory writes",
+  "viewports": [
+    375,
+    768,
+    1280,
+    1440
+  ],
+  "captures": [
+    "home-375.png",
+    "connect-375.png",
+    "proof-375.png",
+    "home-768.png",
+    "connect-768.png",
+    "proof-768.png",
+    "home-1280.png",
+    "connect-1280.png",
+    "proof-1280.png",
+    "home-1440.png",
+    "connect-1440.png",
+    "proof-1440.png"
+  ],
+  "contrast": [
+    {
+      "label": "/:light",
+      "checked": 61,
+      "failures": []
+    },
+    {
+      "label": "/connect:light",
+      "checked": 67,
+      "failures": []
+    },
+    {
+      "label": "/proof:light",
+      "checked": 98,
+      "failures": []
+    },
+    {
+      "label": "/connect:dark",
+      "checked": 65,
+      "failures": []
+    },
+    {
+      "label": "/:dark",
+      "checked": 61,
+      "failures": []
+    },
+    {
+      "label": "/proof:dark",
+      "checked": 98,
+      "failures": []
+    },
+    {
+      "label": "/connect:expanded-dark-375",
+      "checked": 66,
+      "failures": []
+    },
+    {
+      "label": "/connect:expanded-dark-1440",
+      "checked": 67,
+      "failures": []
+    },
+    {
+      "label": "/proof:expanded-dark-375",
+      "checked": 97,
+      "failures": []
+    },
+    {
+      "label": "/proof:expanded-dark-1440",
+      "checked": 98,
+      "failures": []
+    }
+  ],
+  "checks": [
+    "routes and read-only navigation",
+    "no horizontal overflow, closed and expanded",
+    "API error and retry",
+    "actual Testnet/Mainnet/unknown API state labels",
+    "arrow-key shell tabs",
+    "copy success and failure",
+    "keyboard focus",
+    "dark theme and persistence",
+    "legacy redirects",
+    "served skill",
+    "development fixtures return 404",
+    "text contrast in both themes"
+  ],
+  "page_errors": []
+}

@@ -1,0 +1,19 @@
+{
+  "checked_at": "2026-11-09T00:50:02.835Z",
+  "network": "mainnet",
+  "rendered_recipe_origin": "http://127.0.0.1:3000/api/mcp",
+  "checked_endpoint": "https://sisih-azure.vercel.app/api/mcp",
+  "client": "installed Codex CLI",
+  "source": "rendered PowerShell snippet, same CLI flags; endpoint normalized to hosted Mainnet and tools restricted to reads/session end",
+  "private_owner_credentials_forwarded": false,
+  "purchase_tools_available": false,
+  "exit_code": 0,
+  "tools_called": [
+    "get_request_status",
+    "get_request_status",
+    "get_budget",
+    "list_services",
+    "end_demo_session"
+  ],
+  "passed": true
+}
